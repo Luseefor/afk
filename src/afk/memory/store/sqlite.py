@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional, Sequence, cast
 
 import aiosqlite
+import numpy as np
 
 from ..models import JsonObject, JsonValue, LongTermMemory, MemoryEvent, json_dumps, json_loads, now_ms
 from ..vector import cosine_similarity
@@ -262,7 +263,7 @@ class SQLiteMemoryStore(MemoryStore):
         min_score: float | None = None,
     ) -> list[tuple[LongTermMemory, float]]:
         self._ensure_setup()
-        query_values = [float(value) for value in query_embedding]
+        query_values = np.asarray(query_embedding, dtype=np.float64)
         db = self._db()
         params: list[str | None] = [user_id, user_id]
         where_clause = f"{self._user_filter_sql()} AND embedding_json IS NOT NULL"
@@ -281,7 +282,7 @@ class SQLiteMemoryStore(MemoryStore):
             if not isinstance(embedding, list):
                 continue
             try:
-                similarity = cosine_similarity(query_values, [float(value) for value in embedding])
+                similarity = cosine_similarity(query_values, np.asarray(embedding, dtype=np.float64))
             except ValueError:
                 continue
             if min_score is not None and similarity < min_score:

@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 from typing import Optional, Sequence
 
+import numpy as np
+
 from ..models import JsonValue, LongTermMemory, MemoryEvent, json_dumps
 from ..vector import cosine_similarity
 from .base import MemoryCapabilities, MemoryStore
@@ -21,7 +23,7 @@ class InMemoryMemoryStore(MemoryStore):
         self._events_by_thread: dict[str, list[MemoryEvent]] = {}
         self._state_by_thread_key: dict[tuple[str, str], JsonValue] = {}
         self._memory_by_id: dict[str, LongTermMemory] = {}
-        self._embedding_by_memory_id: dict[str, list[float]] = {}
+        self._embedding_by_memory_id: dict[str, np.ndarray] = {}
 
     async def append_event(self, event: MemoryEvent) -> None:
         self._ensure_setup()
@@ -71,7 +73,7 @@ class InMemoryMemoryStore(MemoryStore):
         async with self._lock:
             self._memory_by_id[memory.id] = memory
             if embedding is not None:
-                self._embedding_by_memory_id[memory.id] = [float(value) for value in embedding]
+                self._embedding_by_memory_id[memory.id] = np.asarray(embedding, dtype=np.float64)
 
     async def delete_long_term_memory(self, user_id: str | None, memory_id: str) -> None:
         self._ensure_setup()
@@ -144,7 +146,7 @@ class InMemoryMemoryStore(MemoryStore):
         min_score: float | None = None,
     ) -> list[tuple[LongTermMemory, float]]:
         self._ensure_setup()
-        query_values = [float(value) for value in query_embedding]
+        query_values = np.asarray(query_embedding, dtype=np.float64)
         async with self._lock:
             candidates = [memory for memory in self._memory_by_id.values() if memory.user_id == user_id]
             if scope is not None:

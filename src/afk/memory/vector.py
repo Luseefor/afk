@@ -1,26 +1,23 @@
 from __future__ import annotations
 
-import math
-from typing import Iterable, Sequence
+from typing import Sequence
 
+import numpy as np
 
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     """Compute cosine similarity and return 0.0 for zero-norm vectors."""
-    if len(a) != len(b):
-        raise ValueError(f"Embedding dim mismatch: {len(a)} != {len(b)}")
+    a_values = np.asarray(a, dtype=np.float64)
+    b_values = np.asarray(b, dtype=np.float64)
+    if a_values.ndim != 1 or b_values.ndim != 1:
+        raise ValueError("Embeddings must be 1D vectors.")
+    if a_values.shape[0] != b_values.shape[0]:
+        raise ValueError(f"Embedding dim mismatch: {a_values.shape[0]} != {b_values.shape[0]}")
 
-    dot = 0.0
-    na = 0.0
-    nb = 0.0
-    for x, y in zip(a, b):
-        dot += float(x) * float(y)
-        na += float(x) * float(x)
-        nb += float(y) * float(y)
-
-    if na <= 0.0 or nb <= 0.0:
+    denominator = np.linalg.norm(a_values) * np.linalg.norm(b_values)
+    if denominator <= 0.0:
         return 0.0
 
-    return dot / (math.sqrt(na) * math.sqrt(nb))
+    return float(np.dot(a_values, b_values) / denominator)
 
 
 def format_pgvector(vec: Sequence[float]) -> str:

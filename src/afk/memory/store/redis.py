@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional, Sequence, cast
 
+import numpy as np
 from redis.asyncio import Redis
 
 from ..models import JsonObject, JsonValue, LongTermMemory, MemoryEvent, json_dumps, json_loads
@@ -199,7 +200,7 @@ class RedisMemoryStore(MemoryStore):
     ) -> list[tuple[LongTermMemory, float]]:
         self._ensure_setup()
         redis_client = self._redis()
-        query_values = [float(value) for value in query_embedding]
+        query_values = np.asarray(query_embedding, dtype=np.float64)
 
         values = await redis_client.hgetall(self._memory_hash_key(user_id))
         ranked: list[tuple[LongTermMemory, float]] = []
@@ -213,7 +214,7 @@ class RedisMemoryStore(MemoryStore):
             if not isinstance(embedding, list):
                 continue
             try:
-                similarity = cosine_similarity(query_values, [float(value) for value in embedding])
+                similarity = cosine_similarity(query_values, np.asarray(embedding, dtype=np.float64))
             except ValueError:
                 continue
             if min_score is not None and similarity < min_score:
