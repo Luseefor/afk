@@ -184,7 +184,7 @@ def backoff_delay(attempt: int, base_s: float, jitter_s: float) -> float:
     Exponential backoff with jitter.
     attempt=0 => base, attempt=1 => 2*base, etc.
     """
-    exp = base_s * (2 ** attempt)
+    exp = base_s * (2**attempt)
     jitter = random.uniform(0.0, jitter_s)
     return exp + jitter
 
