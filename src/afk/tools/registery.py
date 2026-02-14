@@ -23,9 +23,9 @@ try:
 except Exception:  # pragma: no cover
     import importlib_metadata  # type: ignore
 
-from .base import Tool, ToolContext, ToolResult, ToolSpec, as_async
+from .core.base import Tool, ToolContext, ToolResult, ToolSpec, as_async
 
-from .errors import (
+from .core.errors import (
     ToolAlreadyRegisteredError,
     ToolNotFoundError,
     ToolPolicyError,
