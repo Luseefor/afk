@@ -1,5 +1,5 @@
 ---
-title: LLM Flow
+title: LLM Interaction
 description: Detailed LLM request lifecycle, retries, structured output flow, and runtime contracts.
 ---
 
@@ -8,11 +8,12 @@ This document describes how AFK constructs, validates, executes, retries, and re
 ## TL;DR
 
 - Runner creates step-scoped `LLMRequest` objects with idempotency keys.
+- Runner resolves agent instructions before first call (inline or file-backed system prompt loader).
 - Policy gates can deny/defer/require approval before each LLM call.
 - Fallback model chain is attempted when configured.
 - Structured output validation and repair happen in the LLM layer.
 
-## When To Read This
+## When to Use
 
 - You need predictable retries/fallback behavior.
 - You are debugging structured output failures.
@@ -25,6 +26,14 @@ Primary code paths:
 - [afk/llms/llm.py](https://github.com/socioy/afk/blob/main/src/afk/llms/llm.py)
 - [afk/llms/factory.py](https://github.com/socioy/afk/blob/main/src/afk/llms/factory.py)
 - [afk/agents/resolution.py](https://github.com/socioy/afk/blob/main/src/afk/agents/resolution.py)
+- [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
+
+## Required Capabilities
+
+- explicit adapter/model resolution strategy
+- retry/timeout settings tuned for workload latency budgets
+- fallback model chain for provider instability
+- structured-output validation handling for strict response contracts
 
 ## Runner-Side LLM Call Flow
 
@@ -139,7 +148,7 @@ Checkpoint phases:
 - `post_llm`
 - `runtime_state`
 
-## Important Edge Cases
+## Failure Modes
 
 - LLM policy deny can degrade or fail run depending on `llm_failure_policy`.
 - If cost exceeds `max_total_cost_usd`, runner raises budget exceeded error.
@@ -154,6 +163,11 @@ Checkpoint phases:
 4. Use `response_model` for typed outputs and handle validation failures.
 5. Track `llm_called` / `llm_completed` events for observability.
 
-## Related Example
+## Examples
 
 - [examples/05_direct_llm_structured_output.py](/library/examples/index#05-direct-llm-structured-output)
+
+## Continue Reading
+
+1. [Failure Policies](/library/failure-policy-matrix)
+2. [Run Event Contract](/library/run-event-contract)

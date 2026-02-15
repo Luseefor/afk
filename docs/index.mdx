@@ -6,25 +6,49 @@ description: Build production-ready agent systems with policy, tools, memory, an
 AFK (Agent Forge Kit) is an agent runtime focused on safe orchestration, deterministic behavior, and practical developer experience.
 
 <Tip>
-Language support roadmap: this docs site uses the current Python SDK examples today, with TypeScript, Go, and Rust SDK docs planned next.
+Language roadmap: examples currently use the Python SDK. TypeScript, Go, and Rust SDK docs are planned.
 </Tip>
+
+## TL;DR
+
+- AFK provides a production-oriented runtime for tool-using, policy-governed agents.
+- The documentation is organized from onboarding to internals to full API contracts.
+- Use maturity levels to implement capabilities in the right order.
+
+## When to Use AFK
+
+- engineers building AI features with strict runtime controls
+- teams shipping long-running or resumable agent workflows
+- platform developers integrating multiple model providers behind one contract
 
 <CardGroup cols={2}>
   <Card title="Start in 15 Minutes" href="/library/developer-guide" icon="rocket">
     Go from zero to first working AFK agent with a copy-paste path.
   </Card>
+  <Card title="Agentic Levels" href="/library/agentic-levels" icon="file-code">
+    Choose a maturity level and implement only the required features.
+  </Card>
   <Card title="Run Examples" href="/library/examples/index" icon="play-circle">
     Learn by running progressively harder examples with diagrams.
   </Card>
-  <Card title="Understand the Runtime" href="/library/architecture" icon="git-branch">
+  <Card title="Building with AI" href="/library/building-with-ai" icon="file-code">
+    Install AFK skills via `npx skills` and build agents faster.
+  </Card>
+  <Card title="Understand the Runtime" href="/library/architecture" icon="file-code">
     Build a clear mental model of execution, tools, memory, and policy.
   </Card>
-  <Card title="LLM Integration" href="/llms/index" icon="cpu">
+  <Card title="System Prompt Loader" href="/library/system-prompts" icon="file-code">
+    Auto-load and template prompts with strict validation and caching.
+  </Card>
+  <Card title="LLM Integration" href="/llms/index" icon="play-circle">
     Use adapter contracts, streaming/session controls, and integration boundaries.
+  </Card>
+  <Card title="API Reference" href="/library/api-reference" icon="file-code">
+    Full public APIs, contracts, and edge-case behavior in one place.
   </Card>
 </CardGroup>
 
-## Fast Path
+## Quick Start
 
 <Steps>
   <Step title="Install dependencies">
@@ -47,6 +71,7 @@ pip install afk pydantic
 export AFK_LLM_ADAPTER=openai
 export AFK_LLM_MODEL=gpt-4.1-mini
 export AFK_LLM_API_KEY=your_key_here
+export AFK_AGENT_PROMPTS_DIR=.agents/prompt
 ```
 
   </Step>
@@ -68,9 +93,32 @@ python -c "import afk; print('AFK SDK ready')"
 - Resume-safe long-running workflows with checkpoints
 - Provider-agnostic LLM integrations
 
-## Learn Sequence
+## Build by Level
 
-1. [Developer Guide](/library/developer-guide)
-2. [Examples](/library/examples/index)
-3. [Architecture](/library/architecture)
-4. [API Reference](/library/api-reference)
+1. Level 1: Prompted Agent
+2. Level 2: Tool Agent
+3. Level 3: Governed Agent
+4. Level 4: Durable Agent
+5. Level 5: Multi-Agent System
+6. Level 6: Production Agentic Platform
+
+Use: [Agentic System Levels](/library/agentic-levels)
+
+| Level | Required Features |
+| --- | --- |
+| 1 | prompt strategy (`instructions` or prompt file), model selection |
+| 2 | typed tools + argument validation + tool descriptions |
+| 3 | policy/HITL + sandbox/output controls |
+| 4 | checkpointing + resume behavior |
+| 5 | subagent routing + context boundaries |
+| 6 | budgets/fallback/telemetry + regression tests/evals |
+
+## Recommended Reading Order
+
+1. [Library Overview](/library/overview)
+2. [Developer Guide](/library/developer-guide)
+3. [Building with AI](/library/building-with-ai)
+4. [Agentic System Levels](/library/agentic-levels)
+5. [Examples](/library/examples/index)
+6. [Architecture](/library/architecture)
+7. [API Reference](/library/api-reference)

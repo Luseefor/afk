@@ -19,8 +19,14 @@
   "topbarLinks": [
     {
       "type": "link",
-      "name": "Examples",
-      "url": "/library/examples/index",
+      "name": "Levels",
+      "url": "/library/agentic-levels",
+      "arrow": false
+    },
+    {
+      "type": "link",
+      "name": "Build with AI",
+      "url": "/library/building-with-ai",
       "arrow": false
     },
     {
@@ -47,31 +53,34 @@
   "navigation": {
     "groups": [
       {
-        "group": "Start",
+        "group": "Getting Started",
         "pages": [
           "index",
+          "library/overview",
+          "library/agentic-levels",
           "library/developer-guide",
           "library/examples/index",
-          "library/overview"
+          "library/building-with-ai"
         ]
       },
       {
-        "group": "Concepts",
+        "group": "Runtime Concepts",
         "pages": [
           "library/architecture",
           "library/llm-interaction",
-          "library/tool-call-lifecycle",
+          "library/system-prompts",
           "library/tools-system-walkthrough",
-          "library/agent-skills",
+          "library/tool-call-lifecycle",
           "library/agentic-behavior",
+          "library/agent-skills",
           "library/checkpoint-schema",
-          "library/security-model",
+          "library/run-event-contract",
           "library/failure-policy-matrix",
-          "library/run-event-contract"
+          "library/security-model"
         ]
       },
       {
-        "group": "LLM",
+        "group": "LLM Layer",
         "pages": [
           "llms/index",
           "llms/contracts",

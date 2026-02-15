@@ -1,5 +1,5 @@
 ---
-title: Module Reference
+title: Full Module Reference
 description: Module-by-module symbol map across the full AFK source tree.
 ---
 
@@ -7,7 +7,19 @@ This file is generated from the code under `afk` and includes every module, top-
 
 Use this as the exhaustive API map for internal and public code paths.
 
-## How To Use This File
+## TL;DR
+
+- This page is a complete symbol inventory for the AFK codebase.
+- It is optimized for lookup, navigation, and static review workflows.
+- Prefer API Reference for guided explanations.
+
+## When to Use
+
+- You need exact module/symbol discovery.
+- You are tracing behavior across internal modules.
+- You are reviewing API surface changes between revisions.
+
+## How to Use This File
 
 - Use this for exact symbol lookup and code navigation.
 - Prefer [API Reference](/library/api-reference) for human-guided explanations.
@@ -34,12 +46,12 @@ Top-level symbols:
 
 - `class BaseAgent` at `afk/agents/base.py:33` - Canonical agent configuration object consumed by the runner.
   Methods:
-  - `sync __init__(self, *, model: str | LLM, name: str | None=None, tools: list[ToolLike] | None=None, subagents: list['BaseAgent'] | None=None, instructions: str | InstructionProvider | None=None, context_defaults: dict[str, JSONValue] | None=None, inherit_context_keys: list[str] | None=None, model_resolver: 'ModelResolver | None'=None, skills: list[str] | None=None, skills_dir: str | Path='.agents/skills', instruction_roles: list[InstructionRole] | None=None, policy_roles: list[PolicyRole] | None=None, policy_engine: 'PolicyEngine | None'=None, subagent_router: SubagentRouter | None=None, max_steps: int=20, tool_parallelism: int | None=None, subagent_parallelism_mode: SubagentParallelismMode='configurable', fail_safe: FailSafeConfig | None=None, skill_tool_policy: SkillToolPolicy | None=None, enable_skill_tools: bool=True, runner: 'Runner | None'=None)` at `afk/agents/base.py:41` - Initialize an agent definition.
-  - `async resolve_instructions(self, context: dict[str, JSONValue])` at `afk/agents/base.py:133` - Resolve base instructions and append runtime instruction-role outputs.
-  - `async call(self, user_message: str | None=None, *, context: dict[str, JSONValue] | None=None, thread_id: str | None=None)` at `afk/agents/base.py:175` - Execute this agent through a runner and return terminal result.
-  - `sync build_tool_registry(self, *, extra_tools: list[Tool[Any, Any]] | None=None, policy: Callable[[str, dict[str, Any], ToolContext], None] | None=None, middlewares: list[Any] | None=None)` at `afk/agents/base.py:203` - Create a per-agent isolated tool registry.
-  - `sync _normalize_tool(self, candidate: ToolLike)` at `afk/agents/base.py:232` - Normalize a declared tool entry into a concrete `Tool`.
-- `class Agent` at `afk/agents/base.py:256` - Concrete base agent used by developers.
+  - `sync __init__(self, *, model: str | LLM, name: str | None=None, tools: list[ToolLike] | None=None, subagents: list['BaseAgent'] | None=None, instructions: str | InstructionProvider | None=None, instruction_file: str | Path | None=None, prompts_dir: str | Path | None=None, context_defaults: dict[str, JSONValue] | None=None, inherit_context_keys: list[str] | None=None, model_resolver: 'ModelResolver | None'=None, skills: list[str] | None=None, skills_dir: str | Path='.agents/skills', instruction_roles: list[InstructionRole] | None=None, policy_roles: list[PolicyRole] | None=None, policy_engine: 'PolicyEngine | None'=None, subagent_router: SubagentRouter | None=None, max_steps: int=20, tool_parallelism: int | None=None, subagent_parallelism_mode: SubagentParallelismMode='configurable', fail_safe: FailSafeConfig | None=None, skill_tool_policy: SkillToolPolicy | None=None, enable_skill_tools: bool=True, runner: 'Runner | None'=None)` at `afk/agents/base.py:47` - Initialize an agent definition.
+  - `async resolve_instructions(self, context: dict[str, JSONValue])` at `afk/agents/base.py:148` - Resolve inline or file-backed base instructions, render prompt templates, and append instruction-role outputs.
+  - `async call(self, user_message: str | None=None, *, context: dict[str, JSONValue] | None=None, thread_id: str | None=None)` at `afk/agents/base.py:210` - Execute this agent through a runner and return terminal result.
+  - `sync build_tool_registry(self, *, extra_tools: list[Tool[Any, Any]] | None=None, policy: Callable[[str, dict[str, Any], ToolContext], None] | None=None, middlewares: list[Any] | None=None)` at `afk/agents/base.py:238` - Create a per-agent isolated tool registry.
+  - `sync _normalize_tool(self, candidate: ToolLike)` at `afk/agents/base.py:267` - Normalize a declared tool entry into a concrete `Tool`.
+- `class Agent` at `afk/agents/base.py:291` - Concrete base agent used by developers.
 
 ### Module `afk/agents/chat.py`
 
@@ -75,8 +87,32 @@ Top-level symbols:
 - `class SkillResolutionError` at `afk/agents/errors.py:70` - Raised when resolving requested skills from `skills_dir` fails.
 - `class SkillAccessError` at `afk/agents/errors.py:76` - Raised when skill file access violates path safety constraints.
 - `class SkillCommandDeniedError` at `afk/agents/errors.py:81` - Raised when skill command execution is denied by policy or allowlist.
-- `class AgentCheckpointCorruptionError` at `afk/agents/errors.py:86` - Raised when checkpoint payload cannot be validated or loaded.
-- `class AgentCircuitOpenError` at `afk/agents/errors.py:91` - Raised when an open circuit breaker blocks dependency execution.
+- `class PromptResolutionError` at `afk/agents/errors.py:86` - Raised when resolving system prompt files fails.
+- `class PromptAccessError` at `afk/agents/errors.py:92` - Raised when prompt file access violates prompt root boundaries.
+- `class PromptTemplateError` at `afk/agents/errors.py:98` - Raised when prompt template parsing or rendering fails.
+- `class AgentCheckpointCorruptionError` at `afk/agents/errors.py:104` - Raised when checkpoint payload cannot be validated or loaded.
+- `class AgentCircuitOpenError` at `afk/agents/errors.py:109` - Raised when an open circuit breaker blocks dependency execution.
+
+### Module `afk/agents/prompt_store.py`
+
+Source: [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
+
+Module summary: Prompt loading and caching utilities for agent system instructions.
+
+Top-level symbols:
+
+- `PROMPTS_DIR_ENV` at `afk/agents/prompt_store.py:20`
+- `DEFAULT_PROMPTS_DIR` at `afk/agents/prompt_store.py:21`
+- `def derive_auto_prompt_filename(agent_name: str)` at `afk/agents/prompt_store.py:25` - Convert agent names into deterministic `UPPER_SNAKE.md` prompt filenames.
+- `def resolve_prompts_dir(*, prompts_dir: str | Path | None, cwd: Path)` at `afk/agents/prompt_store.py:57` - Resolve prompt root from argument, env, or default.
+- `def resolve_prompt_file_path(*, prompt_root: Path, instruction_file: str | Path | None, agent_name: str)` at `afk/agents/prompt_store.py:91` - Resolve guarded prompt file path within prompt root.
+- `def build_prompt_render_context(*, context: dict[str, JSONValue], agent_name: str, agent_class: str)` at `afk/agents/prompt_store.py:122` - Build Jinja render context for prompt templates.
+- `class PromptStore` at `afk/agents/prompt_store.py:150` - Process-wide store for prompt file text, canonicalized content, and compiled templates.
+  Methods:
+  - `sync intern_text(self, text: str)` at `afk/agents/prompt_store.py:162` - Deduplicate prompt text by content hash.
+  - `sync load_prompt_file(self, prompt_path: Path)` at `afk/agents/prompt_store.py:174` - Load prompt files with stat-signature cache invalidation.
+  - `sync render_template(self, template_text: str, render_context: dict[str, Any], *, prompt_path: Path | None=None)` at `afk/agents/prompt_store.py:203` - Render templates with Jinja `StrictUndefined`.
+- `def get_prompt_store()` at `afk/agents/prompt_store.py:254` - Return process-wide singleton prompt store.
 
 ### Module `afk/agents/policy.py`
 

@@ -5,6 +5,18 @@ description: Public import rules and extension patterns for stable AFK integrati
 
 Use AFK as a package API, not as a source-path import.
 
+## TL;DR
+
+- Always import from public `afk.*` paths in application code.
+- Keep function extensions context-aware, typed, and policy-safe.
+- Avoid tight coupling to internal source modules.
+
+## When to Use
+
+- You are migrating code from internal imports to supported public APIs.
+- You are improving instructions, policy roles, or tools in existing agent code.
+- You want examples that remain stable across AFK releases.
+
 ## Why This Matters
 
 - Public imports stay stable as internals evolve.
@@ -29,7 +41,7 @@ from afk import agents, core, llms, tools, memory, evals
 
 Avoid importing through internal source-path modules. Use only `afk...` public package paths.
 
-## How To Improve Existing Functions
+## How to Improve Existing Functions
 
 ### 1. Improve instruction functions (context-aware)
 
@@ -97,6 +109,22 @@ llm = create_llm(
 )
 ```
 
+### 5. Improve system prompts (file-backed + context templates)
+
+```python
+from afk.agents import Agent
+
+agent = Agent(
+    name="ChatAgent",
+    model="openai/gpt-4o-mini",
+    prompts_dir=".agents/prompt",
+)
+
+# Auto file: .agents/prompt/CHAT_AGENT.md
+```
+
+See [System Prompts](/library/system-prompts) for strict template and cache behavior.
+
 ## Practical Rule
 
 If a junior engineer can build features with only `from afk...` imports, docs are aligned with the intended developer experience.
@@ -106,3 +134,4 @@ If a junior engineer can build features with only `from afk...` imports, docs ar
 - [examples/01_minimal_chat_agent.py](/library/examples/index#01-minimal-chat-agent)
 - [examples/02_policy_with_hitl.py](/library/examples/index#02-policy-with-hitl)
 - [examples/05_direct_llm_structured_output.py](/library/examples/index#05-direct-llm-structured-output)
+- [examples/09_system_prompt_loader.py](/library/examples/index#09-system-prompt-loader)

@@ -12,7 +12,7 @@ This document explains AFK's security boundaries for prompt safety, tool executi
 - Secret scope is opt-in and injected via tool context metadata.
 - Production safety depends on policy + sandbox + operator approvals together.
 
-## When To Read This
+## When to Use
 
 - You are enabling tools that read files, run commands, or call external systems.
 - You are defining production defaults for safe agent execution.
@@ -24,6 +24,13 @@ Primary code paths:
 - [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
 - [afk/tools/security.py](https://github.com/socioy/afk/blob/main/src/afk/tools/security.py)
 - [afk/core/runner_types.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_types.py)
+
+## Required Capabilities
+
+- sanitization enabled for untrusted tool output
+- strict sandbox profile defaults for network/command/path controls
+- policy gates for side-effecting or high-risk tools
+- secret scope strategy for controlled secret propagation
 
 ## Trust Boundaries
 
@@ -103,7 +110,7 @@ For skill/runtime command-style tools, controls include:
 - unintended network access from tool arguments
 - oversized tool payloads destabilizing context windows
 
-## Residual Risks to Consider
+## Failure Modes
 
 - allowlisted commands can still be dangerous in specific environments
 - secret leakage depends on downstream tool implementations
@@ -142,6 +149,11 @@ runner = Runner(
 )
 ```
 
-## Related Example
+## Examples
 
 - [examples/06_tool_registry_security.py](/library/examples/index#06-tool-registry-security)
+
+## Continue Reading
+
+1. [Tool Lifecycle](/library/tool-call-lifecycle)
+2. [Failure Policies](/library/failure-policy-matrix)

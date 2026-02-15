@@ -3,6 +3,18 @@ title: Streaming & Sessions
 description: Streaming control handle semantics and token-based session continuity behavior.
 ---
 
+## TL;DR
+
+- Stream handles add cancellation/interruption controls without changing basic stream consumption.
+- Session handles expose token continuity primitives when the adapter supports session control.
+- Persistence remains the responsibility of orchestration/storage layers, not `afk.llms`.
+
+## When to Use
+
+- You need to cancel or interrupt long-running stream calls.
+- You need adapter-native session continuity tokens.
+- You are implementing resumable workflows outside the agent runtime.
+
 ## Stream Handles
 
 `chat_stream_handle()` adds control primitives without breaking `chat_stream()`:
@@ -46,3 +58,9 @@ Notes:
 - `afk.llms` does not persist sessions/checkpoints.
 - It only returns opaque `session_token` and `checkpoint_token`.
 - Agent/storage layers must store and re-inject tokens into future `LLMRequest`s.
+
+## Continue Reading
+
+1. [Contracts](/llms/contracts)
+2. [Adapters](/llms/adapters)
+3. [Agent Integration](/llms/agent-integration)

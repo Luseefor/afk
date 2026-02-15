@@ -1,0 +1,106 @@
+````python 09_system_prompt_loader.py
+"""
+Example 09: System prompt loader, template context, and prompt reuse.
+
+Run:
+    python 09_system_prompt_loader.py
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from pathlib import Path
+
+from afk.agents import Agent
+
+
+def bootstrap_prompts(base_dir: Path) -> None:
+    base_dir.mkdir(parents=True, exist_ok=True)
+    (base_dir / "CHAT_AGENT.md").write_text(
+        (
+            "You are {{ agent_name }}. "
+            "Always answer in {{ ctx.locale }} for user {{ user_id }}."
+        ),
+        encoding="utf-8",
+    )
+    (base_dir / "BILLING_REVIEWER.md").write_text(
+        (
+            "You are a billing reviewer for account {{ context.account_id }}. "
+            "Respond with concise operational steps."
+        ),
+        encoding="utf-8",
+    )
+    (base_dir / "shared_incident_prompt.md").write_text(
+        (
+            "You are an incident assistant. "
+            "Use tenant={{ context.tenant }} and locale={{ locale }}."
+        ),
+        encoding="utf-8",
+    )
+
+
+async def main() -> None:
+    model_name = os.getenv("AFK_LLM_MODEL", "gpt-4.1-mini")
+    prompt_root = (Path.cwd() / ".agents" / "prompt").resolve()
+    bootstrap_prompts(prompt_root)
+
+    # Option 1: auto-load by agent name -> CHAT_AGENT.md
+    chat_agent = Agent(
+        name="ChatAgent",
+        model=model_name,
+        prompts_dir=prompt_root,
+    )
+
+    # Option 2: explicit file
+    billing_agent = Agent(
+        name="BillingReviewer",
+        model=model_name,
+        instruction_file="BILLING_REVIEWER.md",
+        prompts_dir=prompt_root,
+    )
+
+    # Option 3: set root by env var (no prompts_dir argument needed)
+    os.environ["AFK_AGENT_PROMPTS_DIR"] = str(prompt_root)
+    env_agent = Agent(
+        name="chatagent",  # lowercase auto-maps to CHAT_AGENT.md
+        model=model_name,
+    )
+
+    # Option 4: multiple agents sharing the same prompt file
+    shared_a = Agent(
+        name="IncidentA",
+        model=model_name,
+        instruction_file="shared_incident_prompt.md",
+        prompts_dir=prompt_root,
+    )
+    shared_b = Agent(
+        name="IncidentB",
+        model=model_name,
+        instruction_file="shared_incident_prompt.md",
+        prompts_dir=prompt_root,
+    )
+
+    ctx = {
+        "user_id": "u-100",
+        "locale": "en-US",
+        "tenant": "acme",
+        "account_id": "acc-7",
+    }
+
+    result_chat = await chat_agent.call("Summarize the latest incidents.", context=ctx)
+    result_billing = await billing_agent.call("Review invoice mismatch risk.", context=ctx)
+    result_env = await env_agent.call("Give one quick update.", context=ctx)
+    result_shared_a = await shared_a.call("Draft a concise incident note.", context=ctx)
+    result_shared_b = await shared_b.call("List follow-up actions.", context=ctx)
+
+    print("chat:", result_chat.final_text)
+    print("billing:", result_billing.final_text)
+    print("env:", result_env.final_text)
+    print("shared_a:", result_shared_a.final_text)
+    print("shared_b:", result_shared_b.final_text)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+````

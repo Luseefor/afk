@@ -3,6 +3,18 @@ title: Adapters
 description: Built-in adapter behavior, transport notes, and custom adapter implementation guidance.
 ---
 
+## TL;DR
+
+- AFK ships multiple adapters behind one normalized interface.
+- Capability flags define what each adapter can and cannot do.
+- Custom adapters must return normalized AFK types and raise explicit capability errors.
+
+## When to Use
+
+- You are selecting a provider integration for production.
+- You are implementing a custom transport adapter.
+- You need to compare capability differences across adapters.
+
 ## Built-in Adapters
 
 - `OpenAIClient` (`afk.llms.clients.adapters.openai.OpenAIClient`)
@@ -64,3 +76,9 @@ Rules:
 - Return only normalized AFK types (`LLMResponse`, `EmbeddingResponse`, `LLMStreamEvent`).
 - Raise `LLMCapabilityError` for unsupported feature paths.
 - Do not leak provider-specific raw request types into public API contracts.
+
+## Continue Reading
+
+1. [Contracts](/llms/contracts)
+2. [Streaming & Sessions](/llms/control-and-session)
+3. [Agent Integration](/llms/agent-integration)

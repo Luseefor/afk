@@ -12,7 +12,7 @@ This document defines runtime checkpoint keys, phases, and payload expectations.
 - Terminal checkpoints can short-circuit resume immediately.
 - Effect rows are separate from checkpoints and power idempotent replay.
 
-## When To Read This
+## When to Use
 
 - You are implementing durable execution and resume.
 - You are building tooling around checkpoint inspection.
@@ -25,6 +25,13 @@ Primary code paths:
 - [afk/core/runner_interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_interaction.py)
 - [afk/agents/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/runtime.py)
 - [afk/agents/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/versioning.py)
+
+## Required Capabilities
+
+- persistent memory backend for non-ephemeral runs
+- checkpoint schema/version compatibility strategy
+- runtime snapshot retention policy aligned to recovery objectives
+- corruption detection and alerting on resume failures
 
 ## Key Families
 
@@ -120,6 +127,13 @@ Version helpers:
 
 Invalid or incompatible checkpoint data raises `AgentCheckpointCorruptionError` in runner path.
 
+## Failure Modes
+
+- missing latest pointer prevents reliable resume
+- incompatible schema versions break migration/replay paths
+- corrupted effect rows can fail idempotent replay validation
+- over-aggressive compaction can remove recovery-critical state
+
 ## Compaction Expectations
 
 State retention keeps resume-critical keys by design:
@@ -142,6 +156,11 @@ Reference implementation:
 4. Retain enough `runtime_state` rows to support operational recovery.
 5. Alert on checkpoint corruption errors; do not silently continue.
 
-## Related Example
+## Examples
 
 - [examples/04_resume_and_compact.py](/library/examples/index#04-resume-and-compact)
+
+## Continue Reading
+
+1. [Run Event Contract](/library/run-event-contract)
+2. [Failure Policies](/library/failure-policy-matrix)

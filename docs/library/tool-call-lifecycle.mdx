@@ -1,5 +1,5 @@
 ---
-title: Tool Lifecycle
+title: Tool Call Lifecycle
 description: Complete lifecycle of tool planning, approval, execution, replay, and output insertion.
 ---
 
@@ -12,7 +12,7 @@ This document describes the exact lifecycle AFK uses when an LLM returns tool ca
 - Sandbox validation runs before tool invocation.
 - Successful effects are persisted for idempotent replay.
 
-## When To Read This
+## When to Use
 
 - You are building tools with side effects.
 - You need to debug why a tool did not execute.
@@ -25,6 +25,13 @@ Primary code paths:
 - [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
 - [afk/tools/registery.py](https://github.com/socioy/afk/blob/main/src/afk/tools/registery.py)
 - [afk/tools/security.py](https://github.com/socioy/afk/blob/main/src/afk/tools/security.py)
+
+## Required Capabilities
+
+- typed tool args and predictable tool identifiers
+- policy decisions for `tool_before_execute`
+- sandbox profile strategy (default + per-tool overrides)
+- idempotent replay keys for side-effect tools
 
 ## End-to-End Flow
 
@@ -163,6 +170,13 @@ Checkpoint phases touched in this stage:
 - Runtime and skill tools are registered in the same registry as user tools.
 - Tool replay does not re-run side effects when effect row is valid.
 
+## Failure Modes
+
+- policy denies can block execution or degrade/fail run by policy
+- sandbox violations produce tool failures before function execution
+- replay hash mismatch can raise checkpoint corruption errors
+- tool failure policies can unintentionally hide critical failures when too permissive
+
 ## Implementation Checklist
 
 1. Keep tool args strongly typed (`pydantic` models).
@@ -171,7 +185,12 @@ Checkpoint phases touched in this stage:
 4. Use deterministic `tool_call_id` flows for replay safety.
 5. Emit and monitor `tool_completed` outcomes in telemetry/event sinks.
 
-## Related Examples
+## Examples
 
 - [examples/02_policy_with_hitl.py](/library/examples/index#02-policy-with-hitl)
 - [examples/06_tool_registry_security.py](/library/examples/index#06-tool-registry-security)
+
+## Continue Reading
+
+1. [Security Model](/library/security-model)
+2. [Failure Policies](/library/failure-policy-matrix)

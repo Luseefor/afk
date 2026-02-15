@@ -39,6 +39,8 @@ PYTHONPATH=src pytest -q tests/agents/test_agent_runtime.py
 - Docs live under `docs/`
 - Mintlify config is `docs/docs.json`
 - Main landing page is `docs/index.mdx`
+- AI docs index output is generated under `ai-index/`
+- Coding-agent skills are stored in `agent-skill/`
 
 Local docs preview:
 
@@ -47,12 +49,19 @@ cd docs
 bunx mintlify dev
 ```
 
+Build AI-searchable docs index + skill metadata:
+
+```bash
+./scripts/build_agentic_ai_assets.sh
+```
+
 ## Contribution Guidelines
 
 - Use public imports (`afk.*`) in examples and docs.
 - Keep changes scoped to one concern when possible.
 - Update docs for behavior changes, especially runtime, tools, and policy semantics.
 - Add or update tests for bug fixes and behavior changes.
+- For prompt-loader changes, update `tests/agents/test_prompt_loader.py` and `/docs/library/system-prompts.mdx`.
 - Avoid destructive git operations in shared branches.
 
 ## Pull Request Checklist

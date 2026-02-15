@@ -7,7 +7,19 @@ This document maps the test suite to runtime behavior guarantees. It is intended
 
 Source tests are under `tests/`.
 
-## How To Use This Document
+## TL;DR
+
+- This page maps tests to explicit behavior guarantees.
+- It serves as a contract for runtime, tooling, memory, and LLM behavior.
+- Use it to evaluate regression risk before merging changes.
+
+## When to Use
+
+- You are changing runtime semantics and need contract impact visibility.
+- You are debugging a behavior regression.
+- You are planning upgrades and need confidence in tested guarantees.
+
+## How to Use This Document
 
 - Use this file as the "contract" for expected behavior.
 - When changing runtime logic, update relevant tests first, then this map.
@@ -61,6 +73,25 @@ Covered behaviors:
 - `test_runtime_sandbox_policy_blocks_shell_operator_commands` (`tests/agents/test_agent_runtime.py:1181`): runtime sandbox policy blocks shell operator commands
 - `test_per_tool_sandbox_provider_overrides_default_profile` (`tests/agents/test_agent_runtime.py:1208`): per tool sandbox provider overrides default profile
 - `test_runtime_output_limit_middleware_truncates_tool_output` (`tests/agents/test_agent_runtime.py:1240`): runtime output limit middleware truncates tool output
+
+## `tests/agents/test_prompt_loader.py`
+
+Covered behaviors:
+
+- `test_auto_prompt_loads_for_chat_agent` (`tests/agents/test_prompt_loader.py:29`): auto prompt loads for `ChatAgent` using `CHAT_AGENT.md`
+- `test_auto_prompt_loads_for_lowercase_chatagent_name` (`tests/agents/test_prompt_loader.py:38`): lowercase `chatagent` maps to `CHAT_AGENT.md`
+- `test_explicit_instruction_file_loads` (`tests/agents/test_prompt_loader.py:47`): explicit `instruction_file` loading works
+- `test_inline_instructions_win_over_instruction_file` (`tests/agents/test_prompt_loader.py:61`): inline `instructions` override file prompt source
+- `test_prompts_dir_argument_overrides_env` (`tests/agents/test_prompt_loader.py:76`): `prompts_dir` takes precedence over `AFK_AGENT_PROMPTS_DIR`
+- `test_env_prompts_dir_used_when_agent_prompts_dir_absent` (`tests/agents/test_prompt_loader.py:92`): env prompt directory is used when no agent override exists
+- `test_default_prompts_dir_used_when_no_arg_and_no_env` (`tests/agents/test_prompt_loader.py:105`): default `.agents/prompt` path is used when arg/env are absent
+- `test_missing_auto_prompt_file_raises_resolution_error` (`tests/agents/test_prompt_loader.py:118`): missing auto prompt raises configuration failure
+- `test_prompt_path_escape_raises_access_error` (`tests/agents/test_prompt_loader.py:124`): prompt path traversal escape is blocked
+- `test_prompt_template_renders_context_and_reserved_keys` (`tests/agents/test_prompt_loader.py:140`): template rendering supports flattened + reserved context keys
+- `test_prompt_template_missing_variable_raises` (`tests/agents/test_prompt_loader.py:165`): strict undefined variables raise template error
+- `test_prompt_store_deduplicates_same_content` (`tests/agents/test_prompt_loader.py:174`): process-level prompt store deduplicates identical prompt text
+- `test_prompt_cache_invalidates_when_file_changes` (`tests/agents/test_prompt_loader.py:198`): file stat changes invalidate prompt cache entries
+- `test_instruction_roles_append_after_prompt_file` (`tests/agents/test_prompt_loader.py:214`): instruction roles append after file-backed base prompt
 
 ## `tests/agents/test_policy_engine.py`
 

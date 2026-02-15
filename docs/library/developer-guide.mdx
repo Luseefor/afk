@@ -3,7 +3,19 @@ title: Developer Guide
 description: Fastest path to build your first AFK agent and harden it for production.
 ---
 
-This page is optimized for immediate implementation with AFK (Agent Forge Kit).
+This guide is designed for teams shipping AFK agents in real environments, not toy demos.
+
+## TL;DR
+
+- Follow this page to go from zero to production-safe AFK baseline quickly.
+- Implement capabilities in maturity order to reduce risk.
+- Use public `afk.*` imports only for long-term API stability.
+
+## When to Use
+
+- You are onboarding to AFK for the first time.
+- You need a practical path from prototype to production.
+- You want copy-ready patterns for tools, policy, prompts, and runtime controls.
 
 ## First 20 Minutes
 
@@ -32,6 +44,15 @@ export AFK_LLM_API_KEY=your_key_here
 
   </Step>
 
+  <Step title="Set prompt root (recommended)">
+
+```bash
+export AFK_AGENT_PROMPTS_DIR=.agents/prompt
+mkdir -p .agents/prompt
+```
+
+  </Step>
+
   <Step title="Run first example script">
 
 ```bash
@@ -47,28 +68,51 @@ python 01_minimal_chat_agent.py
 Create local script files using the embedded examples in <a href="/library/examples/index">Examples</a>, then run them with the filenames shown in each accordion.
 </Tip>
 
+## AI Coding Assist (Optional)
+
+If your team uses coding agents, install AFK skills from GitHub:
+
+```bash
+npx skills add socioy/afk
+```
+
+Then use [Building with AI](/library/building-with-ai) for prompt patterns and recommended skill usage.
+
 ## Recommended Build Order
 
 <CardGroup cols={2}>
-  <Card title="1) Minimal Agent" href="/library/examples/index#01-minimal-chat-agent" icon="play-circle">
-    Start with one agent, one typed tool, one request.
+  <Card title="Level 1) Prompted Agent" href="/library/examples/index#01-minimal-chat-agent" icon="play-circle">
+    Start with one agent, one prompt strategy, and one request path.
   </Card>
-  <Card title="2) Policy + HITL" href="/library/examples/index#02-policy-with-hitl" icon="shield">
-    Add approval gates before side effects.
+  <Card title="Level 2) Tool Agent" href="/library/examples/index#08-prebuilt-runtime-tools" icon="folder">
+    Add bounded runtime tools and typed arguments.
   </Card>
-  <Card title="3) Subagents" href="/library/examples/index#03-subagents-with-router" icon="workflow">
-    Route to specialized workers only when needed.
+  <Card title="Level 3) Governed Agent" href="/library/examples/index#02-policy-with-hitl" icon="shield">
+    Add approval gates and safety policy before side effects.
   </Card>
-  <Card title="4) Resume + Compact" href="/library/examples/index#04-resume-and-compact" icon="database">
+  <Card title="Level 4) Durable Agent" href="/library/examples/index#04-resume-and-compact" icon="database">
     Persist state and verify restart behavior.
   </Card>
-  <Card title="5) Direct LLM Layer" href="/library/examples/index#05-direct-llm-structured-output" icon="cpu">
-    Use structured outputs and request-level controls.
+  <Card title="Level 5) Multi-Agent" href="/library/examples/index#03-subagents-with-router" icon="file-code">
+    Route work to specialist subagents with explicit boundaries.
   </Card>
-  <Card title="6) Tool Security" href="/library/examples/index#06-tool-registry-security" icon="lock">
-    Enforce path/command/network restrictions.
+  <Card title="Level 6) Production Hardening" href="/library/examples/index#06-tool-registry-security" icon="lock">
+    Enforce sandbox, limits, and production safety controls.
   </Card>
 </CardGroup>
+
+Use the full level requirements page: [Agentic System Levels](/library/agentic-levels)
+
+## Required Features by Level
+
+| Level | Required Features |
+| --- | --- |
+| 1 | `Agent`, prompt strategy (`instructions` or `instruction_file`) |
+| 2 | typed tools, tool descriptions, bounded arguments |
+| 3 | policy + HITL + sandbox/output controls |
+| 4 | checkpoint + resume + compaction strategy |
+| 5 | subagents + router + explicit context inheritance |
+| 6 | fail-safe budgets, fallback, telemetry, tests/evals |
 
 ## Public Import Patterns
 
@@ -136,6 +180,21 @@ runner = Runner(
 ```
 
   </Tab>
+  <Tab title="Prompt Loader">
+
+```python
+from afk.agents import Agent
+
+agent = Agent(
+    name="ChatAgent",
+    model="gpt-4.1-mini",
+    prompts_dir=".agents/prompt",  # or AFK_AGENT_PROMPTS_DIR
+)
+```
+
+Expected file: `.agents/prompt/CHAT_AGENT.md`
+
+  </Tab>
 </Tabs>
 
 ## Troubleshooting
@@ -170,11 +229,22 @@ runner = Runner(
       <li>Verify sandbox profile allowlists.</li>
     </ul>
   </Accordion>
+
+  <Accordion title="Prompt file not found">
+    <ul>
+      <li>Confirm prompt root precedence: <code>prompts_dir</code>, then <code>AFK_AGENT_PROMPTS_DIR</code>, then <code>.agents/prompt</code>.</li>
+      <li>For auto mode, verify filename format (<code>UPPER_SNAKE.md</code>).</li>
+      <li>For explicit mode, verify <code>instruction_file</code> path remains inside the prompt root.</li>
+    </ul>
+  </Accordion>
 </AccordionGroup>
 
-## Read Next (By Need)
+## Continue Reading
 
+- [Agentic System Levels](/library/agentic-levels)
+- [Building with AI](/library/building-with-ai)
 - [Architecture](/library/architecture)
 - [Tool Call Lifecycle](/library/tool-call-lifecycle)
+- [System Prompts](/library/system-prompts)
 - [Security Model](/library/security-model)
 - [API Reference](/library/api-reference)

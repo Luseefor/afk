@@ -12,23 +12,33 @@ This page describes how the runtime is assembled from `afk` modules and how exec
 - Memory stores checkpoints and replayable tool effects.
 - Security is enforced at tool boundaries (sandbox + sanitization).
 
-## When To Read This
+## When to Use
 
 - You are integrating AFK into a backend and need a reliable mental model.
 - You need to debug why a run paused, degraded, or failed.
 - You are extending runtime behavior (policy, interaction, telemetry, memory).
+
+For a maturity-first implementation plan, start with [Agentic System Levels](/library/agentic-levels).
 
 Related deep dives:
 
 - [Developer Guide](/library/developer-guide)
 - [Tool Call Lifecycle](/library/tool-call-lifecycle)
 - [Agent Skills](/library/agent-skills)
+- [System Prompts](/library/system-prompts)
 - [LLM Flow](/library/llm-interaction)
 - [Agentic Orchestration](/library/agentic-behavior)
 - [Checkpoint & Resume](/library/checkpoint-schema)
 - [Run Event Contract](/library/run-event-contract)
 - [Failure Policies](/library/failure-policy-matrix)
 - [Security Model](/library/security-model)
+
+## Required Capabilities
+
+- clear model/adaptor strategy and policy posture
+- bounded tool execution with sandbox and output constraints
+- checkpoint storage for recovery and long-running runs
+- telemetry sink wiring for runtime visibility
 
 ## Component Diagram
 
@@ -69,7 +79,7 @@ sequenceDiagram
 
     Caller->>Runner: run_handle(agent, message, context)
     Runner->>Memory: setup + emit run_started + checkpoint
-    Runner->>Runner: resolve model + skills + build tool registry
+    Runner->>Runner: resolve model + prompt source + skills + tool registry
 
     loop each step
         Runner->>Memory: persist runtime_state checkpoint
@@ -198,6 +208,13 @@ Sinks:
 - `InMemoryTelemetrySink` (tests/debug)
 - `OpenTelemetrySink` (if OTel packages are installed)
 
+## Failure Modes
+
+- invalid state transitions raise execution failures
+- budget/cost/time limit breaches terminate or degrade runs
+- checkpoint corruption blocks reliable resume
+- policy/sandbox denials can interrupt tool and LLM progression
+
 ## Implementation Checklist
 
 1. Choose model and adapter strategy (`model` prefix or resolver).
@@ -207,9 +224,14 @@ Sinks:
 5. Enable persistent memory backend before production rollout.
 6. Monitor run events and telemetry to detect degraded paths early.
 
-## Related Examples
+## Examples
 
 - [examples/01_minimal_chat_agent.py](/library/examples/index#01-minimal-chat-agent)
 - [examples/02_policy_with_hitl.py](/library/examples/index#02-policy-with-hitl)
 - [examples/03_subagents_with_router.py](/library/examples/index#03-subagents-with-router)
 - [examples/04_resume_and_compact.py](/library/examples/index#04-resume-and-compact)
+
+## Continue Reading
+
+1. [Tool Lifecycle](/library/tool-call-lifecycle)
+2. [Checkpoint & Resume](/library/checkpoint-schema)

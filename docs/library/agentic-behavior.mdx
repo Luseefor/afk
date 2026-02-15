@@ -1,5 +1,5 @@
 ---
-title: Agentic Orchestration
+title: Agent Orchestration
 description: How AFK routes, runs, and observes subagents with deterministic orchestration behavior.
 ---
 
@@ -12,11 +12,13 @@ This document focuses on multi-step reasoning behavior: subagents, routing, cont
 - Fanout, depth, and cycle guards protect runtime stability.
 - Subagent failures map through the configured failure policy.
 
-## When To Read This
+## When to Use
 
 - You are moving from single-agent to multi-agent orchestration.
 - You need deterministic routing behavior.
 - You need safe boundaries between parent/child contexts.
+
+This topic corresponds to Level 5 in [Agentic System Levels](/library/agentic-levels).
 
 Primary code paths:
 
@@ -24,6 +26,13 @@ Primary code paths:
 - [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
 - [afk/core/runner_interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_interaction.py)
 - [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
+
+## Required Capabilities
+
+- deterministic router logic and stable subagent naming
+- explicit context inheritance (`inherit_context_keys`)
+- subagent depth/fanout guard configuration
+- failure policy choice for subagent errors (`fail`, `degrade`, `continue`)
 
 ## Orchestration Model
 
@@ -96,6 +105,13 @@ Subagent failures are normalized through `subagent_failure_policy`:
 - `degrade`: run enters degraded terminal path
 - `continue`: run continues with bridge text indicating failure
 
+## Failure Modes
+
+- cyclic routing or excessive depth raises `SubagentRoutingError`
+- oversized per-step fanout can exceed configured guardrails
+- weak context boundaries can leak unintended parent context
+- permissive failure policies can hide critical child-agent failures
+
 ## Agent State and Agentic Steps
 
 Agentic behavior still uses the same global run state machine:
@@ -127,6 +143,11 @@ When not to use subagents:
 4. Configure `max_subagent_depth` and fanout limits conservatively.
 5. Decide failure behavior early (`fail`, `degrade`, or `continue`).
 
-## Related Example
+## Examples
 
 - [examples/03_subagents_with_router.py](/library/examples/index#03-subagents-with-router)
+
+## Continue Reading
+
+1. [Failure Policies](/library/failure-policy-matrix)
+2. [Checkpoint & Resume](/library/checkpoint-schema)

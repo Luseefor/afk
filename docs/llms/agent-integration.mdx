@@ -5,6 +5,18 @@ description: Integration boundary between orchestration layers and the afk.llms 
 
 This document defines how agent code should integrate with `afk.llms`.
 
+## TL;DR
+
+- `afk.agents` owns orchestration and tool execution decisions.
+- `afk.llms` owns transport, normalization, retries, and capability enforcement.
+- Keeping this boundary clean makes provider migration and observability predictable.
+
+## When to Use
+
+- You are integrating custom agent runtimes with `afk.llms`.
+- You need clear ownership boundaries between transport and orchestration.
+- You are debugging behavior that crosses the agent/LLM package boundary.
+
 ## Ownership Boundary
 
 Agent layer owns:
@@ -72,3 +84,9 @@ req = LLMRequest(
 )
 resp = await llm.chat(req)
 ```
+
+## Continue Reading
+
+1. [LLM Overview](/llms/index)
+2. [Contracts](/llms/contracts)
+3. [Streaming & Sessions](/llms/control-and-session)

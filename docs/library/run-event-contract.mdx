@@ -12,7 +12,7 @@ This document defines `AgentRunEvent` semantics for runtime consumers.
 - The same event is also persisted to memory trace storage.
 - Event `data` payload varies by event type and should be parsed defensively.
 
-## When To Read This
+## When to Use
 
 - You are building real-time UI or operator dashboards.
 - You need alerting on run failures/degraded states.
@@ -24,6 +24,13 @@ Primary code paths:
 - [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
 - [afk/core/runner_interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_interaction.py)
 - [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
+
+## Required Capabilities
+
+- one dedicated consumer for each `AgentRunHandle.events` stream
+- forward-compatible parsing for optional/missing `data` keys
+- durable storage/forwarding for terminal lifecycle events
+- event routing keyed by `type`, `state`, and `step`
 
 ## Event Type Set
 
@@ -112,6 +119,13 @@ Each emitted run event is also persisted as a memory `trace` event payload with:
 
 This supports replay/debug/audit workflows independent of live handle consumers.
 
+## Failure Modes
+
+- multi-consumer event access violates stream contract
+- strict payload assumptions break on optional/extended fields
+- dropping terminal events causes incomplete run accounting
+- sink-specific write failures can reduce observability coverage
+
 ## Implementation Checklist
 
 1. Consume events with one dedicated reader per run handle.
@@ -120,6 +134,11 @@ This supports replay/debug/audit workflows independent of live handle consumers.
 4. Persist/forward terminal events (`run_completed`, `run_failed`, `run_cancelled`).
 5. Guard against missing optional `data` keys in consumer logic.
 
-## Related Example
+## Examples
 
 - [examples/02_policy_with_hitl.py](/library/examples/index#02-policy-with-hitl)
+
+## Continue Reading
+
+1. [Checkpoint & Resume](/library/checkpoint-schema)
+2. [API Reference](/library/api-reference)
