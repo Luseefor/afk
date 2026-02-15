@@ -1,0 +1,52 @@
+---
+title: LLM Layer Overview
+description: Provider-agnostic contracts, adapter capabilities, stream/session controls, and agent integration boundaries in afk.llms.
+---
+
+`afk.llms` is the transport and normalization layer for all model providers used by AFK.
+
+## What This Layer Owns
+
+- Normalized request/response contracts (`LLMRequest`, `LLMResponse`)
+- Adapter abstraction and provider capability gating
+- Structured output validation and repair
+- Stream control (`cancel`, `interrupt`, `await_result`)
+- Session token continuity APIs (adapter-dependent)
+
+## Read By Task
+
+<CardGroup cols={2}>
+  <Card title="Contracts" icon="file-text" href="/llms/contracts">
+    Understand core request/response types and error guarantees.
+  </Card>
+  <Card title="Adapter Guide" icon="plug" href="/llms/adapters">
+    Built-in adapters, capability matrix, and custom adapter rules.
+  </Card>
+  <Card title="Stream + Sessions" icon="activity" href="/llms/control-and-session">
+    Handle streaming lifecycle, cancellation, interruption, and session state.
+  </Card>
+  <Card title="Agent Integration" icon="workflow" href="/llms/agent-integration">
+    Clear boundary between orchestration (`afk.agents`) and transport (`afk.llms`).
+  </Card>
+</CardGroup>
+
+## Minimal Usage
+
+```python
+from afk.llms import LLMRequest, Message, create_llm
+
+llm = create_llm("openai")
+req = LLMRequest(
+    model="gpt-4.1-mini",
+    messages=[Message(role="user", content="Plan the next 3 steps")],
+)
+resp = await llm.chat(req)
+print(resp.text)
+```
+
+## Integration Rule
+
+Keep orchestration in `afk.agents` and `afk.core`.
+Keep provider-specific transport concerns in `afk.llms`.
+
+This separation makes retry behavior, observability, and provider migration consistent.

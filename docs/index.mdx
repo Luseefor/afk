@@ -1,0 +1,33 @@
+---
+title: AFK Python
+description: Build production-ready AI agents with policy, tools, memory, and provider-agnostic LLM orchestration.
+---
+
+AFK is a Python agent runtime focused on safe orchestration, deterministic behavior, and practical developer experience.
+
+<CardGroup cols={2}>
+  <Card title="Library Documentation" href="/library/index" icon="book-open">
+    Architecture, onboarding, API reference, tool lifecycle, security, and edge cases.
+  </Card>
+  <Card title="LLM Layer" href="/llms/index" icon="cpu">
+    Adapter contracts, capability matrix, streaming controls, and integration boundaries.
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+```bash
+uv sync
+export AFK_LLM_ADAPTER=openai
+export AFK_LLM_MODEL=gpt-4.1-mini
+export AFK_LLM_API_KEY=your_key_here
+uv run python docs/library/examples/01_minimal_chat_agent.py
+```
+
+## What You Can Build
+
+- Chat and task-oriented agents with typed tools
+- Policy-gated tool execution with human approval flows
+- Subagent orchestration and routing
+- Resume-safe long-running workflows with checkpoints
+- Provider-agnostic LLM integrations

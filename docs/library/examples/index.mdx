@@ -1,0 +1,230 @@
+---
+title: Examples Runbook
+description: Runnable AFK examples in build order with architecture diagrams and customization guidance.
+---
+
+Every example is a runnable Python file under `docs/library/examples/`.
+
+## Before You Run
+
+```bash
+uv sync
+export AFK_LLM_ADAPTER=openai
+export AFK_LLM_MODEL=gpt-4.1-mini
+export AFK_LLM_API_KEY=your_key_here
+```
+
+## Example Catalog
+
+<CardGroup cols={2}>
+  <Card title="01 Minimal Agent" href="#01-minimal-chat-agent" icon="play-circle">
+    Agent + typed tool + one-shot run.
+  </Card>
+  <Card title="02 Policy + HITL" href="#02-policy-with-hitl" icon="shield">
+    Deferred approvals and pause/resume flow.
+  </Card>
+  <Card title="03 Subagents Router" href="#03-subagents-with-router" icon="workflow">
+    Manager routes requests to worker subagents.
+  </Card>
+  <Card title="04 Resume + Compact" href="#04-resume-and-compact" icon="database">
+    Checkpoint persistence, resume, and retention.
+  </Card>
+  <Card title="05 Direct LLM" href="#05-direct-llm-structured-output" icon="cpu">
+    Use `afk.llms` with typed structured response.
+  </Card>
+  <Card title="06 Tool Security" href="#06-tool-registry-security" icon="lock">
+    Sandbox policy and output limits.
+  </Card>
+  <Card title="07 Hooks + Middleware" href="#07-tool-hooks-and-middleware" icon="layers">
+    Tool interception and output shaping.
+  </Card>
+  <Card title="08 Runtime Tools" href="#08-prebuilt-runtime-tools" icon="folder">
+    Safe filesystem tools for agent runtime.
+  </Card>
+</CardGroup>
+
+## Run Commands
+
+```bash
+uv run python docs/library/examples/01_minimal_chat_agent.py
+uv run python docs/library/examples/02_policy_with_hitl.py
+uv run python docs/library/examples/03_subagents_with_router.py
+uv run python docs/library/examples/04_resume_and_compact.py
+uv run python docs/library/examples/05_direct_llm_structured_output.py
+uv run python docs/library/examples/06_tool_registry_security.py
+uv run python docs/library/examples/07_tool_hooks_and_middleware.py
+uv run python docs/library/examples/08_prebuilt_runtime_tools.py
+```
+
+## 01. Minimal Chat Agent
+
+Code: [01_minimal_chat_agent.py](./01_minimal_chat_agent.py)
+
+- Defines a typed tool (`sum_numbers`) with Pydantic validation.
+- Creates one `Agent` with model, instructions, and tool list.
+- Calls `agent.call(...)` and returns `AgentResult`.
+
+```mermaid
+sequenceDiagram
+    participant Dev as "Developer Script"
+    participant Agent as "Agent"
+    participant Runner as "Runner"
+    participant LLM as "LLM"
+    participant Tool as "sum_numbers Tool"
+
+    Dev->>Agent: call("Please add...")
+    Agent->>Runner: run(agent, user_message, context)
+    Runner->>LLM: chat(messages, tools)
+    LLM-->>Runner: tool_call("sum_numbers", args)
+    Runner->>Tool: execute(args)
+    Tool-->>Runner: {"sum": 9.5}
+    Runner->>LLM: chat(with tool result)
+    LLM-->>Runner: final_text
+    Runner-->>Agent: AgentResult
+    Agent-->>Dev: print(result)
+```
+
+## 02. Policy With HITL
+
+Code: [02_policy_with_hitl.py](./02_policy_with_hitl.py)
+
+- Adds policy rule that gates `risky_action` with `request_approval`.
+- Uses `InMemoryInteractiveProvider` for deferred decisions.
+- Resolves deferred approval after `run_paused` event.
+
+```mermaid
+flowchart TD
+    A["Run starts"] --> B["Policy checks tool_before_execute"]
+    B --> C{"Tool is risky_action?"}
+    C -- "Yes" --> D["PolicyDecision: request_approval"]
+    D --> E["Interaction provider returns deferred token"]
+    E --> F["Run emits run_paused"]
+    F --> G["Example sets deferred allow decision"]
+    G --> H["Run resumes and executes tool"]
+    H --> I["Runner returns final AgentResult"]
+```
+
+## 03. Subagents With Router
+
+Code: [03_subagents_with_router.py](./03_subagents_with_router.py)
+
+- Defines `Writer` and `Reviewer` subagents.
+- Router inspects transcript text and returns subagent names.
+- Manager runs selected subagents and merges outputs.
+
+```mermaid
+flowchart TD
+    A["User message to Manager"] --> B["Router reads RouterInput.messages"]
+    B --> C{"Contains 'draft'?"}
+    C -- "Yes" --> D["Targets: Writer then Reviewer"]
+    C -- "No" --> E["Targets: Reviewer only"]
+    D --> F["Run selected subagents"]
+    E --> F
+    F --> G["Collect SubagentExecutionRecord rows"]
+    G --> H["Manager final response uses bridge text"]
+```
+
+## 04. Resume And Compact
+
+Code: [04_resume_and_compact.py](./04_resume_and_compact.py)
+
+- Runs once with `Runner.run(...)`.
+- Resumes with same `run_id` and `thread_id`.
+- Compacts thread records with retention policies.
+
+```mermaid
+flowchart TD
+    A["Runner.run(...)"] --> B["Checkpoint + terminal result persisted"]
+    B --> C["Runner.resume(run_id, thread_id)"]
+    C --> D{"Terminal checkpoint exists?"}
+    D -- "Yes" --> E["Return terminal result quickly"]
+    D -- "No" --> F["Load runtime_state and continue loop"]
+    E --> G["compact_thread(...)"]
+    F --> G
+```
+
+## 05. Direct LLM Structured Output
+
+Code: [05_direct_llm_structured_output.py](./05_direct_llm_structured_output.py)
+
+- Uses `afk.llms.create_llm(...)` directly.
+- Builds `LLMRequest` manually.
+- Validates typed response with `response_model=Plan`.
+
+```mermaid
+flowchart TD
+    A["create_llm(adapter)"] --> B["Build LLMRequest(messages, model)"]
+    B --> C["llm.chat(request, response_model=Plan)"]
+    C --> D{"Structured output valid?"}
+    D -- "Yes" --> E["Return LLMResponse.structured_response"]
+    D -- "No" --> F["Repair / retry (per config)"]
+    F --> E
+```
+
+## 06. Tool Registry Security
+
+Code: [06_tool_registry_security.py](./06_tool_registry_security.py)
+
+- Builds a sandbox profile with allowlists and execution restrictions.
+- Registers tools in `ToolRegistry` with output-limiting middleware.
+- Demonstrates one allowed path and one blocked path call.
+
+```mermaid
+flowchart TD
+    A["registry.call(safe path)"] --> B["Sandbox policy validates args"]
+    B --> C["Tool executes and returns success"]
+    A2["registry.call(disallowed path)"] --> B2["Sandbox policy validates args"]
+    B2 --> D["ToolPolicyError raised"]
+```
+
+## 07. Tool Hooks And Middleware
+
+Code: [07_tool_hooks_and_middleware.py](./07_tool_hooks_and_middleware.py)
+
+- Uses prehook to normalize arguments.
+- Uses middleware to wrap tool behavior.
+- Uses posthook to shape final output.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Tool as echo_clean
+    participant Pre as prehook
+    participant MW as middleware
+    participant Fn as tool_fn
+    participant Post as posthook
+
+    Caller->>Tool: call(raw_args)
+    Tool->>Pre: transform args
+    Tool->>MW: wrap execution
+    MW->>Fn: call_next(args, ctx)
+    Fn-->>MW: output
+    MW-->>Tool: wrapped output
+    Tool->>Post: transform output
+    Tool-->>Caller: ToolResult
+```
+
+## 08. Prebuilt Runtime Tools
+
+Code: [08_prebuilt_runtime_tools.py](./08_prebuilt_runtime_tools.py)
+
+- Builds prebuilt filesystem tools with `build_runtime_tools(root_dir)`.
+- Registers them in a `ToolRegistry`.
+- Calls both tools using bounded/safe arguments.
+
+```mermaid
+flowchart TD
+    A["build_runtime_tools(root_dir)"] --> B["Register in ToolRegistry"]
+    B --> C["call list_directory"]
+    B --> D["call read_file"]
+    C --> E["Path guard + bounded listing"]
+    D --> F["Path guard + bounded content"]
+    E --> G["ToolResult"]
+    F --> G
+```
+
+## Related Docs
+
+- [Tool Call Lifecycle](/library/tool-call-lifecycle)
+- [Security Model](/library/security-model)
+- [Checkpoint and Resume Schema](/library/checkpoint-schema)

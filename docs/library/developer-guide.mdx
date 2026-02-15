@@ -1,0 +1,148 @@
+---
+title: Developer Onboarding Guide
+description: Practical build order, setup, troubleshooting, and production defaults for AFK agents.
+---
+
+This guide is optimized for engineers shipping their first production agent with AFK.
+
+## What You Need
+
+- Python `>=3.13`
+- One configured LLM adapter
+- Repository dependencies installed
+
+Install dependencies:
+
+```bash
+uv sync
+```
+
+Or:
+
+```bash
+pip install -e .
+```
+
+## Environment Setup
+
+```bash
+export AFK_LLM_ADAPTER=openai
+export AFK_LLM_MODEL=gpt-4.1-mini
+export AFK_LLM_API_KEY=your_key_here
+```
+
+Supported adapter examples include `openai`, `litellm`, and `anthropic_agent`.
+
+## First Successful Run
+
+```bash
+uv run python docs/library/examples/01_minimal_chat_agent.py
+```
+
+If this fails, jump to [Troubleshooting](#troubleshooting).
+
+## Recommended Build Order
+
+<CardGroup cols={2}>
+  <Card title="1) Minimal Agent" href="/library/examples/index#01-minimal-chat-agent" icon="play-circle">
+    Start with one agent, one typed tool, one request.
+  </Card>
+  <Card title="2) Policy + HITL" href="/library/examples/index#02-policy-with-hitl" icon="shield">
+    Add approval gates before side effects.
+  </Card>
+  <Card title="3) Subagents" href="/library/examples/index#03-subagents-with-router" icon="workflow">
+    Route to specialized workers only when needed.
+  </Card>
+  <Card title="4) Resume + Compact" href="/library/examples/index#04-resume-and-compact" icon="database">
+    Persist state and verify restart behavior.
+  </Card>
+  <Card title="5) Direct LLM Layer" href="/library/examples/index#05-direct-llm-structured-output" icon="cpu">
+    Use structured outputs and request-level controls.
+  </Card>
+  <Card title="6) Tool Security" href="/library/examples/index#06-tool-registry-security" icon="lock">
+    Enforce path/command/network restrictions.
+  </Card>
+</CardGroup>
+
+## Public Import Patterns
+
+Use these imports in app code:
+
+```python
+from afk.agents import Agent
+from afk.core import Runner, RunnerConfig
+from afk.llms import create_llm
+from afk.tools import tool
+from afk.memory import create_memory_store_from_env
+```
+
+Avoid importing through `src/...` paths.
+
+## Common Implementation Patterns
+
+### Agent + Typed Tool
+
+```python
+from pydantic import BaseModel, Field
+from afk.agents import Agent
+from afk.tools import tool
+
+class LookupArgs(BaseModel):
+    query: str = Field(min_length=1)
+
+@tool(args_model=LookupArgs, name="lookup")
+def lookup(args: LookupArgs) -> dict[str, str]:
+    return {"query": args.query}
+
+agent = Agent(
+    model="gpt-4.1-mini",
+    instructions="Use lookup when external data is needed.",
+    tools=[lookup],
+)
+```
+
+### Runner With Explicit Controls
+
+```python
+from afk.core import Runner, RunnerConfig
+
+runner = Runner(
+    config=RunnerConfig(
+        interaction_mode="headless",
+        sanitize_tool_output=True,
+    )
+)
+```
+
+## Troubleshooting
+
+### Unknown adapter
+
+- Verify `AFK_LLM_ADAPTER`.
+- Check available adapters with `afk.llms.available_llm_adapters()`.
+
+### Model routes to wrong provider
+
+Use explicit prefixes when needed:
+
+- `openai/gpt-4.1-mini`
+- `anthropic/claude-sonnet-4`
+
+### Run pauses waiting for approval/input
+
+- Check `RunnerConfig.interaction_mode`.
+- For non-headless mode, ensure `interaction_provider` is configured.
+- Set timeout/fallback behavior in `RunnerConfig`.
+
+### Tool call denied
+
+- Inspect policy decision (`PolicyEngine` rules).
+- Verify sandbox profile allowlists.
+
+## Read Next
+
+- [Architecture](/library/architecture)
+- [API Reference](/library/api-reference)
+- [Tool Call Lifecycle](/library/tool-call-lifecycle)
+- [Tools System Walkthrough](/library/tools-system-walkthrough)
+- [Security Model](/library/security-model)

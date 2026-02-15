@@ -1,0 +1,62 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "AFK Python",
+  "theme": "mint",
+  "layout": "sidenav",
+  "favicon": "/favicon.svg",
+  "topbar": {
+    "style": "gradient"
+  },
+  "rounded": "default",
+  "colors": {
+    "primary": "#0B6E4F",
+    "light": "#2FB67E",
+    "dark": "#084C38"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "index",
+          "library/index",
+          "library/developer-guide",
+          "library/examples/index"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "library/architecture",
+          "library/tools-system-walkthrough",
+          "library/tool-call-lifecycle",
+          "library/llm-interaction",
+          "library/agentic-behavior",
+          "library/security-model",
+          "library/checkpoint-schema",
+          "library/run-event-contract",
+          "library/failure-policy-matrix"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "library/api-reference",
+          "library/public-imports-and-function-improvement",
+          "library/tested-behaviors",
+          "library/full-module-reference"
+        ]
+      },
+      {
+        "group": "LLM",
+        "pages": [
+          "llms/index",
+          "llms/contracts",
+          "llms/adapters",
+          "llms/control-and-session",
+          "llms/agent-integration"
+        ]
+      }
+    ]
+  }
+}
