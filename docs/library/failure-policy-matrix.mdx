@@ -5,7 +5,7 @@ description: Failure handling matrix across llm, tools, subagents, approvals, an
 
 This document explains how `FailSafeConfig` policy strings are normalized into runtime outcomes.
 
-## Executive Summary
+## TL;DR
 
 - Policy strings are normalized to runtime actions (`fail`, `degrade`, `continue`).
 - LLM failures are stricter: most values end up as `fail` or `degrade`.
