@@ -23,9 +23,9 @@ from .base import (
     ToolSpec,
 )
 
-# Registry-level middleware wrapper lives in registry.py
+# Registry-level middleware wrapper lives in registery.py
 # (Avoid importing ToolRegistry here to prevent heavy imports.)
-from .registry import RegistryMiddleware, RegistryMiddlewareFn  # noqa: E402
+from ..registery import RegistryMiddleware, RegistryMiddlewareFn  # noqa: E402
 
 
 ArgsT = TypeVar("ArgsT", bound=BaseModel)

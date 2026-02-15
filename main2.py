@@ -33,7 +33,10 @@ async def run_demo(store_name: str, store: MemoryStore) -> None:
                 user_id=user_id,
                 type="message",
                 timestamp=now_ms(),
-                payload={"role": "user", "content": "I like coffee and concise answers."},
+                payload={
+                    "role": "user",
+                    "content": "I like coffee and concise answers.",
+                },
                 tags=["chat", "preference"],
             ),
         )
@@ -75,10 +78,16 @@ async def run_demo(store_name: str, store: MemoryStore) -> None:
             metadata={"source": "meeting-notes"},
         )
 
-        await store.upsert_long_term_memory(memory_one, embedding=np.array([0.9, 0.1, 0.0], dtype=np.float64))
-        await store.upsert_long_term_memory(memory_two, embedding=np.array([0.1, 0.8, 0.2], dtype=np.float64))
+        await store.upsert_long_term_memory(
+            memory_one, embedding=np.array([0.9, 0.1, 0.0], dtype=np.float64)
+        )
+        await store.upsert_long_term_memory(
+            memory_two, embedding=np.array([0.1, 0.8, 0.2], dtype=np.float64)
+        )
 
-        text_results = await store.search_long_term_memory_text(user_id, "coffee", limit=5)
+        text_results = await store.search_long_term_memory_text(
+            user_id, "coffee", limit=5
+        )
         print(f"text search IDs: {[memory.id for memory in text_results]}")
 
         vector_results = await store.search_long_term_memory_vector(
@@ -86,7 +95,9 @@ async def run_demo(store_name: str, store: MemoryStore) -> None:
             np.array([0.95, 0.05, 0.0], dtype=np.float64),
             limit=5,
         )
-        vector_result_preview = [(memory.id, round(score, 4)) for memory, score in vector_results]
+        vector_result_preview = [
+            (memory.id, round(score, 4)) for memory, score in vector_results
+        ]
         print(f"vector search: {vector_result_preview}")
 
 
