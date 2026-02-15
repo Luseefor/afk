@@ -83,6 +83,24 @@ class SkillCommandDeniedError(AgentExecutionError):
     pass
 
 
+class PromptResolutionError(AgentConfigurationError):
+    """Raised when resolving system prompt files fails."""
+
+    pass
+
+
+class PromptAccessError(AgentExecutionError):
+    """Raised when prompt file access violates prompt root boundaries."""
+
+    pass
+
+
+class PromptTemplateError(AgentExecutionError):
+    """Raised when prompt template parsing or rendering fails."""
+
+    pass
+
+
 class AgentCheckpointCorruptionError(AgentExecutionError):
     """Raised when checkpoint payload cannot be validated or loaded."""
     pass

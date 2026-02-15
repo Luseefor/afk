@@ -1,0 +1,4 @@
+interface:
+  display_name: "AFK Agentic Coding"
+  short_description: "Build AFK agents with production safety."
+  default_prompt: "Use $afk-agentic-coding to implement or refactor this AFK agent task."

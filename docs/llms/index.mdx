@@ -9,6 +9,18 @@ description: Provider-agnostic contracts, adapter capabilities, stream/session c
 Use `afk.llms` when you need direct model control. Use `afk.agents` when you need orchestration and tool execution.
 </Info>
 
+## Executive Summary
+
+- `afk.llms` provides one stable contract across multiple model providers.
+- Adapters expose capability flags so unsupported operations fail explicitly.
+- Streaming, sessions, retries, and structured output validation are built into the same interface.
+
+## When to Use
+
+- You need direct request/response control over provider calls.
+- You are building custom orchestration outside `afk.agents`.
+- You need portable transport behavior across providers.
+
 ## What This Layer Owns
 
 - Normalized request/response contracts (`LLMRequest`, `LLMResponse`)
@@ -17,19 +29,19 @@ Use `afk.llms` when you need direct model control. Use `afk.agents` when you nee
 - Stream control (`cancel`, `interrupt`, `await_result`)
 - Session token continuity APIs (adapter-dependent)
 
-## Read By Task
+## Read by Task
 
 <CardGroup cols={2}>
-  <Card title="Contracts" icon="file-text" href="/llms/contracts">
+  <Card title="Contracts" icon="file-code" href="/llms/contracts">
     Understand core request/response types and error guarantees.
   </Card>
-  <Card title="Adapter Guide" icon="plug" href="/llms/adapters">
+  <Card title="Adapter Guide" icon="code" href="/llms/adapters">
     Built-in adapters, capability matrix, and custom adapter rules.
   </Card>
-  <Card title="Stream + Sessions" icon="activity" href="/llms/control-and-session">
+  <Card title="Stream + Sessions" icon="play-circle" href="/llms/control-and-session">
     Handle streaming lifecycle, cancellation, interruption, and session state.
   </Card>
-  <Card title="Agent Integration" icon="workflow" href="/llms/agent-integration">
+  <Card title="Agent Integration" icon="file-code" href="/llms/agent-integration">
     Clear boundary between orchestration (`afk.agents`) and transport (`afk.llms`).
   </Card>
 </CardGroup>
@@ -75,3 +87,10 @@ Keep orchestration in `afk.agents` and `afk.core`.
 Keep provider-specific transport concerns in `afk.llms`.
 
 This separation makes retry behavior, observability, and provider migration consistent.
+
+## Continue Reading
+
+1. [Contracts](/llms/contracts)
+2. [Adapters](/llms/adapters)
+3. [Streaming & Sessions](/llms/control-and-session)
+4. [Agent Integration](/llms/agent-integration)

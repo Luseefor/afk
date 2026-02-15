@@ -11,6 +11,12 @@ from typing import TYPE_CHECKING, Any, Callable
 from ..llms import LLM
 from ..tools import Tool, ToolContext, ToolRegistry
 from .errors import AgentConfigurationError
+from .prompt_store import (
+    build_prompt_render_context,
+    get_prompt_store,
+    resolve_prompt_file_path,
+    resolve_prompts_dir,
+)
 from .types import (
     AgentResult,
     FailSafeConfig,
@@ -46,6 +52,8 @@ class BaseAgent:
         tools: list[ToolLike] | None = None,
         subagents: list["BaseAgent"] | None = None,
         instructions: str | InstructionProvider | None = None,
+        instruction_file: str | Path | None = None,
+        prompts_dir: str | Path | None = None,
         context_defaults: dict[str, JSONValue] | None = None,
         inherit_context_keys: list[str] | None = None,
         model_resolver: "ModelResolver | None" = None,
@@ -76,6 +84,11 @@ class BaseAgent:
             subagents: Child agents that can be routed/executed by this agent.
             instructions: Static instruction string or callable instruction
                 provider resolved per run.
+            instruction_file: Prompt filename/path under `prompts_dir` used
+                when `instructions` is not set.
+            prompts_dir: Root directory for system prompt files. Resolution
+                order when omitted is env `AFK_AGENT_PROMPTS_DIR`, then
+                `.agents/prompt`.
             context_defaults: Default JSON-safe context merged into each run
                 before caller-provided context.
             inherit_context_keys: Context keys this agent accepts from a parent
@@ -106,6 +119,8 @@ class BaseAgent:
         self.tools = list(tools or [])
         self.subagents = list(subagents or [])
         self.instructions = instructions
+        self.instruction_file = Path(instruction_file) if instruction_file is not None else None
+        self.prompts_dir = Path(prompts_dir) if prompts_dir is not None else None
         self.context_defaults = dict(context_defaults or {})
         self.inherit_context_keys = list(inherit_context_keys or [])
         self.model_resolver = model_resolver
@@ -144,17 +159,37 @@ class BaseAgent:
             Joined instruction text, or `None` when no instruction content
             is produced.
         """
+        store = get_prompt_store()
         chunks: list[str] = []
         if isinstance(self.instructions, str):
             text = self.instructions.strip()
             if text:
-                chunks.append(text)
+                chunks.append(store.intern_text(text))
         elif callable(self.instructions):
             maybe = self.instructions(context)
             if inspect.isawaitable(maybe):
                 maybe = await maybe
             if isinstance(maybe, str) and maybe.strip():
-                chunks.append(maybe.strip())
+                chunks.append(store.intern_text(maybe.strip()))
+        else:
+            prompt_root = resolve_prompts_dir(prompts_dir=self.prompts_dir, cwd=Path.cwd())
+            prompt_path = resolve_prompt_file_path(
+                prompt_root=prompt_root,
+                instruction_file=self.instruction_file,
+                agent_name=self.name,
+            )
+            prompt_text = store.load_prompt_file(prompt_path)
+            rendered = store.render_template(
+                prompt_text,
+                build_prompt_render_context(
+                    context=context,
+                    agent_name=self.name,
+                    agent_class=self.__class__.__name__,
+                ),
+                prompt_path=prompt_path,
+            )
+            if rendered.strip():
+                chunks.append(store.intern_text(rendered.strip()))
 
         for role in self.instruction_roles:
             out = role(context, "running")
@@ -162,15 +197,15 @@ class BaseAgent:
                 out = await out
             if isinstance(out, str):
                 if out.strip():
-                    chunks.append(out.strip())
+                    chunks.append(store.intern_text(out.strip()))
             elif isinstance(out, list):
                 for row in out:
                     if isinstance(row, str) and row.strip():
-                        chunks.append(row.strip())
+                        chunks.append(store.intern_text(row.strip()))
 
         if not chunks:
             return None
-        return "\n\n".join(chunks)
+        return store.intern_text("\n\n".join(chunks))
 
     async def call(
         self,

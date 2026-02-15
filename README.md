@@ -67,6 +67,36 @@ Configure environment for your adapter/model before running full examples:
 export AFK_LLM_ADAPTER=openai
 export AFK_LLM_MODEL=gpt-4.1-mini
 export AFK_LLM_API_KEY=your_key_here
+export AFK_AGENT_PROMPTS_DIR=.agents/prompt
+```
+
+## System Prompt Loader
+
+AFK supports file-backed system prompts for all `BaseAgent` types.
+
+Resolution order:
+
+1. inline/callable `instructions` (highest priority)
+2. `instruction_file`
+3. auto file from agent name (`UPPER_SNAKE.md`)
+
+Prompt root order:
+
+1. `prompts_dir` argument
+2. `AFK_AGENT_PROMPTS_DIR`
+3. `.agents/prompt`
+
+Example:
+
+```python
+from afk.agents import Agent
+
+agent = Agent(
+    name="ChatAgent",
+    model="gpt-4.1-mini",
+    prompts_dir=".agents/prompt",
+)
+# Auto file: .agents/prompt/CHAT_AGENT.md
 ```
 
 ## Documentation
@@ -82,6 +112,32 @@ Run docs locally:
 cd docs
 bunx mintlify dev
 ```
+
+## Building with AI
+
+For SDK users, install AFK skills directly from GitHub:
+
+```bash
+npx skills add socioy/afk
+```
+
+Then use skill prompts like:
+
+- `Use $afk-agentic-coding to implement this AFK feature.`
+- `Use $afk-docs-maintainer to improve docs structure.`
+
+AFK skill pack location:
+
+- `agent-skill/`
+- https://github.com/socioy/afk/tree/main/agent-skill
+
+Maintainer-only asset build step:
+
+```bash
+./scripts/build_agentic_ai_assets.sh
+```
+
+This prebuilds bundled docs/index assets before publishing skill packages.
 
 ## Running Tests
 

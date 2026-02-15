@@ -11,6 +11,7 @@ import Example05Source from "/library/snippets/05_direct_llm_structured_output.m
 import Example06Source from "/library/snippets/06_tool_registry_security.mdx";
 import Example07Source from "/library/snippets/07_tool_hooks_and_middleware.mdx";
 import Example08Source from "/library/snippets/08_prebuilt_runtime_tools.mdx";
+import Example09Source from "/library/snippets/09_system_prompt_loader.mdx";
 
 Every example is embedded below as a copy-ready script using the published `afk` SDK (`from afk...` imports).
 
@@ -18,16 +19,30 @@ Every example is embedded below as a copy-ready script using the published `afk`
 Run examples in order. Each one introduces one new concept while preserving the previous mental model.
 </Tip>
 
-## Fast Learning Path
+## Executive Summary
+
+- This page provides runnable, progressively harder AFK examples.
+- Each example maps to a capability level in the agent maturity model.
+- Code is embedded and copy-ready using public `afk.*` imports.
+
+## When to Use
+
+- You want working templates before writing custom runtime code.
+- You need reference implementations for policy, subagents, checkpoints, and prompts.
+- You are onboarding new engineers to AFK development patterns.
+
+## Recommended Run Order
 
 <Steps>
-  <Step title="01: minimal baseline">Run `01_minimal_chat_agent.py` and validate model + tool loop.</Step>
-  <Step title="02: safety gates">Add policy and deferred approvals with `02_policy_with_hitl.py`.</Step>
-  <Step title="03: orchestration">Add subagent routing with `03_subagents_with_router.py`.</Step>
-  <Step title="04: durability">Add checkpoint/resume with `04_resume_and_compact.py`.</Step>
+  <Step title="Level 1">Run `01_minimal_chat_agent.py` for baseline prompted behavior.</Step>
+  <Step title="Level 2">Run `08_prebuilt_runtime_tools.py` for bounded tool operations.</Step>
+  <Step title="Level 3">Run `02_policy_with_hitl.py` and `06_tool_registry_security.py` for governance/safety.</Step>
+  <Step title="Level 4">Run `04_resume_and_compact.py` for durability and restart behavior.</Step>
+  <Step title="Level 5">Run `03_subagents_with_router.py` for multi-agent orchestration.</Step>
+  <Step title="Level 6">Combine 02 + 04 + 06 + tested behavior contracts for production hardening.</Step>
 </Steps>
 
-## Before You Run
+## Prerequisites
 
 <CodeGroup>
 
@@ -56,25 +71,39 @@ export AFK_LLM_API_KEY=your_key_here
   <Card title="02 Policy + HITL" href="#02-policy-with-hitl" icon="shield">
     Deferred approvals and pause/resume flow.
   </Card>
-  <Card title="03 Subagents Router" href="#03-subagents-with-router" icon="workflow">
+  <Card title="03 Subagents Router" href="#03-subagents-with-router" icon="file-code">
     Manager routes requests to worker subagents.
   </Card>
   <Card title="04 Resume + Compact" href="#04-resume-and-compact" icon="database">
     Checkpoint persistence, resume, and retention.
   </Card>
-  <Card title="05 Direct LLM" href="#05-direct-llm-structured-output" icon="cpu">
+  <Card title="05 Direct LLM" href="#05-direct-llm-structured-output" icon="file-code">
     Use `afk.llms` with typed structured response.
   </Card>
   <Card title="06 Tool Security" href="#06-tool-registry-security" icon="lock">
     Sandbox policy and output limits.
   </Card>
-  <Card title="07 Hooks + Middleware" href="#07-tool-hooks-and-middleware" icon="layers">
+  <Card title="07 Hooks + Middleware" href="#07-tool-hooks-and-middleware" icon="file-code">
     Tool interception and output shaping.
   </Card>
   <Card title="08 Runtime Tools" href="#08-prebuilt-runtime-tools" icon="folder">
     Safe filesystem tools for agent runtime.
   </Card>
+  <Card title="09 System Prompts" href="#09-system-prompt-loader" icon="file-code">
+    Auto prompt loading, templating, and prompt cache reuse.
+  </Card>
 </CardGroup>
+
+## Level Mapping
+
+| Level | Purpose | Recommended Examples |
+| --- | --- | --- |
+| 1. Prompted Agent | base single-agent behavior | `01_minimal_chat_agent.py`, `09_system_prompt_loader.py` |
+| 2. Tool Agent | typed, bounded tool operations | `08_prebuilt_runtime_tools.py`, `07_tool_hooks_and_middleware.py` |
+| 3. Governed Agent | policy + HITL + tool safety | `02_policy_with_hitl.py`, `06_tool_registry_security.py` |
+| 4. Durable Agent | resume-safe workflows | `04_resume_and_compact.py` |
+| 5. Multi-Agent System | delegation and orchestration | `03_subagents_with_router.py` |
+| 6. Production Agentic Platform | reliability + observability + controls | combine Levels 3-5 patterns + [Tested Behaviors](/library/tested-behaviors) |
 
 ## Run Commands
 
@@ -92,6 +121,7 @@ python 05_direct_llm_structured_output.py
 python 06_tool_registry_security.py
 python 07_tool_hooks_and_middleware.py
 python 08_prebuilt_runtime_tools.py
+python 09_system_prompt_loader.py
 ```
 
   </Tab>
@@ -287,8 +317,32 @@ flowchart TD
     F --> G
 ```
 
-## Related Docs
+## 09. System Prompt Loader
+
+<Accordion title="Source code: 09_system_prompt_loader.py">
+  <Example09Source />
+</Accordion>
+
+- Demonstrates auto prompt loading (`ChatAgent` -> `CHAT_AGENT.md`).
+- Shows explicit prompt file selection with `instruction_file`.
+- Uses `AFK_AGENT_PROMPTS_DIR` as directory fallback.
+- Passes context keys for Jinja templates and shows prompt reuse across agents.
+
+```mermaid
+flowchart TD
+    A["Agent.resolve_instructions(context)"] --> B{"instructions set?"}
+    B -- "Yes" --> C["Use inline/callable instructions"]
+    B -- "No" --> D{"instruction_file set?"}
+    D -- "Yes" --> E["Load explicit file from prompts root"]
+    D -- "No" --> F["Derive auto filename from agent name"]
+    E --> G["Render Jinja with StrictUndefined + context"]
+    F --> G
+    G --> H["Return system instructions"]
+```
+
+## Continue Reading
 
 - [Tool Call Lifecycle](/library/tool-call-lifecycle)
 - [Security Model](/library/security-model)
 - [Checkpoint & Resume](/library/checkpoint-schema)
+- [System Prompts](/library/system-prompts)

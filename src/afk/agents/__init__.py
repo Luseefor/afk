@@ -37,12 +37,16 @@ from .errors import (
     AgentLoopLimitError,
     AgentPausedError,
     AgentRetryableError,
+    PromptAccessError,
+    PromptResolutionError,
+    PromptTemplateError,
     SkillAccessError,
     SkillCommandDeniedError,
     SkillResolutionError,
     SubagentExecutionError,
     SubagentRoutingError,
 )
+from .prompt_store import PromptStore, derive_auto_prompt_filename, get_prompt_store
 from .types import (
     AgentResult,
     AgentRunEvent,
@@ -83,6 +87,9 @@ __all__ = [
     "SkillResolutionError",
     "SkillAccessError",
     "SkillCommandDeniedError",
+    "PromptResolutionError",
+    "PromptAccessError",
+    "PromptTemplateError",
     "AgentCheckpointCorruptionError",
     "AgentCircuitOpenError",
     "AgentResult",
@@ -121,4 +128,7 @@ __all__ = [
     "ApprovalDecision",
     "UserInputRequest",
     "UserInputDecision",
+    "PromptStore",
+    "get_prompt_store",
+    "derive_auto_prompt_filename",
 ]

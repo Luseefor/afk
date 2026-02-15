@@ -11,3 +11,12 @@ wheels/
 
 
 .DS_Store
+
+# Generated AI indexing artifacts
+ai-index/
+agent-skill/index.json
+agent-skill/examples.md
+agent-skill/*/references/afk-docs/
+agent-skill/*/references/examples.md
+agent-skill/*/references/README.md
+agent-skill/*/scripts/search_afk_docs.py

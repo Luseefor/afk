@@ -14,13 +14,26 @@ Primary code paths:
 - [afk/agents/types.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types.py)
 - [afk/agents/errors.py](https://github.com/socioy/afk/blob/main/src/afk/agents/errors.py)
 
-## TL;DR
+## Executive Summary
 
 - Skills are declared on `Agent(skills=[...], skills_dir=...)`.
 - Each skill must exist at `<skills_dir>/<skill_name>/SKILL.md`.
 - When skills resolve, AFK injects a skill manifest into system instructions.
 - AFK can auto-register skill tools (`list_skills`, `read_skill_md`, `read_skill_file`, `run_skill_command`).
 - Skill reads and command runs are recorded in `AgentResult` for auditability.
+
+## When to Use
+
+- You are enabling operational skills for agent workflows
+- You need controlled command execution within skill contexts
+- You need runtime auditability for skill reads and commands
+
+## Required Capabilities
+
+- explicit `skills` list and stable `skills_dir` layout
+- `SKILL.md` contract for each enabled skill
+- command allowlist and execution limits via `SkillToolPolicy`
+- monitoring of skill read/command execution records
 
 ## Skill Directory Contract
 
@@ -106,7 +119,7 @@ sequenceDiagram
 - `read_skill_file`: reads an additional file under the selected skill root.
 - `run_skill_command`: runs allowlisted command with timeout and output caps.
 
-## Security and Edge Cases
+## Failure Modes
 
 - Missing skill name in `skills`: `SkillResolutionError` before step loop starts.
 - Unknown skill in tool args: `SkillAccessError`.
@@ -141,9 +154,12 @@ print(result.skill_command_executions)
 4. Cap `command_timeout_s`, `max_stdout_chars`, and `max_stderr_chars`.
 5. Monitor `skill_command_executions` for denied/failed command patterns.
 
-## Related Docs
+## Examples
 
-- [Tools Walkthrough](/library/tools-system-walkthrough)
-- [Tool Call Lifecycle](/library/tool-call-lifecycle)
-- [Security Model](/library/security-model)
-- [API Reference](/library/api-reference)
+- [examples/06_tool_registry_security.py](/library/examples/index#06-tool-registry-security)
+- [examples/08_prebuilt_runtime_tools.py](/library/examples/index#08-prebuilt-runtime-tools)
+
+## Continue Reading
+
+1. [Tool Lifecycle](/library/tool-call-lifecycle)
+2. [Security Model](/library/security-model)

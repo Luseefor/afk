@@ -5,14 +5,14 @@ description: Failure handling matrix across llm, tools, subagents, approvals, an
 
 This document explains how `FailSafeConfig` policy strings are normalized into runtime outcomes.
 
-## TL;DR
+## Executive Summary
 
 - Policy strings are normalized to runtime actions (`fail`, `degrade`, `continue`).
 - LLM failures are stricter: most values end up as `fail` or `degrade`.
 - Tool/subagent/approval failures can continue depending on policy.
 - Choosing policy values changes user-visible behavior significantly.
 
-## When To Read This
+## When to Use
 
 - You are setting `FailSafeConfig` for production.
 - You need predictable behavior during outages/tool failures.
@@ -25,6 +25,13 @@ Primary code path:
 Policy source type:
 
 - [afk/agents/types.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types.py) (`FailurePolicy`, `FailSafeConfig`)
+
+## Required Capabilities
+
+- explicit `FailSafeConfig` values per failure domain
+- consistent policy strategy across llm/tools/subagents/approvals
+- alerting and telemetry on degraded/continued failure paths
+- test coverage for expected fail/degrade/continue behavior
 
 ## Failure Policy Values
 
@@ -116,20 +123,27 @@ Approval/user-input stage:
 - denied decisions from interaction provider
 - deferred timeouts falling back to deny when configured
 
+## Failure Modes
+
+- permissive policies can hide operationally critical errors
+- overly strict policies can reduce resilience during transient outages
+- inconsistent policy combinations cause surprising user-visible outcomes
+- missing telemetry makes degrade/continue behavior hard to detect
+
 ## Recommendations
 
 For strict safety-critical flows:
 
-- use `fail_fast` or `fail_run` for tool and approval policies
+- Use `fail_fast` or `fail_run` for tool and approval policies
 
 For resilient exploratory flows:
 
-- use `continue_with_error` or `continue`
+- Use `continue_with_error` or `continue`
 - pair with clear operator-visible warnings and telemetry
 
 For controlled degradation:
 
-- use `retry_then_degrade` to terminate gracefully with partial results
+- Use `retry_then_degrade` to terminate gracefully with partial results
 
 ## Practical Profiles
 
@@ -143,7 +157,12 @@ For controlled degradation:
   - llm: `retry_then_degrade`
   - tool/subagent/approval: `continue_with_error` or `continue`
 
-## Related Examples
+## Examples
 
 - [examples/02_policy_with_hitl.py](/library/examples/index#02-policy-with-hitl)
 - [examples/03_subagents_with_router.py](/library/examples/index#03-subagents-with-router)
+
+## Continue Reading
+
+1. [Tool Lifecycle](/library/tool-call-lifecycle)
+2. [Run Event Contract](/library/run-event-contract)

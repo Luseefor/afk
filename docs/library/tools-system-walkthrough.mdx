@@ -1,5 +1,5 @@
 ---
-title: Tools Walkthrough
+title: Tools System
 description: Source-backed walkthrough of AFK tool registration, middleware, hooks, and security.
 ---
 
@@ -14,7 +14,7 @@ Primary code paths:
 - [afk/tools/prebuilts/skills.py](https://github.com/socioy/afk/blob/main/src/afk/tools/prebuilts/skills.py)
 - [afk/tools/security.py](https://github.com/socioy/afk/blob/main/src/afk/tools/security.py)
 
-## TL;DR
+## Executive Summary
 
 - `@tool` wraps a function into a typed, validated `Tool`.
 - `description` is exported to the model and improves tool selection quality.
@@ -22,7 +22,19 @@ Primary code paths:
 - `ToolRegistry` adds concurrency control, policies, and middleware for all tools.
 - Prebuilt runtime/skill tools are generated per run with path and command guards.
 
-## 1) Decorator to Tool Object Flow
+## When to Use
+
+- You are designing custom tools and execution behavior
+- You need to understand hook/middleware ordering
+- You need safe runtime/skill tool defaults
+
+## Required Capabilities
+
+- typed tool schemas with clear descriptions
+- registry policy and middleware configuration
+- path/command/network guardrails for side-effect tools
+
+## Decorator to Tool Object Flow
 
 ```mermaid
 flowchart TD
@@ -52,7 +64,7 @@ async def search_docs(args: SearchArgs) -> dict:
     ...
 ```
 
-## 2) Hook + Middleware Chain
+## Hook and Middleware Chain
 
 `Tool` execution order:
 
@@ -82,7 +94,7 @@ sequenceDiagram
     Tool-->>Caller: ToolResult
 ```
 
-## 3) Registry Execution Flow
+## Registry Execution Flow
 
 `ToolRegistry.call(...)` flow:
 
@@ -104,7 +116,7 @@ Key behavior:
 - unknown tool: `ToolNotFoundError`
 - policy rejection: `ToolPolicyError`
 
-## 4) Prebuilt Runtime Filesystem Tools
+## Prebuilt Runtime Filesystem Tools
 
 `build_runtime_tools(root_dir=...)` returns:
 
@@ -126,7 +138,7 @@ flowchart TD
     F --> G["Return JSON-safe payload"]
 ```
 
-## 5) Prebuilt Skill Tools
+## Prebuilt Skill Tools
 
 `build_skill_tools(skills, policy)` returns:
 
@@ -151,7 +163,7 @@ flowchart TD
     I --> J["Return command result payload"]
 ```
 
-## 6) Security Layers For Tools
+## Security Layers for Tools
 
 Tool security can be applied at two levels:
 
@@ -167,8 +179,20 @@ flowchart LR
     E --> F["Message returned to runner/LLM"]
 ```
 
-## Runnable Examples
+## Failure Modes
+
+- malformed tool args cause validation failures before execution
+- unknown tool names raise registry lookup errors
+- policy/sandbox checks can deny execution pre-call
+- oversized output can silently truncate if limits are too strict
+
+## Examples
 
 - [examples/06_tool_registry_security.py](/library/examples/index#06-tool-registry-security)
 - [examples/07_tool_hooks_and_middleware.py](/library/examples/index#07-tool-hooks-and-middleware)
 - [examples/08_prebuilt_runtime_tools.py](/library/examples/index#08-prebuilt-runtime-tools)
+
+## Continue Reading
+
+1. [Tool Lifecycle](/library/tool-call-lifecycle)
+2. [Security Model](/library/security-model)

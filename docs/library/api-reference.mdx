@@ -5,13 +5,26 @@ description: Complete public API reference for afk.agents, afk.core, afk.llms, a
 
 This reference covers the public API exported by `afk/*/__init__.py`, plus key runtime behavior and edge cases required for correct integration.
 
-## How To Use This Document
+## Executive Summary
+
+- This is the canonical public API contract for AFK packages.
+- It covers constructors, runtime behavior, errors, and edge cases.
+- Use this page for implementation correctness, not conceptual onboarding.
+
+## When to Use
+
+- You are implementing or reviewing production AFK integrations.
+- You need exact field/argument behavior for APIs.
+- You are validating compatibility before upgrades.
+
+## How to Use This Document
 
 - Use this file when you already know which package area you need (`afk.agents`, `afk.core`, `afk.tools`, and so on).
 - For first-time onboarding, start with [Developer Guide](/library/developer-guide).
+- For maturity-based planning, use [Agentic System Levels](/library/agentic-levels).
 - For complete symbol-level internal map, use [Full Module Reference](/library/full-module-reference).
 
-## Quick Navigation By Task
+## Quick Navigation by Task
 
 - Build first agent: `afk.agents.Agent`
 - Control execution lifecycle: `afk.core.Runner`
@@ -20,6 +33,7 @@ This reference covers the public API exported by `afk/*/__init__.py`, plus key r
 - Enforce security: `afk.tools.SandboxProfile`, `RunnerConfig` sandbox fields
 - Persist/resume: `afk.memory.*` + `Runner.resume(...)`
 - Run eval scenarios: `afk.evals.EvalScenario`, `afk.evals.run_eval_scenario`
+- Configure system prompts: `afk.agents.BaseAgent` (`instruction_file`, `prompts_dir`)
 
 ## Public Import Style
 
@@ -51,6 +65,7 @@ Companion references:
 - [Tested Behaviors and Edge Cases](/library/tested-behaviors)
 - [Tool Call Lifecycle](/library/tool-call-lifecycle)
 - [Agent Skills](/library/agent-skills)
+- [System Prompts](/library/system-prompts)
 - [Tools Walkthrough](/library/tools-system-walkthrough)
 - [LLM Flow](/library/llm-interaction)
 - [Agentic Orchestration](/library/agentic-behavior)
@@ -75,11 +90,13 @@ Source: [afk/agents/__init__.py](https://github.com/socioy/afk/blob/main/src/afk
 - `BaseAgent`
 - `Agent`
 - `ChatAgent`
+- `PromptStore`, `get_prompt_store`, `derive_auto_prompt_filename`
 
 Primary source:
 
 - [afk/agents/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/base.py)
 - [afk/agents/chat.py](https://github.com/socioy/afk/blob/main/src/afk/agents/chat.py)
+- [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
 
 #### `BaseAgent(...)` constructor behavior
 
@@ -89,6 +106,8 @@ Key fields:
 - `tools: list[ToolLike]`
 - `subagents: list[BaseAgent]`
 - `instructions: str | callable | None`
+- `instruction_file: str | Path | None`
+- `prompts_dir: str | Path | None`
 - `policy_engine`, `policy_roles`, `instruction_roles`
 - `subagent_router`
 - `fail_safe: FailSafeConfig`
@@ -105,8 +124,19 @@ Validation/edge cases:
 - Combines:
   - static `instructions` string
   - callable `instructions(context)` (supports async)
+  - file-backed prompts (`instruction_file` or auto name) when `instructions is None`
   - each `instruction_role(context, state)` output
 - Accepts role output as `str` or `list[str]`.
+- Prompt file precedence:
+  - inline/callable `instructions` wins
+  - else `instruction_file` if provided
+  - else auto file from agent name (`UPPER_SNAKE.md`)
+- Prompt root precedence:
+  - `prompts_dir` argument
+  - env `AFK_AGENT_PROMPTS_DIR`
+  - `.agents/prompt`
+- Prompt templates are rendered with Jinja2 `StrictUndefined`.
+- Path escapes from prompt root raise `PromptAccessError`.
 - Returns `None` if all chunks are empty.
 
 #### `BaseAgent.call(...)`
@@ -214,6 +244,9 @@ Exported errors:
 - `SkillResolutionError`
 - `SkillAccessError`
 - `SkillCommandDeniedError`
+- `PromptResolutionError`
+- `PromptAccessError`
+- `PromptTemplateError`
 - `AgentCheckpointCorruptionError`
 - `AgentCircuitOpenError`
 
