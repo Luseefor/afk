@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from afk.tools import ToolContext, ToolRegistry, ToolSpec, export_tools, tool
 from afk.tools.core.base import Middleware
 from afk.tools.core.export import normalize_json_schema
-from afk.tools.registery import RegistryMiddleware
+from afk.tools.registry import RegistryMiddleware
 
 
 def run_async(coro):

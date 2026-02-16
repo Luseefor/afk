@@ -8,6 +8,7 @@ Runtime helpers used by the core runner.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
@@ -63,7 +64,7 @@ def resolve_skills(
             f"Missing requested skills under '{base}': {', '.join(missing)}"
         )
 
-    return SkillResolutionResult(resolved_skills=resolved, missing_skills=missing)
+    return SkillResolutionResult(resolved_skills=resolved)
 
 
 def build_skill_manifest_prompt(skills: list[SkillRef]) -> str:
@@ -189,27 +190,36 @@ class CircuitBreaker:
 
     config: FailSafeConfig
     failures: dict[str, list[float]] = field(default_factory=dict)
+    _locks: dict[str, asyncio.Lock] = field(default_factory=dict)
+
+    def _lock_for(self, key: str) -> asyncio.Lock:
+        """Return or create a per-key lock."""
+        if key not in self._locks:
+            self._locks[key] = asyncio.Lock()
+        return self._locks[key]
 
     def record_success(self, key: str) -> None:
         """Reset failure history for a dependency after success."""
         self.failures.pop(key, None)
 
-    def record_failure(self, key: str) -> None:
+    async def record_failure(self, key: str) -> None:
         """Record a dependency failure within cooldown window."""
-        now = time.time()
-        rows = self.failures.setdefault(key, [])
-        rows.append(now)
-        cutoff = now - self.config.breaker_cooldown_s
-        self.failures[key] = [ts for ts in rows if ts >= cutoff]
+        async with self._lock_for(key):
+            now = time.time()
+            rows = self.failures.setdefault(key, [])
+            rows.append(now)
+            cutoff = now - self.config.breaker_cooldown_s
+            self.failures[key] = [ts for ts in rows if ts >= cutoff]
 
-    def ensure_closed(self, key: str) -> None:
+    async def ensure_closed(self, key: str) -> None:
         """Raise when failure threshold is exceeded for dependency key."""
-        rows = self.failures.get(key, [])
-        if len(rows) >= self.config.breaker_failure_threshold:
-            raise AgentCircuitOpenError(
-                f"Circuit open for dependency '{key}' "
-                f"(failures={len(rows)} threshold={self.config.breaker_failure_threshold})."
-            )
+        async with self._lock_for(key):
+            rows = self.failures.get(key, [])
+            if len(rows) >= self.config.breaker_failure_threshold:
+                raise AgentCircuitOpenError(
+                    f"Circuit open for dependency '{key}' "
+                    f"(failures={len(rows)} threshold={self.config.breaker_failure_threshold})."
+                    )
 
 
 def state_snapshot(

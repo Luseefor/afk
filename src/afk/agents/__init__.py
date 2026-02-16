@@ -50,7 +50,7 @@ from .errors import (
     SubagentExecutionError,
     SubagentRoutingError,
 )
-from .prompt_store import PromptStore, derive_auto_prompt_filename, get_prompt_store
+from .prompt_store import PromptStore, derive_auto_prompt_filename, get_prompt_store, reset_prompt_store
 from .types import (
     AgentResult,
     AgentRunEvent,
@@ -135,4 +135,5 @@ __all__ = [
     "PromptStore",
     "get_prompt_store",
     "derive_auto_prompt_filename",
+    "reset_prompt_store",
 ]

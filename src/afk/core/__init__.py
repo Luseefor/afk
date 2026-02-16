@@ -8,6 +8,7 @@ Core runtime exports.
 
 from .interaction import HeadlessInteractionProvider, InMemoryInteractiveProvider, InteractionProvider
 from .runner import Runner, RunnerConfig
+from .streaming import AgentStreamEvent, AgentStreamHandle
 from .telemetry import (
     InMemoryTelemetrySink,
     NullTelemetrySink,
@@ -23,6 +24,8 @@ __all__ = [
     "InteractionProvider",
     "HeadlessInteractionProvider",
     "InMemoryInteractiveProvider",
+    "AgentStreamEvent",
+    "AgentStreamHandle",
     "TelemetrySink",
     "TelemetryEvent",
     "TelemetrySpan",

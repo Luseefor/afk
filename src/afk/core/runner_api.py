@@ -148,6 +148,45 @@ class RunnerAPIMixin:
             raise AgentCancelledError("Run cancelled")
         return result
 
+    def run_sync(
+        self,
+        agent: BaseAgent,
+        *,
+        user_message: str | None = None,
+        context: dict[str, Any] | None = None,
+        thread_id: str | None = None,
+    ) -> AgentResult:
+        """
+        Execute an agent run synchronously (blocking).
+
+        Convenience wrapper around :meth:`run` for scripts and CLIs that
+        do not have their own event loop. Raises ``RuntimeError`` if called
+        from inside an already-running async event loop.
+
+        Args:
+            agent: Agent definition to execute.
+            user_message: Optional initial user message.
+            context: Optional JSON-like run context.
+            thread_id: Optional thread id for memory continuity.
+
+        Returns:
+            Terminal agent result.
+
+        Raises:
+            AgentCancelledError: If run is cancelled before completion.
+            RuntimeError: If called inside a running event loop.
+        """
+        from ..llms.utils import run_sync as _run_sync
+
+        return _run_sync(
+            self.run(
+                agent,
+                user_message=user_message,
+                context=context,
+                thread_id=thread_id,
+            )
+        )
+
     async def resume(
         self,
         agent: BaseAgent,
@@ -292,3 +331,101 @@ class RunnerAPIMixin:
         )
         handle.attach_task(task)
         return handle
+
+    async def run_stream(
+        self,
+        agent: BaseAgent,
+        *,
+        user_message: str | None = None,
+        context: dict[str, Any] | None = None,
+        thread_id: str | None = None,
+    ) -> "AgentStreamHandle":
+        """
+        Start an agent run and return a stream handle for real-time events.
+
+        The stream yields ``AgentStreamEvent`` instances including text deltas,
+        tool lifecycle events, and a terminal ``completed`` event with the
+        final ``AgentResult``.
+
+        Usage::
+
+            handle = await runner.run_stream(agent, user_message="Hi")
+            async for event in handle:
+                if event.type == "text_delta":
+                    print(event.text_delta, end="", flush=True)
+            result = handle.result
+
+        Args:
+            agent: Agent definition to execute.
+            user_message: Optional initial user message.
+            context: Optional JSON-like run context.
+            thread_id: Optional thread id for memory continuity.
+
+        Returns:
+            ``AgentStreamHandle`` for consuming stream events.
+        """
+        from .streaming import (
+            AgentStreamHandle,
+            stream_completed,
+            stream_error,
+            text_delta,
+            tool_completed as _tool_completed,
+            tool_started as _tool_started,
+            step_started as _step_started,
+            status_update,
+        )
+
+        run_handle = await self.run_handle(
+            agent,
+            user_message=user_message,
+            context=context,
+            thread_id=thread_id,
+        )
+        stream = AgentStreamHandle()
+
+        async def _bridge() -> None:
+            """Bridge run events → stream events."""
+            try:
+                async for event in run_handle.events:
+                    # Map known event types to stream events
+                    if event.event_type == "llm_completed" and event.data:
+                        response_text = event.data.get("text", "")
+                        if response_text:
+                            await stream.emit(text_delta(str(response_text)))
+                    elif event.event_type == "tool_batch_started" and event.data:
+                        tool_names = event.data.get("tool_names", [])
+                        if isinstance(tool_names, list):
+                            for tn in tool_names:
+                                await stream.emit(_tool_started(str(tn)))
+                    elif event.event_type == "tool_completed" and event.data:
+                        await stream.emit(_tool_completed(
+                            tool_name=str(event.data.get("tool_name", "")),
+                            tool_call_id=event.data.get("tool_call_id"),
+                            success=bool(event.data.get("success", False)),
+                            output=event.data.get("output"),
+                            error=event.data.get("error"),
+                        ))
+                    elif event.event_type == "step_started":
+                        await stream.emit(_step_started(
+                            step=int(event.data.get("step", 0)) if event.data else 0,
+                            state=event.data.get("state", "running") if event.data else "running",
+                        ))
+                    elif event.event_type in ("run_failed", "run_interrupted"):
+                        error_msg = (
+                            event.data.get("error", str(event.event_type))
+                            if event.data
+                            else str(event.event_type)
+                        )
+                        await stream.emit(stream_error(str(error_msg)))
+
+                # Run completed — emit terminal event
+                result = await run_handle.await_result()
+                if result is not None:
+                    await stream.emit(stream_completed(result))
+            except Exception as exc:
+                await stream.emit(stream_error(str(exc)))
+            finally:
+                await stream.close()
+
+        asyncio.create_task(_bridge())
+        return stream

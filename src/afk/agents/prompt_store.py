@@ -267,3 +267,15 @@ def get_prompt_store() -> PromptStore:
             _PROMPT_STORE = PromptStore()
     return _PROMPT_STORE
 
+
+def reset_prompt_store() -> None:
+    """
+    Reset the process-wide prompt store singleton.
+
+    Intended for test isolation — clears all cached prompts, templates,
+    and interned text so each test starts from a clean state.
+    """
+    global _PROMPT_STORE
+    with _PROMPT_STORE_LOCK:
+        _PROMPT_STORE = None
+

@@ -4,6 +4,40 @@ Copyright (c) 2026 socioy
 See LICENSE file for full license text.
 
 Core execution loop for the AFK runner.
+
+Lifecycle Overview
+==================
+
+The ``RunnerExecutionMixin`` implements the main agent execution loop:
+
+1. **Step Loop** — The runner iterates ``max_steps`` times. Each step:
+   a. Sends the conversation history to the LLM adapter.
+   b. Receives an ``LLMResponse`` containing text and/or tool calls.
+   c. If tool calls are present, dispatches them (see Tool Batching below).
+   d. Appends assistant + tool results to the message history.
+   e. Checks fail-safe limits (wall time, LLM calls, tool calls, cost).
+
+2. **Tool Batching** — Multiple tool calls from a single LLM response
+   are executed concurrently up to ``max_parallel_tools``. Each tool
+   invocation goes through:
+   - Policy evaluation (``PolicyEngine`` / ``PolicyRole``)
+   - Approval flow (when policy defers to human-in-the-loop)
+   - Tool execution with timeout enforcement
+   - Result serialization back into the conversation
+
+3. **Circuit Breaker** — Consecutive failures (LLM errors, tool errors)
+   are tracked per failure-key. After ``breaker_failure_threshold``
+   consecutive failures, the breaker opens and subsequent calls fail
+   fast until the ``breaker_cooldown_s`` window expires.
+
+4. **Checkpoint Persistence** — At terminal states (completed, failed,
+   cancelled, degraded), the runner persists a checkpoint snapshot to
+   the memory store, enabling ``Runner.resume()`` to continue from
+   the last known good state.
+
+5. **Subagent Routing** — When the agent has subagents configured, the
+   router selects targets and the runner recursively executes them,
+   respecting ``max_subagent_depth`` for bounded recursion.
 """
 
 from __future__ import annotations
@@ -647,7 +681,7 @@ class RunnerExecutionMixin:
                         llm_call_started_s: float | None = None
                         llm_span = None
                         try:
-                            breaker.ensure_closed(candidate_key)
+                            await breaker.ensure_closed(candidate_key)
                             candidate_req = LLMRequest(
                                 model=candidate.normalized_model,
                                 request_id=req.request_id,
@@ -750,7 +784,7 @@ class RunnerExecutionMixin:
                                 },
                             )
                             llm_error = e
-                            breaker.record_failure(candidate_key)
+                            await breaker.record_failure(candidate_key)
                             continue
 
                     if resp is None:
@@ -1177,7 +1211,7 @@ class RunnerExecutionMixin:
                     for idx in execution_indices:
                         tool_name = calls[idx][0]
                         try:
-                            breaker.ensure_closed(f"tool:{tool_name}")
+                            await breaker.ensure_closed(f"tool:{tool_name}")
                         except Exception as e:
                             tool_outcome = self._apply_tool_failure_policy(
                                 fail_safe.tool_failure_policy
@@ -1240,9 +1274,9 @@ class RunnerExecutionMixin:
                             if tr.success:
                                 breaker.record_success(tool_key)
                             else:
-                                breaker.record_failure(tool_key)
+                                await breaker.record_failure(tool_key)
                         elif isinstance(result, Exception):
-                            breaker.record_failure(tool_key)
+                            await breaker.record_failure(tool_key)
                             tr = ToolResult(
                                 output=None,
                                 success=False,
@@ -1255,7 +1289,7 @@ class RunnerExecutionMixin:
                                     success=False,
                                     error_message="Missing tool execution result",
                                 )
-                                breaker.record_failure(tool_key)
+                                await breaker.record_failure(tool_key)
                             elif not isinstance(result, ToolResult):
                                 tr = ToolResult(
                                     output=None,
@@ -1264,13 +1298,13 @@ class RunnerExecutionMixin:
                                         f"Unexpected tool result type: {type(result).__name__}"
                                     ),
                                 )
-                                breaker.record_failure(tool_key)
+                                await breaker.record_failure(tool_key)
                             else:
                                 tr = result
                             if tr.success:
                                 breaker.record_success(tool_key)
                             else:
-                                breaker.record_failure(tool_key)
+                                await breaker.record_failure(tool_key)
 
                         tr = apply_tool_output_limits(
                             tr,
@@ -1538,43 +1572,32 @@ class RunnerExecutionMixin:
                 ),
                 user_id=self._maybe_str(ctx.get("user_id")),
             )
-            await self._persist_checkpoint(
+            await self._persist_terminal_checkpoint(
                 memory=memory,
                 thread_id=t_id,
                 run_id=run_id,
                 step=step,
-                phase="run_terminal",
-                payload={
-                    "state": state,
-                    "message": str(e),
-                    "terminal_result": self._serialize_agent_result(
-                        self._build_terminal_result(
-                            run_id=run_id,
-                            thread_id=t_id,
-                            state=state,
-                            final_text=str(e),
-                            requested_model=requested_model,
-                            normalized_model=normalized_model,
-                            provider_adapter=provider_adapter,
-                            final_structured=final_structured,
-                            llm_response=final_resp,
-                            tool_execs=tool_execs,
-                            sub_execs=sub_execs,
-                            skills=skills.resolved_skills if "skills" in locals() else [],
-                            skill_reads=skill_reads,
-                            skill_cmd_execs=skill_cmd_execs,
-                            usage=usage,
-                            total_cost_usd=total_cost_usd,
-                            session_token=session_token,
-                            checkpoint_token=checkpoint_token,
-                            step=step,
-                            llm_calls=llm_calls,
-                            tool_calls=tool_calls,
-                            started_at_s=started_at_s,
-                            replayed_effect_count=replayed_effect_count,
-                        )
-                    ),
-                },
+                state=state,
+                message=str(e),
+                final_text=str(e),
+                requested_model=requested_model,
+                normalized_model=normalized_model,
+                provider_adapter=provider_adapter,
+                final_structured=final_structured,
+                llm_response=final_resp,
+                tool_execs=tool_execs,
+                sub_execs=sub_execs,
+                skills=skills.resolved_skills if "skills" in locals() else [],
+                skill_reads=skill_reads,
+                skill_cmd_execs=skill_cmd_execs,
+                usage=usage,
+                total_cost_usd=total_cost_usd,
+                session_token=session_token,
+                checkpoint_token=checkpoint_token,
+                llm_calls=llm_calls,
+                tool_calls=tool_calls,
+                started_at_s=started_at_s,
+                replayed_effect_count=replayed_effect_count,
             )
             await handle.set_exception(e)
         except asyncio.CancelledError:
@@ -1596,43 +1619,32 @@ class RunnerExecutionMixin:
                     ),
                     user_id=self._maybe_str(ctx.get("user_id")),
                 )
-                await self._persist_checkpoint(
+                await self._persist_terminal_checkpoint(
                     memory=memory,
                     thread_id=t_id,
                     run_id=run_id,
                     step=step,
-                    phase="run_terminal",
-                    payload={
-                        "state": state,
-                        "message": str(interrupted),
-                        "terminal_result": self._serialize_agent_result(
-                            self._build_terminal_result(
-                                run_id=run_id,
-                                thread_id=t_id,
-                                state=state,
-                                final_text=str(interrupted),
-                                requested_model=requested_model,
-                                normalized_model=normalized_model,
-                                provider_adapter=provider_adapter,
-                                final_structured=final_structured,
-                                llm_response=final_resp,
-                                tool_execs=tool_execs,
-                                sub_execs=sub_execs,
-                                skills=skills.resolved_skills if "skills" in locals() else [],
-                                skill_reads=skill_reads,
-                                skill_cmd_execs=skill_cmd_execs,
-                                usage=usage,
-                                total_cost_usd=total_cost_usd,
-                                session_token=session_token,
-                                checkpoint_token=checkpoint_token,
-                                step=step,
-                                llm_calls=llm_calls,
-                                tool_calls=tool_calls,
-                                started_at_s=started_at_s,
-                                replayed_effect_count=replayed_effect_count,
-                            )
-                        ),
-                    },
+                    state=state,
+                    message=str(interrupted),
+                    final_text=str(interrupted),
+                    requested_model=requested_model,
+                    normalized_model=normalized_model,
+                    provider_adapter=provider_adapter,
+                    final_structured=final_structured,
+                    llm_response=final_resp,
+                    tool_execs=tool_execs,
+                    sub_execs=sub_execs,
+                    skills=skills.resolved_skills if "skills" in locals() else [],
+                    skill_reads=skill_reads,
+                    skill_cmd_execs=skill_cmd_execs,
+                    usage=usage,
+                    total_cost_usd=total_cost_usd,
+                    session_token=session_token,
+                    checkpoint_token=checkpoint_token,
+                    llm_calls=llm_calls,
+                    tool_calls=tool_calls,
+                    started_at_s=started_at_s,
+                    replayed_effect_count=replayed_effect_count,
                 )
                 await handle.set_exception(interrupted)
             else:
@@ -1652,43 +1664,32 @@ class RunnerExecutionMixin:
                     ),
                     user_id=self._maybe_str(ctx.get("user_id")),
                 )
-                await self._persist_checkpoint(
+                await self._persist_terminal_checkpoint(
                     memory=memory,
                     thread_id=t_id,
                     run_id=run_id,
                     step=step,
-                    phase="run_terminal",
-                    payload={
-                        "state": state,
-                        "message": "Run cancelled",
-                        "terminal_result": self._serialize_agent_result(
-                            self._build_terminal_result(
-                                run_id=run_id,
-                                thread_id=t_id,
-                                state=state,
-                                final_text="Run cancelled",
-                                requested_model=requested_model,
-                                normalized_model=normalized_model,
-                                provider_adapter=provider_adapter,
-                                final_structured=final_structured,
-                                llm_response=final_resp,
-                                tool_execs=tool_execs,
-                                sub_execs=sub_execs,
-                                skills=skills.resolved_skills if "skills" in locals() else [],
-                                skill_reads=skill_reads,
-                                skill_cmd_execs=skill_cmd_execs,
-                                usage=usage,
-                                total_cost_usd=total_cost_usd,
-                                session_token=session_token,
-                                checkpoint_token=checkpoint_token,
-                                step=step,
-                                llm_calls=llm_calls,
-                                tool_calls=tool_calls,
-                                started_at_s=started_at_s,
-                                replayed_effect_count=replayed_effect_count,
-                            )
-                        ),
-                    },
+                    state=state,
+                    message="Run cancelled",
+                    final_text="Run cancelled",
+                    requested_model=requested_model,
+                    normalized_model=normalized_model,
+                    provider_adapter=provider_adapter,
+                    final_structured=final_structured,
+                    llm_response=final_resp,
+                    tool_execs=tool_execs,
+                    sub_execs=sub_execs,
+                    skills=skills.resolved_skills if "skills" in locals() else [],
+                    skill_reads=skill_reads,
+                    skill_cmd_execs=skill_cmd_execs,
+                    usage=usage,
+                    total_cost_usd=total_cost_usd,
+                    session_token=session_token,
+                    checkpoint_token=checkpoint_token,
+                    llm_calls=llm_calls,
+                    tool_calls=tool_calls,
+                    started_at_s=started_at_s,
+                    replayed_effect_count=replayed_effect_count,
                 )
                 await handle.set_result(None)
         except Exception as e:
@@ -1708,43 +1709,32 @@ class RunnerExecutionMixin:
                 ),
                 user_id=self._maybe_str(ctx.get("user_id")),
             )
-            await self._persist_checkpoint(
+            await self._persist_terminal_checkpoint(
                 memory=memory,
                 thread_id=t_id,
                 run_id=run_id,
                 step=step,
-                phase="run_terminal",
-                payload={
-                    "state": state,
-                    "message": str(e),
-                    "terminal_result": self._serialize_agent_result(
-                        self._build_terminal_result(
-                            run_id=run_id,
-                            thread_id=t_id,
-                            state=state,
-                            final_text=str(e),
-                            requested_model=requested_model,
-                            normalized_model=normalized_model,
-                            provider_adapter=provider_adapter,
-                            final_structured=final_structured,
-                            llm_response=final_resp,
-                            tool_execs=tool_execs,
-                            sub_execs=sub_execs,
-                            skills=skills.resolved_skills if "skills" in locals() else [],
-                            skill_reads=skill_reads,
-                            skill_cmd_execs=skill_cmd_execs,
-                            usage=usage,
-                            total_cost_usd=total_cost_usd,
-                            session_token=session_token,
-                            checkpoint_token=checkpoint_token,
-                            step=step,
-                            llm_calls=llm_calls,
-                            tool_calls=tool_calls,
-                            started_at_s=started_at_s,
-                            replayed_effect_count=replayed_effect_count,
-                        )
-                    ),
-                },
+                state=state,
+                message=str(e),
+                final_text=str(e),
+                requested_model=requested_model,
+                normalized_model=normalized_model,
+                provider_adapter=provider_adapter,
+                final_structured=final_structured,
+                llm_response=final_resp,
+                tool_execs=tool_execs,
+                sub_execs=sub_execs,
+                skills=skills.resolved_skills if "skills" in locals() else [],
+                skill_reads=skill_reads,
+                skill_cmd_execs=skill_cmd_execs,
+                usage=usage,
+                total_cost_usd=total_cost_usd,
+                session_token=session_token,
+                checkpoint_token=checkpoint_token,
+                llm_calls=llm_calls,
+                tool_calls=tool_calls,
+                started_at_s=started_at_s,
+                replayed_effect_count=replayed_effect_count,
             )
             if isinstance(e, AgentError):
                 await handle.set_exception(e)

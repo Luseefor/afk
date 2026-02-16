@@ -54,7 +54,7 @@ from .core import (
     toolspec_to_litellm_tool,
 )
 
-from .registery import (
+from .registry import (
     ToolRegistry,
     RegistryMiddleware,
     RegistryMiddlewareFn,

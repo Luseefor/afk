@@ -1285,6 +1285,74 @@ class RunnerInternalsMixin:
             ),
         )
 
+    async def _persist_terminal_checkpoint(
+        self,
+        *,
+        memory: Any,
+        thread_id: str,
+        run_id: str,
+        step: int,
+        state: AgentState,
+        message: str,
+        final_text: str,
+        requested_model: str | None,
+        normalized_model: str | None,
+        provider_adapter: str | None,
+        final_structured: dict[str, Any] | None,
+        llm_response: LLMResponse | None,
+        tool_execs: list[ToolExecutionRecord],
+        sub_execs: list[SubagentExecutionRecord],
+        skills: list[Any],
+        skill_reads: list[SkillReadRecord],
+        skill_cmd_execs: list[CommandExecutionRecord],
+        usage: UsageAggregate,
+        total_cost_usd: float,
+        session_token: str | None,
+        checkpoint_token: str | None,
+        llm_calls: int,
+        tool_calls: int,
+        started_at_s: float,
+        replayed_effect_count: int,
+    ) -> None:
+        """Build, serialize, and persist a terminal checkpoint in one call."""
+        result = self._build_terminal_result(
+            run_id=run_id,
+            thread_id=thread_id,
+            state=state,
+            final_text=final_text,
+            requested_model=requested_model,
+            normalized_model=normalized_model,
+            provider_adapter=provider_adapter,
+            final_structured=final_structured,
+            llm_response=llm_response,
+            tool_execs=tool_execs,
+            sub_execs=sub_execs,
+            skills=skills,
+            skill_reads=skill_reads,
+            skill_cmd_execs=skill_cmd_execs,
+            usage=usage,
+            total_cost_usd=total_cost_usd,
+            session_token=session_token,
+            checkpoint_token=checkpoint_token,
+            step=step,
+            llm_calls=llm_calls,
+            tool_calls=tool_calls,
+            started_at_s=started_at_s,
+            replayed_effect_count=replayed_effect_count,
+        )
+        await self._persist_checkpoint(
+            memory=memory,
+            thread_id=thread_id,
+            run_id=run_id,
+            step=step,
+            phase="run_terminal",
+            payload={
+                "state": state,
+                "message": message,
+                "terminal_result": self._serialize_agent_result(result),
+            },
+        )
+
     def _serialize_agent_result(self, result: AgentResult) -> dict[str, Any]:
         """
         Serialize `AgentResult` for checkpoint storage.

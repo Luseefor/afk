@@ -83,6 +83,22 @@ def compare_event_types(expected: list[str], observed: list[str]) -> tuple[bool,
     return False, f"expected={expected} observed={observed}"
 
 
+async def arun_scenarios(
+    *,
+    runner_factory: Callable[[], Runner],
+    scenarios: list[EvalScenario],
+) -> list[EvalResult]:
+    """Async variant of ``run_scenarios``.
+
+    Safe for nested event loops (notebooks, existing async apps).
+    """
+    out: list[EvalResult] = []
+    for scenario in scenarios:
+        runner = runner_factory()
+        out.append(await run_scenario(runner, scenario))
+    return out
+
+
 def run_scenarios(
     *,
     runner_factory: Callable[[], Runner],
@@ -90,11 +106,4 @@ def run_scenarios(
 ) -> list[EvalResult]:
     import asyncio
 
-    async def _run() -> list[EvalResult]:
-        out: list[EvalResult] = []
-        for scenario in scenarios:
-            runner = runner_factory()
-            out.append(await run_scenario(runner, scenario))
-        return out
-
-    return asyncio.run(_run())
+    return asyncio.run(arun_scenarios(runner_factory=runner_factory, scenarios=scenarios))

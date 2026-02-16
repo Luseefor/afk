@@ -86,7 +86,7 @@ class RedisMemoryStore(MemoryStore):
         )
         pipeline = redis_client.pipeline()
         events_key = self._events_key(event.thread_id)
-        pipeline.lpush(events_key, serialized_event)
+        pipeline.rpush(events_key, serialized_event)
         pipeline.ltrim(events_key, 0, self.events_max_per_thread - 1)
         await pipeline.execute()
 
@@ -164,7 +164,7 @@ class RedisMemoryStore(MemoryStore):
                     "tags": event.tags,
                 },
             )
-            pipeline.lpush(events_key, serialized_event)
+            pipeline.rpush(events_key, serialized_event)
         pipeline.ltrim(events_key, 0, self.events_max_per_thread - 1)
         await pipeline.execute()
 

@@ -80,6 +80,16 @@
         ]
       },
       {
+        "group": "Advanced Features",
+        "pages": [
+          "library/streaming",
+          "library/messaging",
+          "library/task-queues",
+          "library/observability",
+          "library/mcp-server"
+        ]
+      },
+      {
         "group": "LLM Layer",
         "pages": [
           "llms/index",

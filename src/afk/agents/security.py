@@ -76,7 +76,7 @@ def render_untrusted_tool_message(
     safe_payload = sanitize_json_value(payload, max_chars=max_chars)
     serialized = json.dumps(safe_payload, ensure_ascii=True)
     return (
-        f"{untrusted_tool_channel_header(tool_name)}\\n"
-        f"{UNTRUSTED_TOOL_PREAMBLE}\\n"
+        f"{untrusted_tool_channel_header(tool_name)}\n"
+        f"{UNTRUSTED_TOOL_PREAMBLE}\n"
         f"{serialized}"
     )

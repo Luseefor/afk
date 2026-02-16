@@ -50,10 +50,12 @@ class MemoryStore(ABC):
         self._is_setup = False
 
     async def __aenter__(self) -> "MemoryStore":
+        """Set up and return the store for use as an async context manager."""
         await self.setup()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> None:
+        """Release resources on context exit."""
         await self.close()
 
     def _ensure_setup(self) -> None:

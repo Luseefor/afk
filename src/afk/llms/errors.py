@@ -22,7 +22,7 @@ class LLMTimeoutError(LLMError):
 
 class LLMRetryableError(LLMError):
     """
-    Transient failures: reate limits, timeouts, provider issues, etc.
+    Transient failures: rate limits, timeouts, provider issues, etc.
     These errors may be retried with backoff.
     """
 
