@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from ..agents.base import BaseAgent
+from ..agents import BaseAgent
 from ..agents.types import AgentRunEvent, AgentState, JSONValue
 from ..core.runner import Runner
 

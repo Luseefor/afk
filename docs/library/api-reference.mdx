@@ -77,13 +77,13 @@ Companion references:
 ## Top-Level Package
 
 - `afk` exports: `agents`, `core`, `llms`, `memory`, `tools`, `evals`
-- Source: [afk/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/__init__.py)
+- Source: [afk/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/__init__.py)
 
 ---
 
 ## `afk.agents`
 
-Source: [afk/agents/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/agents/__init__.py)
+Source: [afk/agents/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/agents/__init__.py)
 
 ### Core Agent Classes
 
@@ -94,9 +94,9 @@ Source: [afk/agents/__init__.py](https://github.com/socioy/afk/blob/main/src/afk
 
 Primary source:
 
-- [afk/agents/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/base.py)
-- [afk/agents/chat.py](https://github.com/socioy/afk/blob/main/src/afk/agents/chat.py)
-- [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
+- [afk/agents/core/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/core/base.py)
+- [afk/agents/core/chat.py](https://github.com/socioy/afk/blob/main/src/afk/agents/core/chat.py)
+- [afk/agents/prompts/store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompts/store.py)
 
 #### `BaseAgent(...)` constructor behavior
 
@@ -151,7 +151,7 @@ Validation/edge cases:
 
 ### Policy API
 
-Source: [afk/agents/policy.py](https://github.com/socioy/afk/blob/main/src/afk/agents/policy.py)
+Source: [afk/agents/policy/engine.py](https://github.com/socioy/afk/blob/main/src/afk/agents/policy/engine.py)
 
 - `PolicyRuleCondition`
 - `PolicyRule`
@@ -169,7 +169,7 @@ Behavior:
 
 ### Versioning API
 
-Source: [afk/agents/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/versioning.py)
+Source: [afk/agents/lifecycle/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/lifecycle/versioning.py)
 
 Constants:
 
@@ -194,7 +194,7 @@ Behavior:
 
 ### Agent Runtime Types
 
-Source: [afk/agents/types.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types.py)
+Source: [afk/agents/types/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types/__init__.py)
 
 Exported types:
 
@@ -254,18 +254,18 @@ Exported errors:
 
 ## `afk.core`
 
-Source: [afk/core/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/core/__init__.py)
+Source: [afk/core/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/core/__init__.py)
 
 ### Runner API
 
 Source:
 
 - [afk/core/runner.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner.py)
-- [afk/core/runner_api.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_api.py)
-- [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
-- [afk/core/runner_interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_interaction.py)
-- [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
-- [afk/core/runner_types.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_types.py)
+- [afk/core/runner/api.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/api.py)
+- [afk/core/runner/execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/execution.py)
+- [afk/core/runner/interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/interaction.py)
+- [afk/core/runner/internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/internals.py)
+- [afk/core/runner/types.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/types.py)
 
 Exported:
 
@@ -354,7 +354,7 @@ Behavior:
 
 ## `afk.llms`
 
-Source: [afk/llms/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/llms/__init__.py)
+Source: [afk/llms/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/llms/__init__.py)
 
 ### Core Interfaces
 
@@ -505,7 +505,7 @@ Exported errors:
 
 ## `afk.memory`
 
-Source: [afk/memory/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/memory/__init__.py)
+Source: [afk/memory/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/memory/__init__.py)
 
 Exported:
 
@@ -561,7 +561,7 @@ Important edge cases:
 
 ## `afk.tools`
 
-Source: [afk/tools/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/tools/__init__.py)
+Source: [afk/tools/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/tools/__init__.py)
 
 ### Core Tool Types
 
@@ -699,7 +699,7 @@ Exported:
 
 ## `afk.evals`
 
-Source: [afk/evals/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/evals/__init__.py)
+Source: [afk/evals/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/evals/__init__.py)
 
 Exported:
 

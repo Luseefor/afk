@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from afk.agents.versioning import (
+from afk.agents.lifecycle.versioning import (
     AGENT_EVENT_SCHEMA_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     check_checkpoint_schema_version,

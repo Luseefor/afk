@@ -12,7 +12,7 @@ Usage::
 
 from __future__ import annotations
 
-from .agents.base import Agent
+from .agents import Agent
 from .agents.types import AgentResult
 from .core.runner import Runner
 from .tools.core.base import ToolResult

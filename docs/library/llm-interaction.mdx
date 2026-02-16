@@ -21,12 +21,12 @@ This document describes how AFK constructs, validates, executes, retries, and re
 
 Primary code paths:
 
-- [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
-- [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
+- [afk/core/runner/execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/execution.py)
+- [afk/core/runner/internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/internals.py)
 - [afk/llms/llm.py](https://github.com/socioy/afk/blob/main/src/afk/llms/llm.py)
 - [afk/llms/factory.py](https://github.com/socioy/afk/blob/main/src/afk/llms/factory.py)
-- [afk/agents/resolution.py](https://github.com/socioy/afk/blob/main/src/afk/agents/resolution.py)
-- [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
+- [afk/agents/model/resolution.py](https://github.com/socioy/afk/blob/main/src/afk/agents/model/resolution.py)
+- [afk/agents/prompts/store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompts/store.py)
 
 ## Required Capabilities
 
@@ -88,15 +88,18 @@ For each step, runner builds `LLMRequest` with:
 ## Model Resolution and Fallback
 
 Initial resolution:
+
 - done by `resolve_model_to_llm(...)`
 - supports explicit adapter prefixes and inferred defaults
 
 Fallback chain:
+
 - built by `_build_llm_candidates(...)`
 - primary + unique models from `FailSafeConfig.fallback_model_chain`
 - deduplicated by `(adapter, normalized_model)`
 
 Circuit breaker key for LLM dependency:
+
 - `llm:{adapter}:{normalized_model}`
 
 ## Retry and Idempotency
@@ -108,6 +111,7 @@ In `LLM` base class:
 - Chat/stream retry eligibility depends on idempotency safety rules.
 
 In runner path:
+
 - request is created with step-scoped idempotency key.
 - fallback model attempts are handled at runner level.
 

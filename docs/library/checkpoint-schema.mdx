@@ -20,11 +20,11 @@ This document defines runtime checkpoint keys, phases, and payload expectations.
 
 Primary code paths:
 
-- [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
-- [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
-- [afk/core/runner_interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_interaction.py)
-- [afk/agents/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/runtime.py)
-- [afk/agents/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/versioning.py)
+- [afk/core/runner/internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/internals.py)
+- [afk/core/runner/execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/execution.py)
+- [afk/core/runner/interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/interaction.py)
+- [afk/agents/lifecycle/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/lifecycle/runtime.py)
+- [afk/agents/lifecycle/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/lifecycle/versioning.py)
 
 ## Required Capabilities
 
@@ -69,20 +69,20 @@ Observed checkpoint phases in runner paths:
 
 ## Payload Keys by Phase
 
-| Phase | Typical payload keys |
-| --- | --- |
-| `run_started` | `agent_name`, `resumed` |
-| `step_started` | `state`, `message_count` |
-| `pre_subagent_batch` | `targets`, `router_parallel` |
-| `post_subagent_batch` | `success_count`, `failure_count` |
-| `pre_llm` | `model`, `provider`, `message_count` |
-| `post_llm` | `model`, `provider`, `finish_reason`, `tool_call_count`, `session_token`, `checkpoint_token`, `total_cost_usd` |
-| `pre_tool_batch` | `tool_call_count` |
-| `post_tool_batch` | `tool_calls_total`, `tool_failures` |
-| `paused` | `kind`, and either `reason` or `prompt` |
-| `resumed` | `kind` |
-| `runtime_state` | full snapshot payload (see below) |
-| `run_terminal` | `state`, optional `message`, optional model fields, `terminal_result` |
+| Phase                 | Typical payload keys                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `run_started`         | `agent_name`, `resumed`                                                                                        |
+| `step_started`        | `state`, `message_count`                                                                                       |
+| `pre_subagent_batch`  | `targets`, `router_parallel`                                                                                   |
+| `post_subagent_batch` | `success_count`, `failure_count`                                                                               |
+| `pre_llm`             | `model`, `provider`, `message_count`                                                                           |
+| `post_llm`            | `model`, `provider`, `finish_reason`, `tool_call_count`, `session_token`, `checkpoint_token`, `total_cost_usd` |
+| `pre_tool_batch`      | `tool_call_count`                                                                                              |
+| `post_tool_batch`     | `tool_calls_total`, `tool_failures`                                                                            |
+| `paused`              | `kind`, and either `reason` or `prompt`                                                                        |
+| `resumed`             | `kind`                                                                                                         |
+| `runtime_state`       | full snapshot payload (see below)                                                                              |
+| `run_terminal`        | `state`, optional `message`, optional model fields, `terminal_result`                                          |
 
 ## `runtime_state` Payload Shape
 
@@ -146,6 +146,7 @@ State retention keeps resume-critical keys by design:
 - bounded effect rows per run
 
 Reference implementation:
+
 - [afk/memory/lifecycle.py](https://github.com/socioy/afk/blob/main/src/afk/memory/lifecycle.py)
 
 ## Implementation Checklist

@@ -17,8 +17,8 @@ from afk.agents.errors import (
     AgentInterruptedError,
     SkillResolutionError,
 )
-from afk.agents.resolution import resolve_model_to_llm
-from afk.agents.runtime import effect_state_key, json_hash
+from afk.agents.model.resolution import resolve_model_to_llm
+from afk.agents.lifecycle.runtime import effect_state_key, json_hash
 from afk.agents.types import (
     AgentRunEvent,
     ApprovalDecision,
@@ -757,7 +757,7 @@ def test_interaction_mode_requires_provider():
 
 
 def test_memory_fallback_emits_warning(monkeypatch):
-    from afk.core import runner as runner_module
+    import afk.core.runner.internals as runner_module
 
     def _boom():
         raise RuntimeError("backend unavailable")
@@ -863,7 +863,7 @@ def test_resume_rejects_incompatible_checkpoint_schema():
 
 
 def test_effect_replay_skips_side_effect_tool_execution(monkeypatch):
-    import afk.core.runner as runner_module
+    import afk.core.runner.internals as runner_module
 
     global _COUNTING_ADD_CALLS
     _COUNTING_ADD_CALLS = 0
@@ -912,7 +912,7 @@ def test_effect_replay_skips_side_effect_tool_execution(monkeypatch):
 
 
 def test_effect_replay_input_hash_mismatch_raises(monkeypatch):
-    import afk.core.runner as runner_module
+    import afk.core.runner.internals as runner_module
 
     global _COUNTING_ADD_CALLS
     _COUNTING_ADD_CALLS = 0
@@ -957,7 +957,7 @@ def test_effect_replay_input_hash_mismatch_raises(monkeypatch):
 def test_restart_from_checkpoint_replays_effect_without_duplicate_side_effect(
     monkeypatch,
 ):
-    import afk.core.runner as runner_module
+    import afk.core.runner.internals as runner_module
 
     global _COUNTING_ADD_CALLS
     _COUNTING_ADD_CALLS = 0

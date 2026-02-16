@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Awaitable
 
-from ..agents.base import BaseAgent
+from ..agents import BaseAgent
 from ..llms.types import JSONValue
 from .types import TaskItem, TaskQueue
 

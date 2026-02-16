@@ -7,11 +7,11 @@ This page explains how AFK skills work in production: resolution, prompt injecti
 
 Primary code paths:
 
-- [afk/agents/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/base.py)
-- [afk/agents/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/runtime.py)
+- [afk/agents/core/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/core/base.py)
+- [afk/agents/lifecycle/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/lifecycle/runtime.py)
 - [afk/tools/prebuilts/skills.py](https://github.com/socioy/afk/blob/main/src/afk/tools/prebuilts/skills.py)
-- [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
-- [afk/agents/types.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types.py)
+- [afk/core/runner/execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/execution.py)
+- [afk/agents/types/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types/__init__.py)
 - [afk/agents/errors.py](https://github.com/socioy/afk/blob/main/src/afk/agents/errors.py)
 
 ## TL;DR
