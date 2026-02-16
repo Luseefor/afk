@@ -14,9 +14,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..core.base import Tool
-from ..core.decorator import tool
-from ...agents.errors import SkillAccessError
+from afk.tools.core import Tool
+from afk.tools.core.decorator import tool
+from afk.tools.prebuilts.errors import FileAccessError
 
 
 class _ListDirectoryArgs(BaseModel):
@@ -32,12 +32,12 @@ class _ReadFileArgs(BaseModel):
 def build_runtime_tools(*, root_dir: Path) -> list[Tool[Any, Any]]:
     root = root_dir.resolve()
 
-    @tool(args_model=_ListDirectoryArgs, name="list_directory")
+    @tool(args_model=_ListDirectoryArgs, name="list_directory", description="List the contents of a directory. Returns a list of entries with their name, path, and type (file or directory).")
     async def list_directory(args: _ListDirectoryArgs) -> dict[str, Any]:
         target = (root / args.path).resolve()
         _ensure_inside(target, root)
         if not target.exists() or not target.is_dir():
-            raise SkillAccessError(f"Directory not found: {args.path}")
+            raise FileAccessError(f"Directory not found: {args.path}")
 
         entries = []
         for row in sorted(target.iterdir()):
@@ -53,12 +53,12 @@ def build_runtime_tools(*, root_dir: Path) -> list[Tool[Any, Any]]:
                 break
         return {"root": str(root), "path": str(target), "entries": entries}
 
-    @tool(args_model=_ReadFileArgs, name="read_file")
+    @tool(args_model=_ReadFileArgs, name="read_file", description="Read the contents of a file.")
     async def read_file(args: _ReadFileArgs) -> dict[str, Any]:
         target = (root / args.path).resolve()
         _ensure_inside(target, root)
         if not target.exists() or not target.is_file():
-            raise SkillAccessError(f"File not found: {args.path}")
+            raise FileAccessError(f"File not found: {args.path}")
         text = target.read_text(encoding="utf-8")
         truncated = len(text) > args.max_chars
         if truncated:
@@ -74,8 +74,12 @@ def build_runtime_tools(*, root_dir: Path) -> list[Tool[Any, Any]]:
 
 
 def _ensure_inside(path: Path, root: Path) -> None:
+    """
+    Ensures that the given path is inside the root directory. 
+    Raises FileAccessError if the path escapes the root.
+    """
     try:
         path.relative_to(root)
     except ValueError as e:
-        raise SkillAccessError(f"Path '{path}' escapes root '{root}'") from e
+        raise FileAccessError(f"Path '{path}' escapes root '{root}'") from e
 

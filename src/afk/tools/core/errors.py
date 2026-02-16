@@ -11,9 +11,7 @@ from __future__ import annotations
 
 class AFKToolError(Exception):
     """Base exception for all AFK tool-related errors."""
-
     pass
-
 
 class ToolValidationError(AFKToolError):
     pass
