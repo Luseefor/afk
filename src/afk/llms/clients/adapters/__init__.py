@@ -1,4 +1,10 @@
-"""Provider adapter implementations."""
+"""
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
+Provider adapter implementations.
+"""
 
 from .anthropic_agent import AnthropicAgentClient
 from .litellm import LiteLLMClient

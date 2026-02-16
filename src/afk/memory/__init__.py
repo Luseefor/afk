@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module provides the public API for the AFK memory subsystem, including models, stores, and utilities.
 """
+
+from __future__ import annotations
+
 
 from .models import JsonObject, JsonValue, LongTermMemory, MemoryEvent, now_ms, new_id
 from .store import (

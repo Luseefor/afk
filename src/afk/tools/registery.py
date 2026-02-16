@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -10,6 +8,9 @@ It supports registering sync/async tools (tools are executed async via Tool/Base
 optional entry-point plugin discovery, concurrency limiting, allow/deny policies,
 registry-level middlewares (wrap ALL tools), and exporting tool specs to LLM tool-calling formats.
 """
+
+from __future__ import annotations
+
 
 import asyncio
 import inspect

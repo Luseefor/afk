@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module defines common provider-agnostic types used in LLM interactions.
 """
+
+from __future__ import annotations
+
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, AsyncIterator, Literal, NotRequired, Protocol, TypeAlias, TypedDict

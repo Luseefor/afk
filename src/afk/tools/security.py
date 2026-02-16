@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Sandbox and secret-scoping primitives for tool execution.
 """
+
+from __future__ import annotations
+
 
 from dataclasses import dataclass, field
 from pathlib import Path

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -8,6 +6,9 @@ See LICENSE file for full license text.
 This module provides decorators for defining tools, prehooks, posthooks, and middlewares in a concise way.
 It also supports registry-level middlewares via @registry_middleware.
 """
+
+from __future__ import annotations
+
 
 import inspect
 from typing import Any, Callable, Optional, Type, TypeVar

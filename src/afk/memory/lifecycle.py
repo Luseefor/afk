@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Memory lifecycle helpers for retention and compaction.
 """
+
+from __future__ import annotations
+
 
 from collections import defaultdict
 from dataclasses import dataclass, field

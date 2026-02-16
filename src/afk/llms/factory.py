@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Factory utilities for constructing concrete LLM adapters.
 """
+
+from __future__ import annotations
+
 
 import os
 from typing import TYPE_CHECKING, Callable, Mapping

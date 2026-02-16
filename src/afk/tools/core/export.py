@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -10,6 +8,9 @@ Tool export utilities for LiteLLM.
 LiteLLM expects OpenAI-compatible tool definitions for tool/function calling.
 This module exports AFK Tool/ToolSpec into LiteLLM-ready payloads.
 """
+
+from __future__ import annotations
+
 
 from typing import Any, Dict, Iterable, List
 

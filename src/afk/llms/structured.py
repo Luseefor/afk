@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -8,6 +6,9 @@ See LICENSE file for full license text.
 Module for structured llm outputs
 Note: currently we are using litellm which handles the structured output parsing and validation. In future, we might move away from litellm and implement using major llm providers' function calling / tool calling features. In that case, we can implement the output parsing and validation logic in this module.
 """
+
+from __future__ import annotations
+
 import json
 from typing import TypeVar
 from pydantic import BaseModel, ValidationError

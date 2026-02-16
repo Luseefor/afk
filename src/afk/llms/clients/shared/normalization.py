@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Shared client-side normalization helpers used across LLM adapters.
 """
+
+from __future__ import annotations
+
 
 from dataclasses import asdict, is_dataclass
 from typing import Any

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module defines abstract interfaces and shared capabilities for memory store backends.
 """
+
+from __future__ import annotations
+
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

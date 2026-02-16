@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 Module defining middleware protocols and stack for LLM.
 """
+
+from __future__ import annotations
+
 
 from dataclasses import dataclass
 from typing import AsyncIterator, Awaitable, Callable, Protocol

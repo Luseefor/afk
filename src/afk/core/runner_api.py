@@ -1,4 +1,8 @@
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Public runner API and lifecycle entrypoints.
 """
 

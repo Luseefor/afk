@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module provides an in-process memory store implementation for local development and tests.
 """
+
+from __future__ import annotations
+
 
 import asyncio
 from typing import Optional, Sequence

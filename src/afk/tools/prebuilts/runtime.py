@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 General runtime-safe filesystem tools.
 """
+
+from __future__ import annotations
+
 
 from pathlib import Path
 from typing import Any

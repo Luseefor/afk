@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module defines the types and base classes for tools that can be registered and used by the AFK agent.
 """
+
+from __future__ import annotations
+
 
 import asyncio
 import functools

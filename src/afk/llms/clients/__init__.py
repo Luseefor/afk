@@ -1,4 +1,9 @@
-"""LLM client package.
+"""
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
+LLM client package.
 
 Structure:
 - `adapters/`: provider-specific adapter implementations

@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Prebuilt tools for skill discovery, reading, and constrained command execution.
 """
+
+from __future__ import annotations
+
 
 import asyncio
 from pathlib import Path

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module defines custom exceptions for error handling in the llm package.
 """
+
+from __future__ import annotations
+
 
 
 class LLMError(Exception):

@@ -1,12 +1,12 @@
-from __future__ import annotations
-import os
-
 """
 MIT License
 Copyright (c) 2026 socioy
 See LICENSE file for full license text.
-
 """
+
+from __future__ import annotations
+import os
+
 from dataclasses import dataclass
 
 
