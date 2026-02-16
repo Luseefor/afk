@@ -1,6 +1,6 @@
 """
 MIT License
-Copyright (c) 2026 socioy
+Copyright (c) 2026 arpan404
 See LICENSE file for full license text.
 
 Observability reporters — output metrics in various formats.

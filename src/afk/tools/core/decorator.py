@@ -1,6 +1,6 @@
 """
 MIT License
-Copyright (c) 2026 socioy
+Copyright (c) 2026 arpan404
 See LICENSE file for full license text.
 
 This module provides decorators for defining tools, prehooks, posthooks, and middlewares in a concise way.

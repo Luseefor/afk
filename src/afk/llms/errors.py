@@ -1,6 +1,6 @@
 """
 MIT License
-Copyright (c) 2026 socioy
+Copyright (c) 2026 arpan404
 See LICENSE file for full license text.
 
 This module defines custom exceptions for error handling in the llm package.
