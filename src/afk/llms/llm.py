@@ -1,10 +1,11 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
 See LICENSE file for full license text.
 """
+
+from __future__ import annotations
+
 
 import asyncio
 import inspect

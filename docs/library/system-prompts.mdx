@@ -7,8 +7,8 @@ AFK can load system prompts from files automatically for every `BaseAgent`-based
 
 Primary code paths:
 
-- [afk/agents/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/base.py)
-- [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
+- [afk/agents/core/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/core/base.py)
+- [afk/agents/prompts/store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompts/store.py)
 - [afk/agents/errors.py](https://github.com/socioy/afk/blob/main/src/afk/agents/errors.py)
 
 ## TL;DR
@@ -34,11 +34,11 @@ Primary code paths:
 
 ## Prompt Source Precedence
 
-| Order | Condition | Behavior |
-| --- | --- | --- |
-| 1 | `instructions` is set | Uses inline string/callable and ignores file loading |
-| 2 | `instructions` is `None`, `instruction_file` set | Loads and renders that file |
-| 3 | both are `None` | Auto-resolves filename from agent name and loads it |
+| Order | Condition                                        | Behavior                                             |
+| ----- | ------------------------------------------------ | ---------------------------------------------------- |
+| 1     | `instructions` is set                            | Uses inline string/callable and ignores file loading |
+| 2     | `instructions` is `None`, `instruction_file` set | Loads and renders that file                          |
+| 3     | both are `None`                                  | Auto-resolves filename from agent name and loads it  |
 
 ## Prompt Root Resolution
 
@@ -132,14 +132,14 @@ Cache guarantees:
 
 ## Failure Modes
 
-| Scenario | Result |
-| --- | --- |
+| Scenario                                       | Result                              |
+| ---------------------------------------------- | ----------------------------------- |
 | `instructions` and `instruction_file` both set | inline/callable `instructions` wins |
-| auto prompt file missing | `PromptResolutionError` |
-| explicit `instruction_file` missing | `PromptResolutionError` |
-| `instruction_file` escapes prompt root | `PromptAccessError` |
-| template references unknown variable | `PromptTemplateError` |
-| prompt root env var set but empty | `PromptResolutionError` |
+| auto prompt file missing                       | `PromptResolutionError`             |
+| explicit `instruction_file` missing            | `PromptResolutionError`             |
+| `instruction_file` escapes prompt root         | `PromptAccessError`                 |
+| template references unknown variable           | `PromptTemplateError`               |
+| prompt root env var set but empty              | `PromptResolutionError`             |
 
 ## Examples
 

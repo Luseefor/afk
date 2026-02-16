@@ -30,7 +30,7 @@ Use this as the exhaustive API map for internal and public code paths.
 
 ### Module `afk/agents/__init__.py`
 
-Source: [afk/agents/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/agents/__init__.py)
+Source: [afk/agents/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/agents/__init__.py)
 
 Module summary: AFK agent public API.
 
@@ -38,7 +38,7 @@ Symbols: none (re-export or namespace module).
 
 ### Module `afk/agents/base.py`
 
-Source: [afk/agents/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/base.py)
+Source: [afk/agents/core/base.py](https://github.com/socioy/afk/blob/main/src/afk/agents/core/base.py)
 
 Module summary: Base agent abstractions with DX-first constructor.
 
@@ -55,7 +55,7 @@ Top-level symbols:
 
 ### Module `afk/agents/chat.py`
 
-Source: [afk/agents/chat.py](https://github.com/socioy/afk/blob/main/src/afk/agents/chat.py)
+Source: [afk/agents/core/chat.py](https://github.com/socioy/afk/blob/main/src/afk/agents/core/chat.py)
 
 Module summary: Chat-oriented agent convenience wrapper.
 
@@ -95,7 +95,7 @@ Top-level symbols:
 
 ### Module `afk/agents/prompt_store.py`
 
-Source: [afk/agents/prompt_store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompt_store.py)
+Source: [afk/agents/prompts/store.py](https://github.com/socioy/afk/blob/main/src/afk/agents/prompts/store.py)
 
 Module summary: Prompt loading and caching utilities for agent system instructions.
 
@@ -116,7 +116,7 @@ Top-level symbols:
 
 ### Module `afk/agents/policy.py`
 
-Source: [afk/agents/policy.py](https://github.com/socioy/afk/blob/main/src/afk/agents/policy.py)
+Source: [afk/agents/policy/engine.py](https://github.com/socioy/afk/blob/main/src/afk/agents/policy/engine.py)
 
 Module summary: Rule-based policy engine for agent/runtime controls.
 
@@ -139,7 +139,7 @@ Top-level symbols:
 
 ### Module `afk/agents/resolution.py`
 
-Source: [afk/agents/resolution.py](https://github.com/socioy/afk/blob/main/src/afk/agents/resolution.py)
+Source: [afk/agents/model/resolution.py](https://github.com/socioy/afk/blob/main/src/afk/agents/model/resolution.py)
 
 Module summary: LLM resolution helpers for agent runtime.
 
@@ -151,7 +151,7 @@ Top-level symbols:
 
 ### Module `afk/agents/runtime.py`
 
-Source: [afk/agents/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/runtime.py)
+Source: [afk/agents/lifecycle/runtime.py](https://github.com/socioy/afk/blob/main/src/afk/agents/lifecycle/runtime.py)
 
 Module summary: Runtime helpers used by the core runner.
 
@@ -180,7 +180,7 @@ Top-level symbols:
 
 ### Module `afk/agents/security.py`
 
-Source: [afk/agents/security.py](https://github.com/socioy/afk/blob/main/src/afk/agents/security.py)
+Source: [afk/agents/security/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/agents/security/__init__.py)
 
 Module summary: Prompt/tool-output security helpers.
 
@@ -192,59 +192,59 @@ Top-level symbols:
 - `def sanitize_json_value(value: Any, *, max_chars: int)` at `afk/agents/security.py:50` - Recursively sanitize JSON-like values from untrusted tool output.
 - `def render_untrusted_tool_message(*, tool_name: str, payload: dict[str, Any], max_chars: int)` at `afk/agents/security.py:65` - Render sanitized untrusted tool output for model-visible transcript.
 
-### Module `afk/agents/types.py`
+### Module `afk/agents/types/__init__.py`
 
-Source: [afk/agents/types.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types.py)
+Source: [afk/agents/types/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/agents/types/__init__.py)
 
 Module summary: Provider-neutral types for AFK agent runtime contracts.
 
 Top-level symbols:
 
-- `class SkillRef` at `afk/agents/types.py:79` - Resolved skill metadata for a specific skill name.
-- `class SkillResolutionResult` at `afk/agents/types.py:97` - Result of resolving requested skills from the skills directory.
-- `class SkillToolPolicy` at `afk/agents/types.py:111` - Security and execution limits applied to skill command tools.
-- `class UsageAggregate` at `afk/agents/types.py:131` - Aggregated token usage across LLM calls in a run.
+- `class SkillRef` at `afk/agents/types/__init__.py:79` - Resolved skill metadata for a specific skill name.
+- `class SkillResolutionResult` at `afk/agents/types/__init__.py:97` - Result of resolving requested skills from the skills directory.
+- `class SkillToolPolicy` at `afk/agents/types/__init__.py:111` - Security and execution limits applied to skill command tools.
+- `class UsageAggregate` at `afk/agents/types/__init__.py:131` - Aggregated token usage across LLM calls in a run.
   Methods:
-  - `sync add_usage(self, usage: Usage)` at `afk/agents/types.py:145` - Return a new aggregate with additional usage applied.
-- `class ToolExecutionRecord` at `afk/agents/types.py:163` - Normalized record for one tool execution.
-- `class SubagentExecutionRecord` at `afk/agents/types.py:185` - Normalized record for one subagent execution.
-- `class SkillReadRecord` at `afk/agents/types.py:205` - Record of reading skill metadata or files.
-- `class CommandExecutionRecord` at `afk/agents/types.py:221` - Record for skill/runtime command execution.
-- `class AgentRunEvent` at `afk/agents/types.py:241` - Event emitted during agent execution lifecycle.
-- `class PolicyEvent` at `afk/agents/types.py:267` - Runtime policy hook payload.
-- `class PolicyDecision` at `afk/agents/types.py:295` - Action selected by policy engine or policy roles.
-- `class ApprovalRequest` at `afk/agents/types.py:317` - Request payload for human approval interaction.
-- `class UserInputRequest` at `afk/agents/types.py:337` - Request payload for human user-input interaction.
-- `class DeferredDecision` at `afk/agents/types.py:357` - Deferred interaction token returned by interaction providers.
-- `class ApprovalDecision` at `afk/agents/types.py:371` - Resolved decision for an approval request.
-- `class UserInputDecision` at `afk/agents/types.py:385` - Resolved decision for a user-input request.
-- `class RouterInput` at `afk/agents/types.py:401` - Payload passed into subagent router callbacks.
-- `class RouterDecision` at `afk/agents/types.py:421` - Subagent routing decision returned by router callbacks.
-- `class FailSafeConfig` at `afk/agents/types.py:437` - Runtime limits and failure-policy settings for an agent run.
-- `class AgentResult` at `afk/agents/types.py:477` - Terminal result payload returned by runner/agent calls.
-- `class InstructionRole` at `afk/agents/types.py:529` - Hook protocol for dynamic instruction augmentation.
+  - `sync add_usage(self, usage: Usage)` at `afk/agents/types/__init__.py:145` - Return a new aggregate with additional usage applied.
+- `class ToolExecutionRecord` at `afk/agents/types/__init__.py:163` - Normalized record for one tool execution.
+- `class SubagentExecutionRecord` at `afk/agents/types/__init__.py:185` - Normalized record for one subagent execution.
+- `class SkillReadRecord` at `afk/agents/types/__init__.py:205` - Record of reading skill metadata or files.
+- `class CommandExecutionRecord` at `afk/agents/types/__init__.py:221` - Record for skill/runtime command execution.
+- `class AgentRunEvent` at `afk/agents/types/__init__.py:241` - Event emitted during agent execution lifecycle.
+- `class PolicyEvent` at `afk/agents/types/__init__.py:267` - Runtime policy hook payload.
+- `class PolicyDecision` at `afk/agents/types/__init__.py:295` - Action selected by policy engine or policy roles.
+- `class ApprovalRequest` at `afk/agents/types/__init__.py:317` - Request payload for human approval interaction.
+- `class UserInputRequest` at `afk/agents/types/__init__.py:337` - Request payload for human user-input interaction.
+- `class DeferredDecision` at `afk/agents/types/__init__.py:357` - Deferred interaction token returned by interaction providers.
+- `class ApprovalDecision` at `afk/agents/types/__init__.py:371` - Resolved decision for an approval request.
+- `class UserInputDecision` at `afk/agents/types/__init__.py:385` - Resolved decision for a user-input request.
+- `class RouterInput` at `afk/agents/types/__init__.py:401` - Payload passed into subagent router callbacks.
+- `class RouterDecision` at `afk/agents/types/__init__.py:421` - Subagent routing decision returned by router callbacks.
+- `class FailSafeConfig` at `afk/agents/types/__init__.py:437` - Runtime limits and failure-policy settings for an agent run.
+- `class AgentResult` at `afk/agents/types/__init__.py:477` - Terminal result payload returned by runner/agent calls.
+- `class InstructionRole` at `afk/agents/types/__init__.py:529` - Hook protocol for dynamic instruction augmentation.
   Methods:
-  - `sync __call__(self, context: dict[str, JSONValue], state: AgentState)` at `afk/agents/types.py:537` - Return additional instruction text for current state.
-- `class PolicyRole` at `afk/agents/types.py:555` - Hook protocol for runtime policy decisions.
+  - `sync __call__(self, context: dict[str, JSONValue], state: AgentState)` at `afk/agents/types/__init__.py:537` - Return additional instruction text for current state.
+- `class PolicyRole` at `afk/agents/types/__init__.py:555` - Hook protocol for runtime policy decisions.
   Methods:
-  - `sync __call__(self, event: PolicyEvent)` at `afk/agents/types.py:562` - Return a policy decision for the given runtime event.
-- `class SubagentRouter` at `afk/agents/types.py:578` - Hook protocol for selecting subagents during execution.
+  - `sync __call__(self, event: PolicyEvent)` at `afk/agents/types/__init__.py:562` - Return a policy decision for the given runtime event.
+- `class SubagentRouter` at `afk/agents/types/__init__.py:578` - Hook protocol for selecting subagents during execution.
   Methods:
-  - `sync __call__(self, data: RouterInput)` at `afk/agents/types.py:586` - Return a routing decision for subagent execution.
-- `class AgentRunHandle` at `afk/agents/types.py:602` - Protocol for asynchronous run lifecycle controls.
+  - `sync __call__(self, data: RouterInput)` at `afk/agents/types/__init__.py:586` - Return a routing decision for subagent execution.
+- `class AgentRunHandle` at `afk/agents/types/__init__.py:602` - Protocol for asynchronous run lifecycle controls.
   Methods:
-  - `sync events(self)` at `afk/agents/types.py:606` - Event stream for the run lifecycle.
-  - `async pause(self)` at `afk/agents/types.py:615` - Pause cooperative execution at safe boundaries.
-  - `async resume(self)` at `afk/agents/types.py:619` - Resume execution after pause.
-  - `async cancel(self)` at `afk/agents/types.py:623` - Cancel run and terminate with no result.
-  - `async interrupt(self)` at `afk/agents/types.py:627` - Interrupt in-flight operations where supported.
-  - `async await_result(self)` at `afk/agents/types.py:631` - Await terminal result.
-- `def json_value_from_tool_result(value: Any)` at `afk/agents/types.py:641` - Best-effort conversion of tool outputs to JSON-safe payloads.
-- `def tool_record_from_result(tool_name: str, tool_call_id: str | None, result: ToolResult[Any], *, latency_ms: float | None=None)` at `afk/agents/types.py:664` - Convert a `ToolResult` into a normalized execution record.
+  - `sync events(self)` at `afk/agents/types/__init__.py:606` - Event stream for the run lifecycle.
+  - `async pause(self)` at `afk/agents/types/__init__.py:615` - Pause cooperative execution at safe boundaries.
+  - `async resume(self)` at `afk/agents/types/__init__.py:619` - Resume execution after pause.
+  - `async cancel(self)` at `afk/agents/types/__init__.py:623` - Cancel run and terminate with no result.
+  - `async interrupt(self)` at `afk/agents/types/__init__.py:627` - Interrupt in-flight operations where supported.
+  - `async await_result(self)` at `afk/agents/types/__init__.py:631` - Await terminal result.
+- `def json_value_from_tool_result(value: Any)` at `afk/agents/types/__init__.py:641` - Best-effort conversion of tool outputs to JSON-safe payloads.
+- `def tool_record_from_result(tool_name: str, tool_call_id: str | None, result: ToolResult[Any], *, latency_ms: float | None=None)` at `afk/agents/types/__init__.py:664` - Convert a `ToolResult` into a normalized execution record.
 
 ### Module `afk/agents/versioning.py`
 
-Source: [afk/agents/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/versioning.py)
+Source: [afk/agents/lifecycle/versioning.py](https://github.com/socioy/afk/blob/main/src/afk/agents/lifecycle/versioning.py)
 
 Module summary: Schema versioning helpers for agent events/checkpoints.
 
@@ -261,7 +261,7 @@ Top-level symbols:
 
 ### Module `afk/core/__init__.py`
 
-Source: [afk/core/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/core/__init__.py)
+Source: [afk/core/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/core/__init__.py)
 
 Module summary: Core runtime exports.
 
@@ -306,135 +306,135 @@ Top-level symbols:
 
 - `class Runner` at `afk/core/runner.py:15` - Canonical runtime runner for AFK agents.
 
-### Module `afk/core/runner_api.py`
+### Module `afk/core/runner/api.py`
 
-Source: [afk/core/runner_api.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_api.py)
+Source: [afk/core/runner/api.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/api.py)
 
 Module summary: Public runner API and lifecycle entrypoints.
 
 Top-level symbols:
 
-- `class RunnerAPIMixin` at `afk/core/runner_api.py:27` - Public API surface for running, resuming, and compacting agent threads.
+- `class RunnerAPIMixin` at `afk/core/runner/api.py:27` - Public API surface for running, resuming, and compacting agent threads.
   Methods:
-  - `sync __init__(self, *, memory_store: MemoryStore | None=None, interaction_provider: InteractionProvider | None=None, policy_engine: PolicyEngine | None=None, telemetry: TelemetrySink | None=None, config: RunnerConfig | None=None)` at `afk/core/runner_api.py:36` - Initialize a runner API surface with optional runtime dependencies.
-  - `async compact_thread(self, *, thread_id: str, event_policy: RetentionPolicy | None=None, state_policy: StateRetentionPolicy | None=None)` at `afk/core/runner_api.py:82` - Compact retained memory records for a thread.
-  - `async run(self, agent: BaseAgent, *, user_message: str | None=None, context: dict[str, Any] | None=None, thread_id: str | None=None)` at `afk/core/runner_api.py:113` - Execute an agent run and wait for terminal result.
-  - `async resume(self, agent: BaseAgent, *, run_id: str, thread_id: str, context: dict[str, Any] | None=None)` at `afk/core/runner_api.py:147` - Resume a previously checkpointed run and wait for completion.
-  - `async resume_handle(self, agent: BaseAgent, *, run_id: str, thread_id: str, context: dict[str, Any] | None=None)` at `afk/core/runner_api.py:181` - Resume a run and return a live handle for lifecycle control.
-  - `async run_handle(self, agent: BaseAgent, *, user_message: str | None=None, context: dict[str, Any] | None=None, thread_id: str | None=None, _depth: int=0, _lineage: tuple[int, ...]=(), _resume_run_id: str | None=None, _resume_snapshot: dict[str, Any] | None=None)` at `afk/core/runner_api.py:247` - Start execution and return an async run handle.
+  - `sync __init__(self, *, memory_store: MemoryStore | None=None, interaction_provider: InteractionProvider | None=None, policy_engine: PolicyEngine | None=None, telemetry: TelemetrySink | None=None, config: RunnerConfig | None=None)` at `afk/core/runner/api.py:36` - Initialize a runner API surface with optional runtime dependencies.
+  - `async compact_thread(self, *, thread_id: str, event_policy: RetentionPolicy | None=None, state_policy: StateRetentionPolicy | None=None)` at `afk/core/runner/api.py:82` - Compact retained memory records for a thread.
+  - `async run(self, agent: BaseAgent, *, user_message: str | None=None, context: dict[str, Any] | None=None, thread_id: str | None=None)` at `afk/core/runner/api.py:113` - Execute an agent run and wait for terminal result.
+  - `async resume(self, agent: BaseAgent, *, run_id: str, thread_id: str, context: dict[str, Any] | None=None)` at `afk/core/runner/api.py:147` - Resume a previously checkpointed run and wait for completion.
+  - `async resume_handle(self, agent: BaseAgent, *, run_id: str, thread_id: str, context: dict[str, Any] | None=None)` at `afk/core/runner/api.py:181` - Resume a run and return a live handle for lifecycle control.
+  - `async run_handle(self, agent: BaseAgent, *, user_message: str | None=None, context: dict[str, Any] | None=None, thread_id: str | None=None, _depth: int=0, _lineage: tuple[int, ...]=(), _resume_run_id: str | None=None, _resume_snapshot: dict[str, Any] | None=None)` at `afk/core/runner/api.py:247` - Start execution and return an async run handle.
 
-### Module `afk/core/runner_execution.py`
+### Module `afk/core/runner/execution.py`
 
-Source: [afk/core/runner_execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_execution.py)
+Source: [afk/core/runner/execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/execution.py)
 
 Module summary: Core execution loop for the AFK runner.
 
 Top-level symbols:
 
-- `class RunnerExecutionMixin` at `afk/core/runner_execution.py:63` - Implements the main agent loop, tool orchestration, and recovery flow.
+- `class RunnerExecutionMixin` at `afk/core/runner/execution.py:63` - Implements the main agent loop, tool orchestration, and recovery flow.
   Methods:
-  - `async _execute(self, handle: _RunHandle, agent: BaseAgent, *, user_message: str | None, context: dict[str, Any] | None, thread_id: str | None, depth: int, lineage: tuple[int, ...], resume_run_id: str | None=None, resume_snapshot: dict[str, Any] | None=None)` at `afk/core/runner_execution.py:66` - Execute one agent run end-to-end and resolve the run handle.
+  - `async _execute(self, handle: _RunHandle, agent: BaseAgent, *, user_message: str | None, context: dict[str, Any] | None, thread_id: str | None, depth: int, lineage: tuple[int, ...], resume_run_id: str | None=None, resume_snapshot: dict[str, Any] | None=None)` at `afk/core/runner/execution.py:66` - Execute one agent run end-to-end and resolve the run handle.
 
-### Module `afk/core/runner_interaction.py`
+### Module `afk/core/runner/interaction.py`
 
-Source: [afk/core/runner_interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_interaction.py)
+Source: [afk/core/runner/interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/interaction.py)
 
 Module summary: Subagent and interaction/policy orchestration mixin.
 
 Top-level symbols:
 
-- `class RunnerInteractionMixin` at `afk/core/runner_interaction.py:40` - Implements policy evaluation, subagent dispatch, and HITL requests.
+- `class RunnerInteractionMixin` at `afk/core/runner/interaction.py:40` - Implements policy evaluation, subagent dispatch, and HITL requests.
   Methods:
-  - `async _run_subagents(self, *, agent: BaseAgent, targets: list[str], parallel: bool, context: dict[str, Any], thread_id: str, depth: int, lineage: tuple[int, ...], run_id: str, step: int, handle: _RunHandle, memory: MemoryStore, user_id: str | None)` at `afk/core/runner_interaction.py:43` - Execute selected subagents and return records plus bridge text.
-  - `async _call_router(self, agent: BaseAgent, *, run_id: str, thread_id: str, step: int, context: dict[str, Any], messages: list[Message])` at `afk/core/runner_interaction.py:203` - Invoke configured subagent router and normalize response.
-  - `async _evaluate_policy(self, *, agent: BaseAgent, event: PolicyEvent, handle: _RunHandle | None=None, memory: MemoryStore | None=None, user_id: str | None=None, state: AgentState='running')` at `afk/core/runner_interaction.py:258` - Evaluate policy engine and policy roles for runtime event.
-  - `async _emit_policy_audit(self, *, handle: _RunHandle | None, memory: MemoryStore | None, event: PolicyEvent, decision: PolicyDecision, user_id: str | None, state: AgentState)` at `afk/core/runner_interaction.py:347` - Emit normalized policy-decision audit event.
-  - `async _request_approval(self, *, handle: _RunHandle, memory: MemoryStore, run_id: str, thread_id: str, step: int, reason: str, payload: dict[str, Any], user_id: str | None)` at `afk/core/runner_interaction.py:390` - Request approval and handle deferred pause/resume flow.
-  - `async _request_user_input(self, *, handle: _RunHandle, memory: MemoryStore, run_id: str, thread_id: str, step: int, prompt: str, payload: dict[str, Any], user_id: str | None)` at `afk/core/runner_interaction.py:512` - Request user input and handle deferred pause/resume flow.
-  - `sync _is_defer_user_input(self, decision: PolicyDecision)` at `afk/core/runner_interaction.py:634` - Check whether a defer decision represents user-input interaction.
-  - `sync _resolve_user_input_prompt(self, *, tool_name: str, decision: PolicyDecision)` at `afk/core/runner_interaction.py:649` - Resolve prompt text used for user-input interaction requests.
+  - `async _run_subagents(self, *, agent: BaseAgent, targets: list[str], parallel: bool, context: dict[str, Any], thread_id: str, depth: int, lineage: tuple[int, ...], run_id: str, step: int, handle: _RunHandle, memory: MemoryStore, user_id: str | None)` at `afk/core/runner/interaction.py:43` - Execute selected subagents and return records plus bridge text.
+  - `async _call_router(self, agent: BaseAgent, *, run_id: str, thread_id: str, step: int, context: dict[str, Any], messages: list[Message])` at `afk/core/runner/interaction.py:203` - Invoke configured subagent router and normalize response.
+  - `async _evaluate_policy(self, *, agent: BaseAgent, event: PolicyEvent, handle: _RunHandle | None=None, memory: MemoryStore | None=None, user_id: str | None=None, state: AgentState='running')` at `afk/core/runner/interaction.py:258` - Evaluate policy engine and policy roles for runtime event.
+  - `async _emit_policy_audit(self, *, handle: _RunHandle | None, memory: MemoryStore | None, event: PolicyEvent, decision: PolicyDecision, user_id: str | None, state: AgentState)` at `afk/core/runner/interaction.py:347` - Emit normalized policy-decision audit event.
+  - `async _request_approval(self, *, handle: _RunHandle, memory: MemoryStore, run_id: str, thread_id: str, step: int, reason: str, payload: dict[str, Any], user_id: str | None)` at `afk/core/runner/interaction.py:390` - Request approval and handle deferred pause/resume flow.
+  - `async _request_user_input(self, *, handle: _RunHandle, memory: MemoryStore, run_id: str, thread_id: str, step: int, prompt: str, payload: dict[str, Any], user_id: str | None)` at `afk/core/runner/interaction.py:512` - Request user input and handle deferred pause/resume flow.
+  - `sync _is_defer_user_input(self, decision: PolicyDecision)` at `afk/core/runner/interaction.py:634` - Check whether a defer decision represents user-input interaction.
+  - `sync _resolve_user_input_prompt(self, *, tool_name: str, decision: PolicyDecision)` at `afk/core/runner/interaction.py:649` - Resolve prompt text used for user-input interaction requests.
 
-### Module `afk/core/runner_internals.py`
+### Module `afk/core/runner/internals.py`
 
-Source: [afk/core/runner_internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_internals.py)
+Source: [afk/core/runner/internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/internals.py)
 
 Module summary: Runner helpers for persistence, serialization, budgeting, and replay logic.
 
 Top-level symbols:
 
-- `class RunnerInternalsMixin` at `afk/core/runner_internals.py:51` - Shared internal helpers used by the execution and API mixins.
+- `class RunnerInternalsMixin` at `afk/core/runner/internals.py:51` - Shared internal helpers used by the execution and API mixins.
   Methods:
-  - `sync _enforce_budget(self, *, fail_safe: FailSafeConfig, step: int, llm_calls: int, tool_calls: int, started_at_s: float, total_cost_usd: float)` at `afk/core/runner_internals.py:54` - Enforce runtime budget and loop guards.
-  - `async _emit(self, handle: _RunHandle, memory: MemoryStore, event: AgentRunEvent, *, user_id: str | None)` at `afk/core/runner_internals.py:102` - Emit lifecycle event to handle, interaction provider, memory, telemetry.
-  - `async _append_event_with_retry(self, memory: MemoryStore, event: MemoryEvent)` at `afk/core/runner_internals.py:166` - Append memory event with best-effort retry.
-  - `async _ensure_memory_store(self)` at `afk/core/runner_internals.py:191` - Ensure memory store is initialized and ready.
-  - `sync _transition_state(self, current: AgentState, target: AgentState)` at `afk/core/runner_internals.py:210` - Validate and return next state transition.
-  - `async _persist_checkpoint(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, phase: str, payload: dict[str, Any])` at `afk/core/runner_internals.py:223` - Persist checkpoint for step/phase and update latest pointer.
-  - `sync _build_llm_candidates(self, *, primary, fallback_chain: list[str], resolver)` at `afk/core/runner_internals.py:263` - Build ordered unique list of primary + fallback LLM candidates.
-  - `sync _apply_llm_failure_policy(self, policy: str)` at `afk/core/runner_internals.py:294` - Normalize LLM failure policy to runtime action.
-  - `sync _apply_tool_failure_policy(self, policy: str)` at `afk/core/runner_internals.py:310` - Normalize tool failure policy to runtime action.
-  - `sync _apply_subagent_failure_policy(self, policy: str)` at `afk/core/runner_internals.py:326` - Normalize subagent failure policy to runtime action.
-  - `sync _apply_approval_denial_policy(self, policy: str)` at `afk/core/runner_internals.py:342` - Normalize approval denial policy to runtime action.
-  - `sync _resolve_subagent_parallel(self, *, agent_parallelism_mode: str, router_parallel: bool)` at `afk/core/runner_internals.py:358` - Resolve effective subagent parallelism mode.
-  - `sync _build_subagent_context(self, *, context: dict[str, Any], inherit_keys: list[str])` at `afk/core/runner_internals.py:381` - Build subagent context from inherited key allowlist.
-  - `sync _accumulate_cost(self, current_cost: float, response)` at `afk/core/runner_internals.py:405` - Add response cost (if available) to current aggregate cost.
-  - `async _resolve_effect_replay_result(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, tool_call_id: str | None, tool_name: str, call_args: dict[str, Any])` at `afk/core/runner_internals.py:429` - Resolve replayable tool result from effect journal/checkpoint state.
-  - `async _persist_effect_result(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, tool_call_id: str, input_hash: str, output_hash: str, output: Any, success: bool)` at `afk/core/runner_internals.py:499` - Persist tool effect journal row for idempotent replay.
-  - `async _chat_with_interrupt_support(self, *, handle: _RunHandle, llm: Any, req: LLMRequest)` at `afk/core/runner_internals.py:548` - Execute chat call with optional provider interrupt wiring.
-  - `async _persist_runtime_snapshot(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, state: AgentState, context: dict[str, Any], messages: list[Message], llm_calls: int, tool_calls: int, started_at_s: float, usage: UsageAggregate, total_cost_usd: float, session_token: str | None, checkpoint_token: str | None, requested_model: str | None, normalized_model: str | None, provider_adapter: str | None, tool_execs: list[ToolExecutionRecord], sub_execs: list[SubagentExecutionRecord], skill_reads: list[SkillReadRecord], skill_cmd_execs: list[CommandExecutionRecord], final_text: str, final_structured: dict[str, Any] | None, pending_llm_response: LLMResponse | None, final_response: LLMResponse | None, replayed_effect_count: int)` at `afk/core/runner_internals.py:586` - Persist checkpoint payload containing full runtime snapshot.
-  - `sync _restore_runtime_snapshot(self, snapshot: dict[str, Any])` at `afk/core/runner_internals.py:690` - Extract runtime payload from normalized checkpoint snapshot.
-  - `sync _new_id(self, prefix: str)` at `afk/core/runner_internals.py:708` - Generate unique id via runner module indirection.
-  - `sync _create_memory_store_from_env(self)` at `afk/core/runner_internals.py:722` - Create memory store from environment configuration.
-  - `async _load_latest_runtime_snapshot(self, *, memory: MemoryStore, thread_id: str, run_id: str, latest: dict[str, Any])` at `afk/core/runner_internals.py:733` - Load most recent runtime_state checkpoint for resume.
-  - `sync _normalize_checkpoint_record(self, record: dict[str, Any])` at `afk/core/runner_internals.py:776` - Migrate and validate checkpoint record.
-  - `sync _serialize_messages(self, messages: list[Message])` at `afk/core/runner_internals.py:801` - Serialize message objects into checkpoint-friendly dictionaries.
-  - `sync _deserialize_messages(self, value: Any)` at `afk/core/runner_internals.py:835` - Deserialize messages from checkpoint payload.
-  - `sync _serialize_llm_response(self, value: LLMResponse | None)` at `afk/core/runner_internals.py:866` - Serialize optional LLM response for checkpoint persistence.
-  - `sync _deserialize_llm_response(self, value: Any)` at `afk/core/runner_internals.py:903` - Deserialize optional LLM response from checkpoint payload.
-  - `sync _serialize_tool_records(self, rows: list[ToolExecutionRecord])` at `afk/core/runner_internals.py:974` - Serialize tool execution records.
-  - `sync _deserialize_tool_records(self, value: Any)` at `afk/core/runner_internals.py:996` - Deserialize tool execution records.
-  - `sync _serialize_subagent_records(self, rows: list[SubagentExecutionRecord])` at `afk/core/runner_internals.py:1031` - Serialize subagent execution records.
-  - `sync _deserialize_subagent_records(self, value: Any)` at `afk/core/runner_internals.py:1055` - Deserialize subagent execution records.
-  - `sync _serialize_skill_reads(self, rows: list[SkillReadRecord])` at `afk/core/runner_internals.py:1089` - Serialize skill read records.
-  - `sync _deserialize_skill_reads(self, value: Any)` at `afk/core/runner_internals.py:1108` - Deserialize skill read records.
-  - `sync _serialize_command_records(self, rows: list[CommandExecutionRecord])` at `afk/core/runner_internals.py:1139` - Serialize command execution records.
-  - `sync _deserialize_command_records(self, value: Any)` at `afk/core/runner_internals.py:1163` - Deserialize command execution records.
-  - `sync _build_terminal_result(self, *, run_id: str, thread_id: str, state: AgentState, final_text: str, requested_model: str | None, normalized_model: str | None, provider_adapter: str | None, final_structured: dict[str, Any] | None, llm_response: LLMResponse | None, tool_execs: list[ToolExecutionRecord], sub_execs: list[SubagentExecutionRecord], skills: list[Any], skill_reads: list[SkillReadRecord], skill_cmd_execs: list[CommandExecutionRecord], usage: UsageAggregate, total_cost_usd: float, session_token: str | None, checkpoint_token: str | None, step: int, llm_calls: int, tool_calls: int, started_at_s: float, replayed_effect_count: int)` at `afk/core/runner_internals.py:1193` - Build terminal `AgentResult` from accumulated runtime state.
-  - `sync _serialize_agent_result(self, result: AgentResult)` at `afk/core/runner_internals.py:1284` - Serialize `AgentResult` for checkpoint storage.
-  - `sync _deserialize_agent_result(self, value: dict[str, Any])` at `afk/core/runner_internals.py:1324` - Deserialize `AgentResult` from checkpoint payload.
-  - `sync _maybe_str(self, value: Any)` at `afk/core/runner_internals.py:1392` - Return string value when input is a string.
-  - `sync _telemetry_start_span(self, name: str, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner_internals.py:1404` - Safely start telemetry span.
-  - `sync _telemetry_end_span(self, span: TelemetrySpan | None, *, status: str, error: str | None=None, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner_internals.py:1425` - Safely end telemetry span.
-  - `sync _telemetry_counter(self, name: str, *, value: int=1, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner_internals.py:1452` - Safely record telemetry counter.
-  - `sync _telemetry_histogram(self, name: str, *, value: float, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner_internals.py:1472` - Safely record telemetry histogram value.
+  - `sync _enforce_budget(self, *, fail_safe: FailSafeConfig, step: int, llm_calls: int, tool_calls: int, started_at_s: float, total_cost_usd: float)` at `afk/core/runner/internals.py:54` - Enforce runtime budget and loop guards.
+  - `async _emit(self, handle: _RunHandle, memory: MemoryStore, event: AgentRunEvent, *, user_id: str | None)` at `afk/core/runner/internals.py:102` - Emit lifecycle event to handle, interaction provider, memory, telemetry.
+  - `async _append_event_with_retry(self, memory: MemoryStore, event: MemoryEvent)` at `afk/core/runner/internals.py:166` - Append memory event with best-effort retry.
+  - `async _ensure_memory_store(self)` at `afk/core/runner/internals.py:191` - Ensure memory store is initialized and ready.
+  - `sync _transition_state(self, current: AgentState, target: AgentState)` at `afk/core/runner/internals.py:210` - Validate and return next state transition.
+  - `async _persist_checkpoint(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, phase: str, payload: dict[str, Any])` at `afk/core/runner/internals.py:223` - Persist checkpoint for step/phase and update latest pointer.
+  - `sync _build_llm_candidates(self, *, primary, fallback_chain: list[str], resolver)` at `afk/core/runner/internals.py:263` - Build ordered unique list of primary + fallback LLM candidates.
+  - `sync _apply_llm_failure_policy(self, policy: str)` at `afk/core/runner/internals.py:294` - Normalize LLM failure policy to runtime action.
+  - `sync _apply_tool_failure_policy(self, policy: str)` at `afk/core/runner/internals.py:310` - Normalize tool failure policy to runtime action.
+  - `sync _apply_subagent_failure_policy(self, policy: str)` at `afk/core/runner/internals.py:326` - Normalize subagent failure policy to runtime action.
+  - `sync _apply_approval_denial_policy(self, policy: str)` at `afk/core/runner/internals.py:342` - Normalize approval denial policy to runtime action.
+  - `sync _resolve_subagent_parallel(self, *, agent_parallelism_mode: str, router_parallel: bool)` at `afk/core/runner/internals.py:358` - Resolve effective subagent parallelism mode.
+  - `sync _build_subagent_context(self, *, context: dict[str, Any], inherit_keys: list[str])` at `afk/core/runner/internals.py:381` - Build subagent context from inherited key allowlist.
+  - `sync _accumulate_cost(self, current_cost: float, response)` at `afk/core/runner/internals.py:405` - Add response cost (if available) to current aggregate cost.
+  - `async _resolve_effect_replay_result(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, tool_call_id: str | None, tool_name: str, call_args: dict[str, Any])` at `afk/core/runner/internals.py:429` - Resolve replayable tool result from effect journal/checkpoint state.
+  - `async _persist_effect_result(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, tool_call_id: str, input_hash: str, output_hash: str, output: Any, success: bool)` at `afk/core/runner/internals.py:499` - Persist tool effect journal row for idempotent replay.
+  - `async _chat_with_interrupt_support(self, *, handle: _RunHandle, llm: Any, req: LLMRequest)` at `afk/core/runner/internals.py:548` - Execute chat call with optional provider interrupt wiring.
+  - `async _persist_runtime_snapshot(self, *, memory: MemoryStore, thread_id: str, run_id: str, step: int, state: AgentState, context: dict[str, Any], messages: list[Message], llm_calls: int, tool_calls: int, started_at_s: float, usage: UsageAggregate, total_cost_usd: float, session_token: str | None, checkpoint_token: str | None, requested_model: str | None, normalized_model: str | None, provider_adapter: str | None, tool_execs: list[ToolExecutionRecord], sub_execs: list[SubagentExecutionRecord], skill_reads: list[SkillReadRecord], skill_cmd_execs: list[CommandExecutionRecord], final_text: str, final_structured: dict[str, Any] | None, pending_llm_response: LLMResponse | None, final_response: LLMResponse | None, replayed_effect_count: int)` at `afk/core/runner/internals.py:586` - Persist checkpoint payload containing full runtime snapshot.
+  - `sync _restore_runtime_snapshot(self, snapshot: dict[str, Any])` at `afk/core/runner/internals.py:690` - Extract runtime payload from normalized checkpoint snapshot.
+  - `sync _new_id(self, prefix: str)` at `afk/core/runner/internals.py:708` - Generate unique id via runner module indirection.
+  - `sync _create_memory_store_from_env(self)` at `afk/core/runner/internals.py:722` - Create memory store from environment configuration.
+  - `async _load_latest_runtime_snapshot(self, *, memory: MemoryStore, thread_id: str, run_id: str, latest: dict[str, Any])` at `afk/core/runner/internals.py:733` - Load most recent runtime_state checkpoint for resume.
+  - `sync _normalize_checkpoint_record(self, record: dict[str, Any])` at `afk/core/runner/internals.py:776` - Migrate and validate checkpoint record.
+  - `sync _serialize_messages(self, messages: list[Message])` at `afk/core/runner/internals.py:801` - Serialize message objects into checkpoint-friendly dictionaries.
+  - `sync _deserialize_messages(self, value: Any)` at `afk/core/runner/internals.py:835` - Deserialize messages from checkpoint payload.
+  - `sync _serialize_llm_response(self, value: LLMResponse | None)` at `afk/core/runner/internals.py:866` - Serialize optional LLM response for checkpoint persistence.
+  - `sync _deserialize_llm_response(self, value: Any)` at `afk/core/runner/internals.py:903` - Deserialize optional LLM response from checkpoint payload.
+  - `sync _serialize_tool_records(self, rows: list[ToolExecutionRecord])` at `afk/core/runner/internals.py:974` - Serialize tool execution records.
+  - `sync _deserialize_tool_records(self, value: Any)` at `afk/core/runner/internals.py:996` - Deserialize tool execution records.
+  - `sync _serialize_subagent_records(self, rows: list[SubagentExecutionRecord])` at `afk/core/runner/internals.py:1031` - Serialize subagent execution records.
+  - `sync _deserialize_subagent_records(self, value: Any)` at `afk/core/runner/internals.py:1055` - Deserialize subagent execution records.
+  - `sync _serialize_skill_reads(self, rows: list[SkillReadRecord])` at `afk/core/runner/internals.py:1089` - Serialize skill read records.
+  - `sync _deserialize_skill_reads(self, value: Any)` at `afk/core/runner/internals.py:1108` - Deserialize skill read records.
+  - `sync _serialize_command_records(self, rows: list[CommandExecutionRecord])` at `afk/core/runner/internals.py:1139` - Serialize command execution records.
+  - `sync _deserialize_command_records(self, value: Any)` at `afk/core/runner/internals.py:1163` - Deserialize command execution records.
+  - `sync _build_terminal_result(self, *, run_id: str, thread_id: str, state: AgentState, final_text: str, requested_model: str | None, normalized_model: str | None, provider_adapter: str | None, final_structured: dict[str, Any] | None, llm_response: LLMResponse | None, tool_execs: list[ToolExecutionRecord], sub_execs: list[SubagentExecutionRecord], skills: list[Any], skill_reads: list[SkillReadRecord], skill_cmd_execs: list[CommandExecutionRecord], usage: UsageAggregate, total_cost_usd: float, session_token: str | None, checkpoint_token: str | None, step: int, llm_calls: int, tool_calls: int, started_at_s: float, replayed_effect_count: int)` at `afk/core/runner/internals.py:1193` - Build terminal `AgentResult` from accumulated runtime state.
+  - `sync _serialize_agent_result(self, result: AgentResult)` at `afk/core/runner/internals.py:1284` - Serialize `AgentResult` for checkpoint storage.
+  - `sync _deserialize_agent_result(self, value: dict[str, Any])` at `afk/core/runner/internals.py:1324` - Deserialize `AgentResult` from checkpoint payload.
+  - `sync _maybe_str(self, value: Any)` at `afk/core/runner/internals.py:1392` - Return string value when input is a string.
+  - `sync _telemetry_start_span(self, name: str, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner/internals.py:1404` - Safely start telemetry span.
+  - `sync _telemetry_end_span(self, span: TelemetrySpan | None, *, status: str, error: str | None=None, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner/internals.py:1425` - Safely end telemetry span.
+  - `sync _telemetry_counter(self, name: str, *, value: int=1, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner/internals.py:1452` - Safely record telemetry counter.
+  - `sync _telemetry_histogram(self, name: str, *, value: float, attributes: dict[str, JSONValue] | None=None)` at `afk/core/runner/internals.py:1472` - Safely record telemetry histogram value.
 
-### Module `afk/core/runner_types.py`
+### Module `afk/core/runner/types.py`
 
-Source: [afk/core/runner_types.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner_types.py)
+Source: [afk/core/runner/types.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/types.py)
 
 Module summary: Shared runtime types for AFK runner internals.
 
 Top-level symbols:
 
-- `class RunnerConfig` at `afk/core/runner_types.py:22` - Runtime configuration for runner behavior and safety defaults.
-- `class _RunHandle` at `afk/core/runner_types.py:66` - Concrete async run handle used by the runner implementation.
+- `class RunnerConfig` at `afk/core/runner/types.py:22` - Runtime configuration for runner behavior and safety defaults.
+- `class _RunHandle` at `afk/core/runner/types.py:66` - Concrete async run handle used by the runner implementation.
   Methods:
-  - `sync __init__(self)` at `afk/core/runner_types.py:74` - Initialize queue, result future, and lifecycle flags.
-  - `sync attach_task(self, task: asyncio.Task[None])` at `afk/core/runner_types.py:87` - Attach the underlying execution task.
-  - `sync set_interrupt_callback(self, callback)` at `afk/core/runner_types.py:96` - Register provider-specific interrupt callback.
-  - `sync events(self)` at `afk/core/runner_types.py:106` - Return run event stream.
-  - `async _iter_events(self)` at `afk/core/runner_types.py:121` - Internal async generator that yields queued events until run end marker.
-  - `async emit(self, event: AgentRunEvent)` at `afk/core/runner_types.py:129` - Push event into handle stream.
-  - `async pause(self)` at `afk/core/runner_types.py:138` - Pause cooperative execution at safe boundaries.
-  - `async resume(self)` at `afk/core/runner_types.py:143` - Resume a paused run.
-  - `async cancel(self)` at `afk/core/runner_types.py:148` - Request cancellation and resolve handle with `None`.
-  - `async interrupt(self)` at `afk/core/runner_types.py:161` - Request interruption and invoke interrupt callback if available.
-  - `async await_result(self)` at `afk/core/runner_types.py:178` - Await terminal run result.
-  - `async wait_if_paused(self)` at `afk/core/runner_types.py:187` - Block until resume is requested.
-  - `sync is_cancel_requested(self)` at `afk/core/runner_types.py:191` - Return `True` when cancellation has been requested.
-  - `sync is_interrupt_requested(self)` at `afk/core/runner_types.py:195` - Return `True` when interruption has been requested.
-  - `async set_result(self, result: AgentResult | None)` at `afk/core/runner_types.py:199` - Set terminal result and close event stream.
-  - `async set_exception(self, exc: Exception)` at `afk/core/runner_types.py:210` - Set terminal exception and close event stream.
+  - `sync __init__(self)` at `afk/core/runner/types.py:74` - Initialize queue, result future, and lifecycle flags.
+  - `sync attach_task(self, task: asyncio.Task[None])` at `afk/core/runner/types.py:87` - Attach the underlying execution task.
+  - `sync set_interrupt_callback(self, callback)` at `afk/core/runner/types.py:96` - Register provider-specific interrupt callback.
+  - `sync events(self)` at `afk/core/runner/types.py:106` - Return run event stream.
+  - `async _iter_events(self)` at `afk/core/runner/types.py:121` - Internal async generator that yields queued events until run end marker.
+  - `async emit(self, event: AgentRunEvent)` at `afk/core/runner/types.py:129` - Push event into handle stream.
+  - `async pause(self)` at `afk/core/runner/types.py:138` - Pause cooperative execution at safe boundaries.
+  - `async resume(self)` at `afk/core/runner/types.py:143` - Resume a paused run.
+  - `async cancel(self)` at `afk/core/runner/types.py:148` - Request cancellation and resolve handle with `None`.
+  - `async interrupt(self)` at `afk/core/runner/types.py:161` - Request interruption and invoke interrupt callback if available.
+  - `async await_result(self)` at `afk/core/runner/types.py:178` - Await terminal run result.
+  - `async wait_if_paused(self)` at `afk/core/runner/types.py:187` - Block until resume is requested.
+  - `sync is_cancel_requested(self)` at `afk/core/runner/types.py:191` - Return `True` when cancellation has been requested.
+  - `sync is_interrupt_requested(self)` at `afk/core/runner/types.py:195` - Return `True` when interruption has been requested.
+  - `async set_result(self, result: AgentResult | None)` at `afk/core/runner/types.py:199` - Set terminal result and close event stream.
+  - `async set_exception(self, exc: Exception)` at `afk/core/runner/types.py:210` - Set terminal exception and close event stream.
 
 ### Module `afk/core/telemetry.py`
 
@@ -487,7 +487,7 @@ Top-level symbols:
 
 ### Module `afk/evals/__init__.py`
 
-Source: [afk/evals/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/evals/__init__.py)
+Source: [afk/evals/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/evals/__init__.py)
 
 Module summary: Evaluation harness exports.
 
@@ -510,13 +510,13 @@ Top-level symbols:
 
 ### Module `afk/llms/__init__.py`
 
-Source: [afk/llms/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/llms/__init__.py)
+Source: [afk/llms/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/llms/__init__.py)
 
 Symbols: none (re-export or namespace module).
 
 ### Module `afk/llms/clients/__init__.py`
 
-Source: [afk/llms/clients/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/__init__.py)
+Source: [afk/llms/clients/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/__init__.py)
 
 Module summary: LLM client package.
 
@@ -524,7 +524,7 @@ Symbols: none (re-export or namespace module).
 
 ### Module `afk/llms/clients/adapters/__init__.py`
 
-Source: [afk/llms/clients/adapters/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/adapters/__init__.py)
+Source: [afk/llms/clients/adapters/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/adapters/__init__.py)
 
 Module summary: Provider adapter implementations.
 
@@ -596,7 +596,7 @@ Top-level symbols:
 
 ### Module `afk/llms/clients/base/__init__.py`
 
-Source: [afk/llms/clients/base/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/base/__init__.py)
+Source: [afk/llms/clients/base/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/base/__init__.py)
 
 Module summary: Adapter base classes.
 
@@ -631,7 +631,7 @@ Top-level symbols:
 
 ### Module `afk/llms/clients/shared/__init__.py`
 
-Source: [afk/llms/clients/shared/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/shared/__init__.py)
+Source: [afk/llms/clients/shared/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/llms/clients/shared/__init__.py)
 
 Module summary: Shared client helper utilities.
 
@@ -874,7 +874,7 @@ Top-level symbols:
 
 ### Module `afk/memory/__init__.py`
 
-Source: [afk/memory/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/memory/__init__.py)
+Source: [afk/memory/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/memory/__init__.py)
 
 Top-level symbols:
 
@@ -923,7 +923,7 @@ Top-level symbols:
 
 ### Module `afk/memory/store/__init__.py`
 
-Source: [afk/memory/store/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/memory/store/__init__.py)
+Source: [afk/memory/store/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/memory/store/__init__.py)
 
 Top-level symbols:
 
@@ -1084,7 +1084,7 @@ Top-level symbols:
 
 ### Module `afk/__init__.py`
 
-Source: [afk/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/__init__.py)
+Source: [afk/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/__init__.py)
 
 Symbols: none (re-export or namespace module).
 
@@ -1092,13 +1092,13 @@ Symbols: none (re-export or namespace module).
 
 ### Module `afk/tools/__init__.py`
 
-Source: [afk/tools/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/tools/__init__.py)
+Source: [afk/tools/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/tools/__init__.py)
 
 Symbols: none (re-export or namespace module).
 
 ### Module `afk/tools/core/__init__.py`
 
-Source: [afk/tools/core/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/tools/core/__init__.py)
+Source: [afk/tools/core/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/tools/core/__init__.py)
 
 Symbols: none (re-export or namespace module).
 
@@ -1177,7 +1177,7 @@ Top-level symbols:
 
 ### Module `afk/tools/prebuilts/__init__.py`
 
-Source: [afk/tools/prebuilts/__init__.py](https://github.com/socioy/afk/blob/main/src/afk/tools/prebuilts/__init__.py)
+Source: [afk/tools/prebuilts/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/tools/prebuilts/__init__.py)
 
 Module summary: Prebuilt tool factories.
 

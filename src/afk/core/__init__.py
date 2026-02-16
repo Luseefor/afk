@@ -1,9 +1,14 @@
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Core runtime exports.
 """
 
 from .interaction import HeadlessInteractionProvider, InMemoryInteractiveProvider, InteractionProvider
 from .runner import Runner, RunnerConfig
+from .streaming import AgentStreamEvent, AgentStreamHandle
 from .telemetry import (
     InMemoryTelemetrySink,
     NullTelemetrySink,
@@ -19,6 +24,8 @@ __all__ = [
     "InteractionProvider",
     "HeadlessInteractionProvider",
     "InMemoryInteractiveProvider",
+    "AgentStreamEvent",
+    "AgentStreamHandle",
     "TelemetrySink",
     "TelemetryEvent",
     "TelemetrySpan",

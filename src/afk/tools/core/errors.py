@@ -23,10 +23,6 @@ class ToolAlreadyRegisteredError(AFKToolError):
     pass
 
 
-class ToolValidationError(AFKToolError):
-    pass
-
-
 class ToolExecutionError(AFKToolError):
     pass
 

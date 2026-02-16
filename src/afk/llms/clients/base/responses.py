@@ -1,6 +1,8 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Shared base adapter for providers exposing OpenAI-style Responses APIs.
 
 This class centralizes:
@@ -12,6 +14,9 @@ This class centralizes:
 Concrete adapters only implement transport and provider-specific message/JSON
 schema mapping.
 """
+
+from __future__ import annotations
+
 
 from abc import abstractmethod
 from collections import defaultdict

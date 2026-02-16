@@ -1,4 +1,10 @@
-"""Shared client helper utilities."""
+"""
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
+Shared client helper utilities.
+"""
 
 from .normalization import (
     extract_text_from_content,

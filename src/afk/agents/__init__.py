@@ -1,10 +1,14 @@
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 AFK agent public API.
 """
 
-from .base import Agent, BaseAgent
-from .chat import ChatAgent
-from .policy import (
+from .core.base import Agent, BaseAgent
+from .core.chat import ChatAgent
+from .policy.engine import (
     PolicyEngine,
     PolicyEvaluation,
     PolicyRule,
@@ -13,7 +17,7 @@ from .policy import (
     infer_policy_subject,
     normalize_policy_payload,
 )
-from .versioning import (
+from .lifecycle.versioning import (
     AGENT_EVENT_SCHEMA_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     SUPPORTED_CHECKPOINT_SCHEMA_VERSIONS,
@@ -46,7 +50,7 @@ from .errors import (
     SubagentExecutionError,
     SubagentRoutingError,
 )
-from .prompt_store import PromptStore, derive_auto_prompt_filename, get_prompt_store
+from .prompts.store import PromptStore, derive_auto_prompt_filename, get_prompt_store, reset_prompt_store
 from .types import (
     AgentResult,
     AgentRunEvent,
@@ -131,4 +135,5 @@ __all__ = [
     "PromptStore",
     "get_prompt_store",
     "derive_auto_prompt_filename",
+    "reset_prompt_store",
 ]

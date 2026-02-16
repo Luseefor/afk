@@ -1,4 +1,8 @@
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Telemetry sinks for runner observability.
 
 The default sinks are no-op/in-memory. `OpenTelemetrySink` can be used when

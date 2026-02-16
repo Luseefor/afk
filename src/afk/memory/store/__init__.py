@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module provides memory store implementations and base contracts for the AFK memory subsystem.
 """
+
+from __future__ import annotations
+
 
 """Memory store implementations and base contracts."""
 

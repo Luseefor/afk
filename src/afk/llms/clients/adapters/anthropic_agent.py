@@ -1,11 +1,16 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 Claude Agent SDK-backed Anthropic adapter.
 
 This adapter uses `claude_agent_sdk.query`/`ClaudeAgentOptions` and normalizes
 SDK messages/events to AFK's provider-agnostic LLM response and stream types.
 """
+
+from __future__ import annotations
+
 
 import json
 from typing import Any, AsyncIterator, Iterable

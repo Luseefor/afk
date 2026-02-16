@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -8,6 +6,9 @@ See LICENSE file for full license text.
 This module provides decorators for defining tools, prehooks, posthooks, and middlewares in a concise way.
 It also supports registry-level middlewares via @registry_middleware.
 """
+
+from __future__ import annotations
+
 
 import inspect
 from typing import Any, Callable, Optional, Type, TypeVar
@@ -23,9 +24,9 @@ from .base import (
     ToolSpec,
 )
 
-# Registry-level middleware wrapper lives in registery.py
+# Registry-level middleware wrapper lives in registry.py
 # (Avoid importing ToolRegistry here to prevent heavy imports.)
-from ..registery import RegistryMiddleware, RegistryMiddlewareFn  # noqa: E402
+from ..registry import RegistryMiddleware, RegistryMiddlewareFn  # noqa: E402
 
 
 ArgsT = TypeVar("ArgsT", bound=BaseModel)

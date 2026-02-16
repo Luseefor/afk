@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -14,6 +12,9 @@ This package exposes:
 - ToolRegistry (+ RegistryMiddleware support)
 - Export helpers for LiteLLM tool/function calling schemas
 """
+
+from __future__ import annotations
+
 
 from .core import (
     Tool,
@@ -53,7 +54,7 @@ from .core import (
     toolspec_to_litellm_tool,
 )
 
-from .registery import (
+from .registry import (
     ToolRegistry,
     RegistryMiddleware,
     RegistryMiddlewareFn,

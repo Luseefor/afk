@@ -1,8 +1,13 @@
-from __future__ import annotations
-
 """
+MIT License
+Copyright (c) 2026 socioy
+See LICENSE file for full license text.
+
 OpenAI-backed adapter built on top of the shared Responses adapter base.
 """
+
+from __future__ import annotations
+
 
 import json
 from typing import Any
@@ -187,7 +192,10 @@ class OpenAIClient(ResponsesClientBase):
         }
 
     def _build_client(self) -> Any:
-        """Construct AsyncOpenAI client from shared config."""
+        """Construct or return cached AsyncOpenAI client from shared config."""
+        if hasattr(self, "_client") and self._client is not None:
+            return self._client
+
         try:
             from openai import AsyncOpenAI
         except Exception as e:  # pragma: no cover - environment dependent
@@ -201,7 +209,8 @@ class OpenAIClient(ResponsesClientBase):
         if self.config.api_base_url:
             kwargs["base_url"] = self.config.api_base_url
 
-        return AsyncOpenAI(**kwargs)
+        self._client = AsyncOpenAI(**kwargs)
+        return self._client
 
     def _with_transport_headers(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Map AFK transport keys into OpenAI request options/headers."""

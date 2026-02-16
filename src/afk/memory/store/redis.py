@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MIT License
 Copyright (c) 2026 socioy
@@ -7,6 +5,9 @@ See LICENSE file for full license text.
 
 This module provides a Redis memory backend optimized for low-latency state and event operations.
 """
+
+from __future__ import annotations
+
 
 from typing import Optional, Sequence, cast
 
@@ -85,7 +86,7 @@ class RedisMemoryStore(MemoryStore):
         )
         pipeline = redis_client.pipeline()
         events_key = self._events_key(event.thread_id)
-        pipeline.lpush(events_key, serialized_event)
+        pipeline.rpush(events_key, serialized_event)
         pipeline.ltrim(events_key, 0, self.events_max_per_thread - 1)
         await pipeline.execute()
 
@@ -163,7 +164,7 @@ class RedisMemoryStore(MemoryStore):
                     "tags": event.tags,
                 },
             )
-            pipeline.lpush(events_key, serialized_event)
+            pipeline.rpush(events_key, serialized_event)
         pipeline.ltrim(events_key, 0, self.events_max_per_thread - 1)
         await pipeline.execute()
 
