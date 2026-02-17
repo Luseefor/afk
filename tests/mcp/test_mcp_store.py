@@ -4,6 +4,7 @@ import asyncio
 import types
 
 from afk.mcp import MCPStore
+from afk.mcp.store import normalize_json_schema
 from afk.tools import ToolRegistry
 
 
@@ -122,3 +123,34 @@ def test_mcp_remote_tool_error_surfaces_as_failed_tool_result():
     assert result.success is False
     assert result.error_message is not None
     assert "remote boom" in result.error_message
+
+
+def test_normalize_json_schema_handles_non_dict_and_defaults():
+    assert normalize_json_schema("bad") == {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": False,
+    }
+
+
+def test_normalize_json_schema_coerces_invalid_fields():
+    normalized = normalize_json_schema(
+        {
+            "type": "array",
+            "properties": {
+                "ok": {"type": "string"},
+                "bad": None,
+            },
+            "required": ["ok", "missing", 42],
+            "additionalProperties": "invalid",
+        }
+    )
+
+    assert normalized["type"] == "object"
+    assert normalized["properties"] == {
+        "ok": {"type": "string"},
+        "bad": {},
+    }
+    assert normalized["required"] == ["ok"]
+    assert normalized["additionalProperties"] is False

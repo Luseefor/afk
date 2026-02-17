@@ -21,12 +21,46 @@ def echo(args: EchoArgs) -> str:
 
 
 def test_normalize_json_schema_handles_non_dict_and_missing_fields():
-    assert normalize_json_schema("bad") == {"type": "object", "properties": {}}
-    assert normalize_json_schema({}) == {"type": "object", "properties": {}}
-    assert normalize_json_schema({"type": "array"}) == {
-        "type": "array",
+    assert normalize_json_schema("bad") == {
+        "type": "object",
         "properties": {},
+        "required": [],
+        "additionalProperties": False,
     }
+    assert normalize_json_schema({}) == {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": False,
+    }
+    assert normalize_json_schema({"type": "array"}) == {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": False,
+    }
+
+
+def test_normalize_json_schema_coerces_invalid_properties_and_required():
+    normalized = normalize_json_schema(
+        {
+            "type": "array",
+            "properties": {
+                "ok": {"type": "string"},
+                "bad": None,
+            },
+            "required": ["ok", "missing", 123],
+            "additionalProperties": "invalid",
+        }
+    )
+
+    assert normalized["type"] == "object"
+    assert normalized["properties"] == {
+        "ok": {"type": "string"},
+        "bad": {},
+    }
+    assert normalized["required"] == ["ok"]
+    assert normalized["additionalProperties"] is False
 
 
 def test_toolspec_to_openai_tool_maps_core_fields():
