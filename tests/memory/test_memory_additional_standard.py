@@ -5,9 +5,10 @@ import asyncio
 import pytest
 
 import afk.memory as memory_api
-import afk.memory.store as memory_store_api
-from afk.memory.models import LongTermMemory, MemoryEvent
-from afk.memory.store import InMemoryMemoryStore, MemoryStore, SQLiteMemoryStore
+import afk.memory.adapters as memory_store_api
+from afk.memory.types import LongTermMemory, MemoryEvent
+from afk.memory.store import MemoryStore
+from afk.memory.adapters import InMemoryMemoryStore, SQLiteMemoryStore
 
 
 def run_async(coro):
