@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from afk.agents.policy import PolicyEngine, PolicyRule, PolicyRuleCondition, infer_policy_subject
+from afk.agents.policy import (
+    PolicyEngine,
+    PolicyRule,
+    PolicyRuleCondition,
+    infer_policy_subject,
+)
 from afk.agents.types import PolicyEvent
 
 

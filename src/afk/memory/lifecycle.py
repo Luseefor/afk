@@ -13,8 +13,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models import JsonValue, MemoryEvent
-from .store.base import MemoryStore
+from .types import JsonValue, MemoryEvent
+from .store import MemoryStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +31,7 @@ class RetentionPolicy:
       store when performing compaction (protects stores that would otherwise
       scan large histories).
     """
+
     max_events_per_thread: int = 5000
     keep_event_types: list[str] = field(default_factory=lambda: ["trace"])
     scan_limit: int = 20_000
@@ -59,6 +60,7 @@ class StateRetentionPolicy:
     The retention function attempts to keep the most-relevant state while
     bounding storage growth.
     """
+
     max_runs: int = 100
     max_runtime_states_per_run: int = 3
     max_effect_entries_per_run: int = 3000
@@ -93,6 +95,7 @@ class MemoryCompactionResult:
       underlying `MemoryStore` (the store may not support deletion and may
       raise NotImplementedError).
     """
+
     events_before: int
     events_after: int
     events_removed: int
@@ -139,7 +142,9 @@ def apply_event_retention(
     if len(preserved) >= policy.max_events_per_thread:
         return preserved[-policy.max_events_per_thread :]
 
-    remainder = [event for event in events if event.type not in set(policy.keep_event_types)]
+    remainder = [
+        event for event in events if event.type not in set(policy.keep_event_types)
+    ]
     budget = policy.max_events_per_thread - len(preserved)
     return sorted([*preserved, *remainder[-budget:]], key=lambda event: event.timestamp)
 
@@ -191,7 +196,9 @@ def apply_state_retention(
         latest_run = _parse_checkpoint_latest_key(key)
         if latest_run is not None:
             ts = _extract_timestamp_ms(value)
-            latest_rows.append((ts, latest_run, value if isinstance(value, dict) else {}))
+            latest_rows.append(
+                (ts, latest_run, value if isinstance(value, dict) else {})
+            )
             continue
 
         checkpoint_row = _parse_checkpoint_state_key(key)
@@ -242,7 +249,9 @@ def apply_state_retention(
             [row for row in run_checkpoint_rows if row[1] == "runtime_state"],
             key=lambda row: (-row[0], row[2]),
         )
-        for step, phase, key in runtime_rows[: max(policy.max_runtime_states_per_run, 1)]:
+        for step, phase, key in runtime_rows[
+            : max(policy.max_runtime_states_per_run, 1)
+        ]:
             _ = step
             _ = phase
             keep_keys.add(key)
@@ -263,11 +272,7 @@ def apply_state_retention(
         for _step, key in rows[: max(policy.max_effect_entries_per_run, 1)]:
             keep_keys.add(key)
 
-    return {
-        key: state[key]
-        for key in sorted(keep_keys)
-        if key in state
-    }
+    return {key: state[key] for key in sorted(keep_keys) if key in state}
 
 
 async def compact_thread_memory(

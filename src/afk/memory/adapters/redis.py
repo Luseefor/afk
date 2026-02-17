@@ -13,17 +13,17 @@ from typing import Optional, Sequence, cast
 
 import numpy as np
 from redis.asyncio import Redis
+from redis.exceptions import WatchError
 
-from ..models import (
+from afk.memory.types import (
     JsonObject,
     JsonValue,
     LongTermMemory,
     MemoryEvent,
-    json_dumps,
-    json_loads,
 )
-from ..vector import cosine_similarity
-from .base import MemoryCapabilities, MemoryStore
+from afk.memory.utils import json_dumps, json_loads
+from afk.memory.vector import cosine_similarity
+from afk.memory.store import MemoryCapabilities, MemoryStore
 
 
 class RedisMemoryStore(MemoryStore):
@@ -35,6 +35,8 @@ class RedisMemoryStore(MemoryStore):
 
     def __init__(self, *, url: str, events_max_per_thread: int = 2_000) -> None:
         super().__init__()
+        if events_max_per_thread < 1:
+            raise ValueError("events_max_per_thread must be >= 1")
         self.url = url
         self.events_max_per_thread = events_max_per_thread
         self._redis_client: Redis | None = None
@@ -87,19 +89,20 @@ class RedisMemoryStore(MemoryStore):
         pipeline = redis_client.pipeline()
         events_key = self._events_key(event.thread_id)
         pipeline.rpush(events_key, serialized_event)
-        pipeline.ltrim(events_key, 0, self.events_max_per_thread - 1)
+        pipeline.ltrim(events_key, -self.events_max_per_thread, -1)
         await pipeline.execute()
 
     async def get_recent_events(
         self, thread_id: str, limit: int = 50
     ) -> list[MemoryEvent]:
         self._ensure_setup()
+        if limit <= 0:
+            return []
         redis_client = self._redis()
         serialized_events = await redis_client.lrange(
-            self._events_key(thread_id), 0, max(0, limit - 1)
+            self._events_key(thread_id), -limit, -1
         )
-        chronological_events = list(reversed(serialized_events))
-        return [self._deserialize_event(payload) for payload in chronological_events]
+        return [self._deserialize_event(payload) for payload in serialized_events]
 
     async def get_events_since(
         self, thread_id: str, since_ms: int, limit: int = 500
@@ -165,7 +168,7 @@ class RedisMemoryStore(MemoryStore):
                 },
             )
             pipeline.rpush(events_key, serialized_event)
-        pipeline.ltrim(events_key, 0, self.events_max_per_thread - 1)
+        pipeline.ltrim(events_key, -self.events_max_per_thread, -1)
         await pipeline.execute()
 
     async def upsert_long_term_memory(
@@ -174,34 +177,67 @@ class RedisMemoryStore(MemoryStore):
         *,
         embedding: Optional[Sequence[float]] = None,
     ) -> None:
+        """Atomically insert or update a long-term memory in Redis.
+
+        Guarantees:
+        - If `embedding` is None we preserve any existing stored embedding
+          (no race between concurrent upserts).
+        - If `embedding` is provided, it replaces the stored embedding.
+
+        Implementation uses WATCH / MULTI with retries to provide atomic
+        read-modify-write semantics.
+        """
         self._ensure_setup()
         redis_client = self._redis()
         hash_key = self._memory_hash_key(memory.user_id)
 
-        existing = await redis_client.hget(hash_key, memory.id)
-        existing_embedding: list[float] | None = None
-        if existing is not None:
-            existing_payload = json_loads(existing)
-            if isinstance(existing_payload, dict):
-                candidate_embedding = existing_payload.get("embedding")
-                if isinstance(candidate_embedding, list):
-                    existing_embedding = [float(value) for value in candidate_embedding]
+        max_retries = 5
+        for attempt in range(max_retries):
+            async with redis_client.pipeline() as pipeline:
+                try:
+                    # WATCH + read + MULTI must use the same pipeline/connection.
+                    await pipeline.watch(hash_key)
 
-        payload: JsonObject = {
-            "id": memory.id,
-            "user_id": memory.user_id,
-            "scope": memory.scope,
-            "data": memory.data,
-            "text": memory.text,
-            "tags": memory.tags,
-            "metadata": memory.metadata,
-            "created_at": memory.created_at,
-            "updated_at": memory.updated_at,
-            "embedding": existing_embedding
-            if embedding is None
-            else [float(value) for value in embedding],
-        }
-        await redis_client.hset(hash_key, memory.id, json_dumps(payload))
+                    existing = await pipeline.hget(hash_key, memory.id)
+                    existing_embedding: list[float] | None = None
+                    if existing is not None:
+                        existing_payload = json_loads(existing)
+                        if isinstance(existing_payload, dict):
+                            candidate_embedding = existing_payload.get("embedding")
+                            if isinstance(candidate_embedding, list):
+                                existing_embedding = [
+                                    float(v) for v in candidate_embedding
+                                ]
+
+                    chosen_embedding = (
+                        existing_embedding
+                        if embedding is None
+                        else [float(v) for v in embedding]
+                    )
+
+                    payload: JsonObject = {
+                        "id": memory.id,
+                        "user_id": memory.user_id,
+                        "scope": memory.scope,
+                        "data": memory.data,
+                        "text": memory.text,
+                        "tags": memory.tags,
+                        "metadata": memory.metadata,
+                        "created_at": memory.created_at,
+                        "updated_at": memory.updated_at,
+                        "embedding": chosen_embedding,
+                    }
+
+                    pipeline.multi()
+                    pipeline.hset(hash_key, memory.id, json_dumps(payload))
+                    await pipeline.execute()
+                    return
+                except WatchError:
+                    if attempt == max_retries - 1:
+                        raise RuntimeError(
+                            "Failed to upsert long-term memory after concurrent update retries."
+                        ) from None
+                    continue
 
     async def delete_long_term_memory(
         self, user_id: str | None, memory_id: str

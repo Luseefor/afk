@@ -10,11 +10,9 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass, field
-import json
 import time
-import uuid
-from typing import TypeAlias, cast
-from typing import Any, List, Literal, Optional
+from typing import TypeAlias
+from typing import List, Literal, Optional
 
 EventType = Literal["tool_call", "tool_result", "message", "system", "trace"]
 JsonPrimitive: TypeAlias = str | int | float | bool | None
@@ -48,19 +46,3 @@ class LongTermMemory:
     metadata: JsonObject = field(default_factory=dict)
     created_at: int = field(default_factory=lambda: int(time.time() * 1000))
     updated_at: int = field(default_factory=lambda: int(time.time() * 1000))
-
-
-def now_ms() -> int:
-    return int(time.time() * 1000)
-
-
-def new_id(prefix: str = "mem") -> str:
-    return f"{prefix}_{uuid.uuid4().hex}"
-
-
-def json_dumps(obj: JsonValue | dict[str, Any] | list[Any] | Any) -> str:
-    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
-
-
-def json_loads(s: str) -> JsonValue:
-    return cast(JsonValue, json.loads(s))

@@ -11,7 +11,12 @@ from .errors import (
     LLMSessionPausedError,
     LLMTimeoutError,
 )
-from .clients import AnthropicAgentClient, LiteLLMClient, OpenAIClient, ResponsesClientBase
+from .clients import (
+    AnthropicAgentClient,
+    LiteLLMClient,
+    OpenAIClient,
+    ResponsesClientBase,
+)
 from .factory import (
     available_llm_adapters,
     create_llm,
@@ -40,6 +45,14 @@ from .types import (
     StreamToolCallDeltaEvent,
     ToolCall,
     Usage,
+)
+from .tool_export import (
+    export_tools_for_provider,
+    normalize_json_schema,
+    tool_to_openai_tool,
+    toolspec_to_openai_tool,
+    to_openai_tools,
+    to_openai_tools_from_specs,
 )
 
 __all__ = [
@@ -84,4 +97,10 @@ __all__ = [
     "register_llm_adapter",
     "LLMObserver",
     "LLMLifecycleEvent",
+    "normalize_json_schema",
+    "toolspec_to_openai_tool",
+    "tool_to_openai_tool",
+    "to_openai_tools",
+    "to_openai_tools_from_specs",
+    "export_tools_for_provider",
 ]

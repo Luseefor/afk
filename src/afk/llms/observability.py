@@ -48,9 +48,7 @@ class LLMLifecycleEvent:
 class LLMObserver(Protocol):
     """Observer callback protocol used by the base LLM runtime."""
 
-    def __call__(self, event: LLMLifecycleEvent) -> None | Awaitable[None]:
-        ...
+    def __call__(self, event: LLMLifecycleEvent) -> None | Awaitable[None]: ...
 
 
 LLMObserverCallback = Callable[[LLMLifecycleEvent], None | Awaitable[None]]
-

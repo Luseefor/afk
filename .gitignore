@@ -20,3 +20,5 @@ agent-skill/*/references/afk-docs/
 agent-skill/*/references/examples.md
 agent-skill/*/references/README.md
 agent-skill/*/scripts/search_afk_docs.py
+
+.ruff_cache/ # Ruff's cache directory, we use it for linting and formatting

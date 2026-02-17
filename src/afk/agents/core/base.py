@@ -123,7 +123,9 @@ class BaseAgent:
         self.tools = list(tools or [])
         self.subagents = list(subagents or [])
         self.instructions = instructions
-        self.instruction_file = Path(instruction_file) if instruction_file is not None else None
+        self.instruction_file = (
+            Path(instruction_file) if instruction_file is not None else None
+        )
         self.prompts_dir = Path(prompts_dir) if prompts_dir is not None else None
         self.context_defaults = dict(context_defaults or {})
         self.inherit_context_keys = list(inherit_context_keys or [])
@@ -176,7 +178,9 @@ class BaseAgent:
             if isinstance(maybe, str) and maybe.strip():
                 chunks.append(store.intern_text(maybe.strip()))
         else:
-            prompt_root = resolve_prompts_dir(prompts_dir=self.prompts_dir, cwd=Path.cwd())
+            prompt_root = resolve_prompts_dir(
+                prompts_dir=self.prompts_dir, cwd=Path.cwd()
+            )
             prompt_path = resolve_prompt_file_path(
                 prompt_root=prompt_root,
                 instruction_file=self.instruction_file,

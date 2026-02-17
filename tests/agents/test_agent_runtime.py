@@ -404,14 +404,18 @@ class _FailingLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = req
         _ = response_model
         raise RuntimeError(self.error)
 
-    async def _chat_stream_core(self, req: LLMRequest, *, response_model=None) -> AsyncIterator:
+    async def _chat_stream_core(
+        self, req: LLMRequest, *, response_model=None
+    ) -> AsyncIterator:
         _ = req
         _ = response_model
         raise NotImplementedError
@@ -440,13 +444,17 @@ class _StaticLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = response_model
         return LLMResponse(text=self._text, model=req.model, raw=dict(self._raw))
 
-    async def _chat_stream_core(self, req: LLMRequest, *, response_model=None) -> AsyncIterator:
+    async def _chat_stream_core(
+        self, req: LLMRequest, *, response_model=None
+    ) -> AsyncIterator:
         _ = req
         _ = response_model
         raise NotImplementedError
@@ -584,7 +592,17 @@ def test_missing_skill_raises_configuration_error(tmp_path: Path):
 def test_skill_tools_are_auto_registered_and_used(tmp_path: Path):
     skill_root = tmp_path / ".agents" / "skills" / "skill_a"
     skill_root.mkdir(parents=True)
-    (skill_root / "SKILL.md").write_text("# skill-a\nuse this\n", encoding="utf-8")
+    (skill_root / "SKILL.md").write_text(
+        (
+            "---\n"
+            "name: skill_a\n"
+            "description: Skill A description\n"
+            "---\n\n"
+            "# skill-a\n"
+            "use this\n"
+        ),
+        encoding="utf-8",
+    )
 
     agent = Agent(
         model=_SkillReaderLLM(),
@@ -598,6 +616,58 @@ def test_skill_tools_are_auto_registered_and_used(tmp_path: Path):
     assert result.skills_used == ["skill_a"]
     assert result.skill_reads
     assert result.skill_reads[0].skill_name == "skill_a"
+
+
+def test_skill_name_is_overridden_from_skill_md_frontmatter(tmp_path: Path):
+    class _OverriddenSkillReaderLLM(_ToolCallingLLM):
+        async def _chat_core(
+            self,
+            req: LLMRequest,
+            *,
+            response_model=None,
+        ) -> LLMResponse:
+            _ = response_model
+            self.calls += 1
+            if self.calls == 1:
+                return LLMResponse(
+                    text="",
+                    tool_calls=[
+                        ToolCall(
+                            id="tc_skill_override_1",
+                            tool_name="read_skill_md",
+                            arguments={"skill_name": "frontend-design"},
+                        )
+                    ],
+                    model=req.model,
+                )
+            return LLMResponse(text="used overridden skill", model=req.model)
+
+    skill_root = tmp_path / ".agents" / "skills" / "folder_name_is_ignored"
+    skill_root.mkdir(parents=True)
+    (skill_root / "SKILL.md").write_text(
+        (
+            "---\n"
+            "name: frontend-design\n"
+            "description: Build polished frontend interfaces\n"
+            "---\n\n"
+            "# Frontend Design\n"
+            "details\n"
+        ),
+        encoding="utf-8",
+    )
+
+    agent = Agent(
+        model=_OverriddenSkillReaderLLM(),
+        instructions="skills enabled",
+        skills=["folder_name_is_ignored"],
+        skills_dir=tmp_path / ".agents" / "skills",
+    )
+    result = run_async(Runner().run(agent, user_message="read skill"))
+
+    assert result.final_text == "used overridden skill"
+    assert result.skills_used == ["frontend-design"]
+    assert result.skill_reads
+    assert result.skill_reads[0].skill_name == "frontend-design"
 
 
 def test_policy_can_request_user_input_and_continue_tool_execution():
@@ -728,7 +798,9 @@ def test_subagent_context_inheritance_and_isolation():
         instructions="parent",
     )
     result = run_async(
-        Runner().run(parent, user_message="invoke child", context={"secret": "s1", "drop": "x"})
+        Runner().run(
+            parent, user_message="invoke child", context={"secret": "s1", "drop": "x"}
+        )
     )
     assert result.subagent_executions
     assert result.subagent_executions[0].success is True
@@ -743,7 +815,9 @@ def test_subagent_failure_policy_fail_run():
     parent = Agent(
         model=_StaticLLM(text="parent"),
         subagents=[bad_child],
-        subagent_router=lambda _: RouterDecision(targets=[bad_child.name], parallel=False),
+        subagent_router=lambda _: RouterDecision(
+            targets=[bad_child.name], parallel=False
+        ),
         fail_safe=FailSafeConfig(subagent_failure_policy="fail_run"),
         instructions="parent",
     )
@@ -930,7 +1004,9 @@ def test_effect_replay_input_hash_mismatch_raises(monkeypatch):
 
     store = InMemoryMemoryStore()
     run_async(store.setup())
-    bad_input_hash = json_hash({"tool_name": "counting_add", "args": {"a": 999, "b": 1}})
+    bad_input_hash = json_hash(
+        {"tool_name": "counting_add", "args": {"a": 999, "b": 1}}
+    )
     run_async(
         store.put_state(
             "thread_mismatch",
@@ -1106,13 +1182,16 @@ def test_secret_scope_provider_injects_tool_metadata_secrets():
         instructions="secret scope test",
     )
     result = run_async(
-        Runner(
-            config=RunnerConfig(secret_scope_provider=_StaticSecretProvider())
-        ).run(agent, user_message="run secret tool")
+        Runner(config=RunnerConfig(secret_scope_provider=_StaticSecretProvider())).run(
+            agent, user_message="run secret tool"
+        )
     )
     assert result.final_text == "secret done"
     assert result.tool_executions
-    assert result.tool_executions[0].output == {"echo": "hello", "secret": "test-secret"}
+    assert result.tool_executions[0].output == {
+        "echo": "hello",
+        "secret": "test-secret",
+    }
 
 
 def test_tool_output_sanitization_redacts_injection_tokens():
@@ -1126,7 +1205,9 @@ def test_tool_output_sanitization_redacts_injection_tokens():
     assert result.final_text == "safe"
     tool_messages = [msg for msg in llm.last_request_messages if msg.role == "tool"]
     assert tool_messages
-    content = tool_messages[0].content if isinstance(tool_messages[0].content, str) else ""
+    content = (
+        tool_messages[0].content if isinstance(tool_messages[0].content, str) else ""
+    )
     assert "[untrusted_tool_output:dangerous_output]" in content
     assert "ignore previous instructions" not in content.lower()
     assert "[redacted]" in content

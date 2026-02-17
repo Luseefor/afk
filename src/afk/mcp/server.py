@@ -67,7 +67,9 @@ def _jsonrpc_response(id: Any, result: Any) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "id": id, "result": result}
 
 
-def _jsonrpc_error(id: Any, code: int, message: str, data: Any = None) -> dict[str, Any]:
+def _jsonrpc_error(
+    id: Any, code: int, message: str, data: Any = None
+) -> dict[str, Any]:
     """Build a JSON-RPC 2.0 error response."""
     error: dict[str, Any] = {"code": code, "message": message}
     if data is not None:
@@ -215,7 +217,9 @@ class MCPServer:
 
             async def event_stream():
                 # Send initial endpoint event
-                endpoint_data = json.dumps({"endpoint": "/mcp", "sessionId": session_id})
+                endpoint_data = json.dumps(
+                    {"endpoint": "/mcp", "sessionId": session_id}
+                )
                 yield f"event: endpoint\ndata: {endpoint_data}\n\n"
 
                 # Keep connection alive with heartbeats
@@ -271,7 +275,9 @@ class MCPServer:
                 # Client notification — no response needed
                 return _jsonrpc_response(msg_id, {})
             else:
-                return _jsonrpc_error(msg_id, METHOD_NOT_FOUND, f"Method not found: {method}")
+                return _jsonrpc_error(
+                    msg_id, METHOD_NOT_FOUND, f"Method not found: {method}"
+                )
 
             return _jsonrpc_response(msg_id, result)
 
@@ -292,7 +298,11 @@ class MCPServer:
                 "name": self._config.name,
                 "version": self._config.version,
             },
-            **({"instructions": self._config.instructions} if self._config.instructions else {}),
+            **(
+                {"instructions": self._config.instructions}
+                if self._config.instructions
+                else {}
+            ),
         }
 
     def _handle_tools_list(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -300,14 +310,16 @@ class MCPServer:
         tools = []
         for tool_obj in self._registry.list():
             spec = tool_obj.spec
-            tools.append({
-                "name": spec.name,
-                "description": spec.description,
-                "inputSchema": {
-                    "type": "object",
-                    **(spec.parameters_schema or {}),
-                },
-            })
+            tools.append(
+                {
+                    "name": spec.name,
+                    "description": spec.description,
+                    "inputSchema": {
+                        "type": "object",
+                        **(spec.parameters_schema or {}),
+                    },
+                }
+            )
         return {"tools": tools}
 
     async def _handle_tools_call(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -341,17 +353,21 @@ class MCPServer:
             if isinstance(output, str):
                 content.append({"type": "text", "text": output})
             elif output is not None:
-                content.append({
-                    "type": "text",
-                    "text": json.dumps(output, default=str),
-                })
+                content.append(
+                    {
+                        "type": "text",
+                        "text": json.dumps(output, default=str),
+                    }
+                )
             else:
                 content.append({"type": "text", "text": ""})
         else:
-            content.append({
-                "type": "text",
-                "text": result.error_message or "Tool execution failed",
-            })
+            content.append(
+                {
+                    "type": "text",
+                    "text": result.error_message or "Tool execution failed",
+                }
+            )
 
         return {
             "content": content,

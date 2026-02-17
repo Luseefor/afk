@@ -183,6 +183,7 @@ class TaskWorker:
                 runner = self._runner_factory()
             else:
                 from ..core.runner import Runner
+
                 runner = Runner()
 
             # Execute
@@ -200,7 +201,9 @@ class TaskWorker:
                 task_item.id,
                 result={"final_text": result.final_text, "state": result.state},
             )
-            logger.info("Task %s completed (agent=%s)", task_item.id[:8], task_item.agent_name)
+            logger.info(
+                "Task %s completed (agent=%s)", task_item.id[:8], task_item.agent_name
+            )
             if self._on_complete:
                 task_item.status = "completed"
                 await self._invoke_callback(self._on_complete, task_item)
@@ -216,6 +219,7 @@ class TaskWorker:
     async def _invoke_callback(self, cb: TaskCallback, item: TaskItem) -> None:
         """Invoke a callback, handling both sync and async signatures."""
         import inspect
+
         result = cb(item)
         if inspect.isawaitable(result):
             await result

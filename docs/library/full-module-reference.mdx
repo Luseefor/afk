@@ -1162,18 +1162,18 @@ Top-level symbols:
 - `class ToolNotFoundError` at `afk/tools/core/errors.py:42`
 - `class ToolPermissionError` at `afk/tools/core/errors.py:46`
 
-### Module `afk/tools/core/export.py`
+### Module `afk/llms/tool_export.py`
 
-Source: [afk/tools/core/export.py](https://github.com/socioy/afk/blob/main/src/afk/tools/core/export.py)
+Source: [afk/llms/tool_export.py](https://github.com/socioy/afk/blob/main/src/afk/llms/tool_export.py)
 
 Top-level symbols:
 
-- `def normalize_json_schema(schema: Dict[str, Any])` at `afk/tools/core/export.py:19` - Pydantic v2's model_json_schema() is generally usable as-is.
-- `def toolspec_to_litellm_tool(spec: ToolSpec)` at `afk/tools/core/export.py:33` - Convert a ToolSpec into a LiteLLM tool definition.
-- `def tool_to_litellm_tool(tool: Tool[Any, Any])` at `afk/tools/core/export.py:57`
-- `def to_litellm_tools(tools: Iterable[Tool[Any, Any]])` at `afk/tools/core/export.py:61` - Export Tool objects to a list of LiteLLM tool definitions.
-- `def to_litellm_tools_from_specs(specs: Iterable[ToolSpec])` at `afk/tools/core/export.py:69` - Export ToolSpec objects to a list of LiteLLM tool definitions.
-- `def export_tools(tools: Iterable[Tool[Any, Any]], *, format: str='litellm')` at `afk/tools/core/export.py:76` - Generic export entrypoint.
+- `def normalize_json_schema(schema: dict[str, Any])` at `afk/llms/tool_export.py:19` - Ensure schema is at least an object schema with properties.
+- `def toolspec_to_openai_tool(spec: Any)` at `afk/llms/tool_export.py:33` - Convert a tool spec-like object into an OpenAI-compatible function tool.
+- `def tool_to_openai_tool(tool: Any)` at `afk/llms/tool_export.py:52` - Convert a tool-like object with `.spec` into a function tool.
+- `def to_openai_tools(tools: Iterable[Any])` at `afk/llms/tool_export.py:57` - Convert tool-like objects into OpenAI-compatible function tools.
+- `def to_openai_tools_from_specs(specs: Iterable[Any])` at `afk/llms/tool_export.py:62` - Convert tool-spec-like objects into OpenAI-compatible function tools.
+- `def export_tools_for_provider(tools: Iterable[Any], *, format: str='openai')` at `afk/llms/tool_export.py:66` - Generic export entrypoint for OpenAI-compatible tool payloads.
 
 ### Module `afk/tools/prebuilts/__init__.py`
 

@@ -15,14 +15,13 @@ from afk.tools import (
     ToolRegistry,
     ToolSpec,
     as_async,
-    export_tools,
     middleware,
     posthook,
     prehook,
     registry_middleware,
     tool,
-    toolspec_to_litellm_tool,
 )
+from afk.llms.tool_export import toolspec_to_openai_tool
 from afk.tools.core.errors import (
     ToolAlreadyRegisteredError,
     ToolNotFoundError,
@@ -385,15 +384,11 @@ def test_export_helpers_and_openai_tool_format():
     registry.register(exportable)
 
     from_registry = registry.to_openai_function_tools()
-    from_export = export_tools(registry.list(), format="openai")
-    from_spec = toolspec_to_litellm_tool(exportable.spec)
+    from_spec = toolspec_to_openai_tool(exportable.spec)
 
     assert from_registry[0]["function"]["name"] == "exportable"
-    assert from_export[0]["function"]["description"] == "export me"
+    assert from_registry[0]["function"]["description"] == "export me"
     assert from_spec["function"]["parameters"]["type"] == "object"
-
-    with pytest.raises(ValueError, match="Unknown export format"):
-        export_tools(registry.list(), format="unknown")
 
 
 def test_tool_class_direct_instantiation_for_hook_types():

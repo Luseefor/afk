@@ -71,7 +71,11 @@ class RedisTaskQueue(TaskQueue):
             return None
 
         _, task_id_raw = result
-        task_id = task_id_raw.decode("utf-8") if isinstance(task_id_raw, bytes) else task_id_raw
+        task_id = (
+            task_id_raw.decode("utf-8")
+            if isinstance(task_id_raw, bytes)
+            else task_id_raw
+        )
 
         raw = await self._redis.hget(self._tasks_key(), task_id)
         if raw is None:

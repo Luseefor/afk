@@ -64,7 +64,9 @@ class TelemetrySink(Protocol):
         """
         ...
 
-    def start_span(self, name: str, *, attributes: dict[str, JSONValue] | None = None) -> TelemetrySpan | None:
+    def start_span(
+        self, name: str, *, attributes: dict[str, JSONValue] | None = None
+    ) -> TelemetrySpan | None:
         """
         Start a span when backend supports spans.
 
@@ -145,7 +147,9 @@ class NullTelemetrySink:
         _ = event
         return None
 
-    def start_span(self, name: str, *, attributes: dict[str, JSONValue] | None = None) -> TelemetrySpan | None:
+    def start_span(
+        self, name: str, *, attributes: dict[str, JSONValue] | None = None
+    ) -> TelemetrySpan | None:
         """
         Return `None` because spans are disabled.
 
@@ -240,7 +244,9 @@ class InMemoryTelemetrySink:
         """
         self._events.append(event)
 
-    def start_span(self, name: str, *, attributes: dict[str, JSONValue] | None = None) -> TelemetrySpan:
+    def start_span(
+        self, name: str, *, attributes: dict[str, JSONValue] | None = None
+    ) -> TelemetrySpan:
         """
         Start and store in-memory span.
 
@@ -251,7 +257,9 @@ class InMemoryTelemetrySink:
         Returns:
             Span wrapper tracked by this sink.
         """
-        span = TelemetrySpan(name=name, started_at_ms=now_ms(), attributes=dict(attributes or {}))
+        span = TelemetrySpan(
+            name=name, started_at_ms=now_ms(), attributes=dict(attributes or {})
+        )
         self._spans_open.append(span)
         return span
 
@@ -425,7 +433,9 @@ class OpenTelemetrySink:
             attributes={"event_name": event.name, **event.attributes},
         )
 
-    def start_span(self, name: str, *, attributes: dict[str, JSONValue] | None = None) -> TelemetrySpan | None:
+    def start_span(
+        self, name: str, *, attributes: dict[str, JSONValue] | None = None
+    ) -> TelemetrySpan | None:
         """
         Start OpenTelemetry span.
 

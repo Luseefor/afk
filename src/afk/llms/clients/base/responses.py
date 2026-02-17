@@ -24,7 +24,11 @@ from typing import Any, AsyncIterator
 
 from pydantic import BaseModel
 
-from ..shared.normalization import extract_usage, finalize_stream_tool_calls, to_plain_dict
+from ..shared.normalization import (
+    extract_usage,
+    finalize_stream_tool_calls,
+    to_plain_dict,
+)
 from ...llm import LLM
 from ...types import (
     EmbeddingRequest,
@@ -111,7 +115,10 @@ class ResponsesClientBase(LLM):
                         yield StreamTextDeltaEvent(delta=delta)
                     continue
 
-                if event_type in ("response.output_item.added", "response.output_item.done"):
+                if event_type in (
+                    "response.output_item.added",
+                    "response.output_item.done",
+                ):
                     output_index = event_dict.get("output_index")
                     item = event_dict.get("item")
                     if isinstance(output_index, int) and isinstance(item, dict):
@@ -133,8 +140,12 @@ class ResponsesClientBase(LLM):
                         buf["args_parts"].append(delta)
                         yield StreamToolCallDeltaEvent(
                             index=output_index,
-                            call_id=buf.get("id") if isinstance(buf.get("id"), str) else None,
-                            tool_name=buf.get("name") if isinstance(buf.get("name"), str) else None,
+                            call_id=buf.get("id")
+                            if isinstance(buf.get("id"), str)
+                            else None,
+                            tool_name=buf.get("name")
+                            if isinstance(buf.get("name"), str)
+                            else None,
                             arguments_delta=delta,
                         )
                     continue
@@ -146,7 +157,9 @@ class ResponsesClientBase(LLM):
                     continue
 
             if completed_response_payload is not None:
-                response = self._normalize_responses_response(completed_response_payload)
+                response = self._normalize_responses_response(
+                    completed_response_payload
+                )
             else:
                 response = LLMResponse(
                     text="".join(text_chunks),
@@ -191,7 +204,9 @@ class ResponsesClientBase(LLM):
         return EmbeddingResponse(
             embeddings=embeddings,
             raw=raw_dict,
-            model=raw_dict.get("model") if isinstance(raw_dict.get("model"), str) else req.model,
+            model=raw_dict.get("model")
+            if isinstance(raw_dict.get("model"), str)
+            else req.model,
         )
 
     def _build_responses_payload(
@@ -233,7 +248,9 @@ class ResponsesClientBase(LLM):
             payload["tools"] = [self._tool_to_responses_tool(t) for t in req.tools]
 
         if req.tool_choice is not None:
-            payload["tool_choice"] = self._tool_choice_to_responses_tool_choice(req.tool_choice)
+            payload["tool_choice"] = self._tool_choice_to_responses_tool_choice(
+                req.tool_choice
+            )
 
         metadata = dict(req.metadata)
         if req.request_id is not None:
@@ -254,7 +271,9 @@ class ResponsesClientBase(LLM):
         payload.update(req.extra)
         return payload
 
-    def _messages_to_responses_input(self, messages: list[Message]) -> list[dict[str, Any]]:
+    def _messages_to_responses_input(
+        self, messages: list[Message]
+    ) -> list[dict[str, Any]]:
         """Convert normalized messages to Responses API input items."""
         out: list[dict[str, Any]] = []
         for message in messages:
@@ -309,7 +328,9 @@ class ResponsesClientBase(LLM):
     def _normalize_responses_response(self, raw: Any) -> LLMResponse:
         """Normalize raw Responses payload into `LLMResponse`."""
         raw_dict = to_plain_dict(raw)
-        model = raw_dict.get("model") if isinstance(raw_dict.get("model"), str) else None
+        model = (
+            raw_dict.get("model") if isinstance(raw_dict.get("model"), str) else None
+        )
         usage = extract_usage(raw_dict)
         output = raw_dict.get("output")
 
@@ -327,7 +348,9 @@ class ResponsesClientBase(LLM):
             structured_response = parsed
 
         if structured_response is None:
-            structured_response = self._extract_structured_from_responses_output(output_items)
+            structured_response = self._extract_structured_from_responses_output(
+                output_items
+            )
 
         finish_reason = raw_dict.get("status")
         if not isinstance(finish_reason, str):
@@ -431,7 +454,9 @@ class ResponsesClientBase(LLM):
                 continue
 
             name = row.get("name") if isinstance(row.get("name"), str) else ""
-            call_id = row.get("call_id") if isinstance(row.get("call_id"), str) else None
+            call_id = (
+                row.get("call_id") if isinstance(row.get("call_id"), str) else None
+            )
             if call_id is None and isinstance(row.get("id"), str):
                 call_id = row.get("id")
 
@@ -491,7 +516,9 @@ class ResponsesClientBase(LLM):
         """Provider transport hook for embedding API calls."""
 
     @abstractmethod
-    def _message_to_responses_input_items(self, message: Message) -> list[dict[str, Any]]:
+    def _message_to_responses_input_items(
+        self, message: Message
+    ) -> list[dict[str, Any]]:
         """Provider-specific mapping from one normalized message to input items."""
 
     @abstractmethod

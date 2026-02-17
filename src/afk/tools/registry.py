@@ -476,19 +476,9 @@ class ToolRegistry:
           ...
         ]
         """
-        out: List[Dict[str, Any]] = []
-        for t in self._tools.values():
-            out.append(
-                {
-                    "type": "function",
-                    "function": {
-                        "name": t.spec.name,
-                        "description": t.spec.description,
-                        "parameters": t.spec.parameters_schema,
-                    },
-                }
-            )
-        return out
+        from afk.llms.tool_export import to_openai_tools
+
+        return to_openai_tools(self._tools.values())
 
     def list_tool_summaries(self) -> List[Dict[str, Any]]:
         """

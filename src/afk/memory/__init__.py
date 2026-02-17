@@ -8,14 +8,15 @@ This module provides the public API for the AFK memory subsystem, including mode
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
-from .models import JsonObject, JsonValue, LongTermMemory, MemoryEvent, now_ms, new_id
-from .store import (
+from .types import JsonObject, JsonValue, LongTermMemory, MemoryEvent
+from .utils import now_ms, new_id
+from .adapters import (
     InMemoryMemoryStore,
-    MemoryCapabilities,
-    MemoryStore,
     SQLiteMemoryStore,
 )
+from .store import MemoryCapabilities, MemoryStore
 from .vector import cosine_similarity
 from .factory import create_memory_store_from_env
 from .lifecycle import (
@@ -27,17 +28,8 @@ from .lifecycle import (
     compact_thread_memory,
 )
 
-
-def __getattr__(name: str):
-    if name == "RedisMemoryStore":
-        from .store.redis import RedisMemoryStore
-
-        return RedisMemoryStore
-    if name == "PostgresMemoryStore":
-        from .store.postgres import PostgresMemoryStore
-
-        return PostgresMemoryStore
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+RedisMemoryStore = None  # type: ignore[assignment]
+PostgresMemoryStore = None  # type: ignore[assignment]
 
 
 __all__ = [
@@ -52,8 +44,6 @@ __all__ = [
     "cosine_similarity",
     "InMemoryMemoryStore",
     "SQLiteMemoryStore",
-    "RedisMemoryStore",
-    "PostgresMemoryStore",
     "create_memory_store_from_env",
     "RetentionPolicy",
     "StateRetentionPolicy",
@@ -61,4 +51,25 @@ __all__ = [
     "apply_event_retention",
     "apply_state_retention",
     "compact_thread_memory",
+    "RedisMemoryStore",
+    "PostgresMemoryStore",
 ]
+
+try:
+    from .adapters.redis import RedisMemoryStore as _RedisMemoryStore
+except ModuleNotFoundError:
+    pass
+else:
+    RedisMemoryStore = _RedisMemoryStore
+
+try:
+    from .adapters.postgres import PostgresMemoryStore as _PostgresMemoryStore
+except ModuleNotFoundError:
+    pass
+else:
+    PostgresMemoryStore = _PostgresMemoryStore
+
+if TYPE_CHECKING:
+    # For type checking, import all store classes directly
+    from .adapters.redis import RedisMemoryStore
+    from .adapters.postgres import PostgresMemoryStore

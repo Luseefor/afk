@@ -30,7 +30,11 @@ SAFE_ICONS = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run AFK docs structure checks.")
     parser.add_argument("--docs-root", default="docs", help="Docs root directory")
-    parser.add_argument("--strict", action="store_true", help="Fail when concept section headers are missing")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail when concept section headers are missing",
+    )
     return parser.parse_args()
 
 

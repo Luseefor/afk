@@ -65,7 +65,9 @@ class DummyLLM(LLM):
             StreamTextDeltaEvent(delta="ok"),
             StreamCompletedEvent(response=LLMResponse(text="ok")),
         ]
-        self._embed_response = embed_response or EmbeddingResponse(embeddings=[[0.1, 0.2]])
+        self._embed_response = embed_response or EmbeddingResponse(
+            embeddings=[[0.1, 0.2]]
+        )
         self._caps = capabilities or LLMCapabilities(
             chat=True,
             streaming=True,

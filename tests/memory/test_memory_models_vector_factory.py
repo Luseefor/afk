@@ -16,7 +16,7 @@ from afk.memory import (
     new_id,
 )
 from afk.memory.factory import _env_bool
-from afk.memory.models import json_dumps, json_loads
+from afk.memory.utils import json_dumps, json_loads
 from afk.memory.vector import format_pgvector
 
 

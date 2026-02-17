@@ -195,9 +195,7 @@ class RunnerInternalsMixin:
                 last_error = e
                 await asyncio.sleep(0)
         if last_error is not None:
-            self._memory_fallback_reason = (
-                f"{self._memory_fallback_reason or 'memory_append_failed'}: {last_error}"
-            )
+            self._memory_fallback_reason = f"{self._memory_fallback_reason or 'memory_append_failed'}: {last_error}"
 
     async def _ensure_memory_store(self) -> MemoryStore:
         """
@@ -258,7 +256,9 @@ class RunnerInternalsMixin:
             "step": step,
             "phase": phase,
             "timestamp_ms": now_ms(),
-            "payload": {str(k): json_value_from_tool_result(v) for k, v in payload.items()},
+            "payload": {
+                str(k): json_value_from_tool_result(v) for k, v in payload.items()
+            },
         }
         await memory.put_state(
             thread_id,
@@ -314,7 +314,12 @@ class RunnerInternalsMixin:
         """
         if policy in {"retry_then_degrade"}:
             return "degrade"
-        if policy in {"continue", "continue_with_error", "retry_then_continue", "skip_action"}:
+        if policy in {
+            "continue",
+            "continue_with_error",
+            "retry_then_continue",
+            "skip_action",
+        }:
             return "degrade"
         return "fail"
 
@@ -487,7 +492,11 @@ class RunnerInternalsMixin:
                         tool_call_id,
                         in_hash,
                         out_hash,
-                        output=output if isinstance(output, (dict, list, str, int, float, bool, type(None))) else None,
+                        output=output
+                        if isinstance(
+                            output, (dict, list, str, int, float, bool, type(None))
+                        )
+                        else None,
                         success=success,
                     )
 
@@ -496,7 +505,10 @@ class RunnerInternalsMixin:
 
         expected_input_hash = json_hash({"tool_name": tool_name, "args": call_args})
         actual_input_hash = row.get("input_hash")
-        if isinstance(actual_input_hash, str) and actual_input_hash != expected_input_hash:
+        if (
+            isinstance(actual_input_hash, str)
+            and actual_input_hash != expected_input_hash
+        ):
             raise AgentCheckpointCorruptionError(
                 f"Effect journal integrity conflict for tool_call_id={tool_call_id}"
             )
@@ -587,7 +599,9 @@ class RunnerInternalsMixin:
                 handle.set_interrupt_callback(None)
             if response is None:
                 if handle.is_interrupt_requested():
-                    raise AgentInterruptedError("Run interrupted during LLM streaming call")
+                    raise AgentInterruptedError(
+                        "Run interrupted during LLM streaming call"
+                    )
                 raise AgentCancelledError("Run cancelled during LLM streaming call")
             return response
 
@@ -659,7 +673,9 @@ class RunnerInternalsMixin:
             "thread_id": thread_id,
             "step": step,
             "state": state,
-            "context": {str(k): json_value_from_tool_result(v) for k, v in context.items()},
+            "context": {
+                str(k): json_value_from_tool_result(v) for k, v in context.items()
+            },
             "messages": self._serialize_messages(messages),
             "llm_calls": llm_calls,
             "tool_calls": tool_calls,
@@ -678,10 +694,15 @@ class RunnerInternalsMixin:
             "tool_executions": self._serialize_tool_records(tool_execs),
             "subagent_executions": self._serialize_subagent_records(sub_execs),
             "skill_reads": self._serialize_skill_reads(skill_reads),
-            "skill_command_executions": self._serialize_command_records(skill_cmd_execs),
+            "skill_command_executions": self._serialize_command_records(
+                skill_cmd_execs
+            ),
             "final_text": final_text,
             "final_structured": (
-                {str(k): json_value_from_tool_result(v) for k, v in final_structured.items()}
+                {
+                    str(k): json_value_from_tool_result(v)
+                    for k, v in final_structured.items()
+                }
                 if isinstance(final_structured, dict)
                 else None
             ),
@@ -768,7 +789,9 @@ class RunnerInternalsMixin:
         step_value = normalized_latest.get("step")
         max_step = step_value if isinstance(step_value, int) and step_value >= 0 else 0
         for step in range(max_step, -1, -1):
-            state = await memory.get_state(thread_id, checkpoint_state_key(run_id, step, "runtime_state"))
+            state = await memory.get_state(
+                thread_id, checkpoint_state_key(run_id, step, "runtime_state")
+            )
             if isinstance(state, dict):
                 return self._normalize_checkpoint_record(state)
 
@@ -800,7 +823,9 @@ class RunnerInternalsMixin:
                 f"Checkpoint migration failed: {e}"
             ) from e
         version = migrated.get("schema_version")
-        check = check_checkpoint_schema_version(version if isinstance(version, str) else None)
+        check = check_checkpoint_schema_version(
+            version if isinstance(version, str) else None
+        )
         if not check.compatible:
             raise AgentCheckpointCorruptionError(check.message)
         return migrated
@@ -823,7 +848,10 @@ class RunnerInternalsMixin:
                 for part in content:
                     if isinstance(part, dict):
                         serialized_content.append(
-                            {str(k): json_value_from_tool_result(v) for k, v in part.items()}
+                            {
+                                str(k): json_value_from_tool_result(v)
+                                for k, v in part.items()
+                            }
                         )
                     else:
                         serialized_content.append(json_value_from_tool_result(part))
@@ -858,9 +886,7 @@ class RunnerInternalsMixin:
             role = row.get("role")
             content = row.get("content")
             name = row.get("name")
-            if isinstance(role, str) and (
-                isinstance(content, (str, list))
-            ):
+            if isinstance(role, str) and (isinstance(content, (str, list))):
                 out.append(
                     Message(
                         role=role,  # type: ignore[arg-type]
@@ -870,7 +896,9 @@ class RunnerInternalsMixin:
                 )
         return out
 
-    def _serialize_llm_response(self, value: LLMResponse | None) -> dict[str, Any] | None:
+    def _serialize_llm_response(
+        self, value: LLMResponse | None
+    ) -> dict[str, Any] | None:
         """
         Serialize optional LLM response for checkpoint persistence.
 
@@ -978,7 +1006,9 @@ class RunnerInternalsMixin:
             model=value.get("model") if isinstance(value.get("model"), str) else None,
         )
 
-    def _serialize_tool_records(self, rows: list[ToolExecutionRecord]) -> list[dict[str, Any]]:
+    def _serialize_tool_records(
+        self, rows: list[ToolExecutionRecord]
+    ) -> list[dict[str, Any]]:
         """
         Serialize tool execution records.
 
@@ -1027,7 +1057,9 @@ class RunnerInternalsMixin:
                     else None,
                     success=bool(row.get("success", False)),
                     output=row.get("output"),
-                    error=row.get("error") if isinstance(row.get("error"), str) else None,
+                    error=row.get("error")
+                    if isinstance(row.get("error"), str)
+                    else None,
                     latency_ms=row.get("latency_ms")
                     if isinstance(row.get("latency_ms"), (float, int))
                     else None,
@@ -1059,7 +1091,9 @@ class RunnerInternalsMixin:
             for row in rows
         ]
 
-    def _deserialize_subagent_records(self, value: Any) -> list[SubagentExecutionRecord]:
+    def _deserialize_subagent_records(
+        self, value: Any
+    ) -> list[SubagentExecutionRecord]:
         """
         Deserialize subagent execution records.
 
@@ -1085,7 +1119,9 @@ class RunnerInternalsMixin:
                     output_text=row.get("output_text")
                     if isinstance(row.get("output_text"), str)
                     else None,
-                    error=row.get("error") if isinstance(row.get("error"), str) else None,
+                    error=row.get("error")
+                    if isinstance(row.get("error"), str)
+                    else None,
                     latency_ms=row.get("latency_ms")
                     if isinstance(row.get("latency_ms"), (float, int))
                     else None,
@@ -1093,7 +1129,9 @@ class RunnerInternalsMixin:
             )
         return out
 
-    def _serialize_skill_reads(self, rows: list[SkillReadRecord]) -> list[dict[str, Any]]:
+    def _serialize_skill_reads(
+        self, rows: list[SkillReadRecord]
+    ) -> list[dict[str, Any]]:
         """
         Serialize skill read records.
 
@@ -1190,8 +1228,12 @@ class RunnerInternalsMixin:
                 CommandExecutionRecord(
                     command=[str(item) for item in cmd],
                     exit_code=int(row.get("exit_code", 1)),
-                    stdout=row.get("stdout") if isinstance(row.get("stdout"), str) else "",
-                    stderr=row.get("stderr") if isinstance(row.get("stderr"), str) else "",
+                    stdout=row.get("stdout")
+                    if isinstance(row.get("stdout"), str)
+                    else "",
+                    stderr=row.get("stderr")
+                    if isinstance(row.get("stderr"), str)
+                    else "",
                     denied=bool(row.get("denied", False)),
                 )
             )
@@ -1419,7 +1461,9 @@ class RunnerInternalsMixin:
             thread_id=value.get("thread_id")
             if isinstance(value.get("thread_id"), str)
             else "",
-            state=value.get("state") if isinstance(value.get("state"), str) else "failed",
+            state=value.get("state")
+            if isinstance(value.get("state"), str)
+            else "failed",
             final_text=value.get("final_text")
             if isinstance(value.get("final_text"), str)
             else "",
@@ -1436,7 +1480,9 @@ class RunnerInternalsMixin:
             if isinstance(value.get("final_structured"), dict)
             else None,
             llm_response=self._deserialize_llm_response(value.get("llm_response")),
-            tool_executions=self._deserialize_tool_records(value.get("tool_executions")),
+            tool_executions=self._deserialize_tool_records(
+                value.get("tool_executions")
+            ),
             subagent_executions=self._deserialize_subagent_records(
                 value.get("subagent_executions")
             ),

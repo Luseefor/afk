@@ -45,15 +45,6 @@ from .core import (
     ToolValidationError,
 )
 
-from .core import (
-    export_tools,
-    normalize_json_schema,
-    to_litellm_tools,
-    to_litellm_tools_from_specs,
-    tool_to_litellm_tool,
-    toolspec_to_litellm_tool,
-)
-
 from .registry import (
     ToolRegistry,
     RegistryMiddleware,
@@ -105,13 +96,6 @@ __all__ = [
     "apply_tool_output_limits",
     "build_skill_tools",
     "build_runtime_tools",
-    # export (LiteLLM)
-    "export_tools",
-    "normalize_json_schema",
-    "to_litellm_tools",
-    "to_litellm_tools_from_specs",
-    "tool_to_litellm_tool",
-    "toolspec_to_litellm_tool",
     # errors
     "ToolAlreadyRegisteredError",
     "ToolExecutionError",

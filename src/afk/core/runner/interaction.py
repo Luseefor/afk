@@ -298,7 +298,9 @@ class RunnerInteractionMixin:
                     else evaluation
                 )
             except Exception as e:
-                raise AgentExecutionError(f"Policy engine evaluation failed: {e}") from e
+                raise AgentExecutionError(
+                    f"Policy engine evaluation failed: {e}"
+                ) from e
             if isinstance(engine_decision, RulePolicyDecision):
                 decision = engine_decision
                 if decision.action in {
@@ -424,7 +426,9 @@ class RunnerInteractionMixin:
             thread_id=thread_id,
             step=step,
             reason=reason,
-            payload={str(k): json_value_from_tool_result(v) for k, v in payload.items()},
+            payload={
+                str(k): json_value_from_tool_result(v) for k, v in payload.items()
+            },
         )
         decision = await self._interaction.request_approval(req)
         if isinstance(decision, ApprovalDecision):
@@ -546,7 +550,9 @@ class RunnerInteractionMixin:
             thread_id=thread_id,
             step=step,
             prompt=prompt,
-            payload={str(k): json_value_from_tool_result(v) for k, v in payload.items()},
+            payload={
+                str(k): json_value_from_tool_result(v) for k, v in payload.items()
+            },
         )
         decision = await self._interaction.request_user_input(req)
         if isinstance(decision, UserInputDecision):
@@ -633,7 +639,9 @@ class RunnerInteractionMixin:
         )
         if isinstance(deferred, UserInputDecision):
             return deferred
-        return UserInputDecision(kind=self.config.input_fallback, reason="input_timeout")
+        return UserInputDecision(
+            kind=self.config.input_fallback, reason="input_timeout"
+        )
 
     def _is_defer_user_input(self, decision: PolicyDecision) -> bool:
         """

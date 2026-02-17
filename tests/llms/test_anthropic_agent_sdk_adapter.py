@@ -9,7 +9,12 @@ from pydantic import BaseModel
 
 from afk.llms.clients.adapters.anthropic_agent import AnthropicAgentClient
 from afk.llms.errors import LLMCapabilityError
-from afk.llms.types import LLMRequest, Message, StreamCompletedEvent, StreamTextDeltaEvent
+from afk.llms.types import (
+    LLMRequest,
+    Message,
+    StreamCompletedEvent,
+    StreamTextDeltaEvent,
+)
 
 
 def run_async(coro):

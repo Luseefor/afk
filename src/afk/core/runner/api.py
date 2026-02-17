@@ -12,7 +12,11 @@ import asyncio
 from typing import Any
 
 from ...agents.core.base import BaseAgent
-from ...agents.errors import AgentCancelledError, AgentCheckpointCorruptionError, AgentConfigurationError
+from ...agents.errors import (
+    AgentCancelledError,
+    AgentCheckpointCorruptionError,
+    AgentConfigurationError,
+)
 from ...agents.policy.engine import PolicyEngine
 from ...agents.lifecycle.runtime import EffectJournal, checkpoint_latest_key
 from ...agents.types import AgentResult, AgentRunHandle
@@ -398,18 +402,26 @@ class RunnerAPIMixin:
                             for tn in tool_names:
                                 await stream.emit(_tool_started(str(tn)))
                     elif event.event_type == "tool_completed" and event.data:
-                        await stream.emit(_tool_completed(
-                            tool_name=str(event.data.get("tool_name", "")),
-                            tool_call_id=event.data.get("tool_call_id"),
-                            success=bool(event.data.get("success", False)),
-                            output=event.data.get("output"),
-                            error=event.data.get("error"),
-                        ))
+                        await stream.emit(
+                            _tool_completed(
+                                tool_name=str(event.data.get("tool_name", "")),
+                                tool_call_id=event.data.get("tool_call_id"),
+                                success=bool(event.data.get("success", False)),
+                                output=event.data.get("output"),
+                                error=event.data.get("error"),
+                            )
+                        )
                     elif event.event_type == "step_started":
-                        await stream.emit(_step_started(
-                            step=int(event.data.get("step", 0)) if event.data else 0,
-                            state=event.data.get("state", "running") if event.data else "running",
-                        ))
+                        await stream.emit(
+                            _step_started(
+                                step=int(event.data.get("step", 0))
+                                if event.data
+                                else 0,
+                                state=event.data.get("state", "running")
+                                if event.data
+                                else "running",
+                            )
+                        )
                     elif event.event_type in ("run_failed", "run_interrupted"):
                         error_msg = (
                             event.data.get("error", str(event.event_type))

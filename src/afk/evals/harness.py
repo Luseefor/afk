@@ -74,10 +74,14 @@ def write_golden_trace(path: str | Path, events: list[AgentRunEvent]) -> None:
         }
         for event in events
     ]
-    Path(path).write_text(json.dumps(rows, ensure_ascii=True, indent=2), encoding="utf-8")
+    Path(path).write_text(
+        json.dumps(rows, ensure_ascii=True, indent=2), encoding="utf-8"
+    )
 
 
-def compare_event_types(expected: list[str], observed: list[str]) -> tuple[bool, str | None]:
+def compare_event_types(
+    expected: list[str], observed: list[str]
+) -> tuple[bool, str | None]:
     if expected == observed:
         return True, None
     return False, f"expected={expected} observed={observed}"
@@ -106,4 +110,6 @@ def run_scenarios(
 ) -> list[EvalResult]:
     import asyncio
 
-    return asyncio.run(arun_scenarios(runner_factory=runner_factory, scenarios=scenarios))
+    return asyncio.run(
+        arun_scenarios(runner_factory=runner_factory, scenarios=scenarios)
+    )

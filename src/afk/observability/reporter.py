@@ -61,7 +61,9 @@ class ConsoleReporter(Reporter):
         out.write(f"{header}\n\n")
 
         # Status
-        status = self._c("✓ SUCCESS", "32") if metrics.success else self._c("✗ FAILED", "31")
+        status = (
+            self._c("✓ SUCCESS", "32") if metrics.success else self._c("✗ FAILED", "31")
+        )
         out.write(f"  Status:    {status}\n")
         if metrics.agent_name:
             out.write(f"  Agent:     {metrics.agent_name}\n")

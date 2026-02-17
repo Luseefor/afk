@@ -13,8 +13,18 @@ import inspect
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, AsyncIterator
 
-from ...agents.types import AgentResult, AgentRunEvent, AgentRunHandle, DecisionKind, InteractionMode
-from ...tools.security import SandboxProfile, SandboxProfileProvider, SecretScopeProvider
+from ...agents.types import (
+    AgentResult,
+    AgentRunEvent,
+    AgentRunHandle,
+    DecisionKind,
+    InteractionMode,
+)
+from ...tools.security import (
+    SandboxProfile,
+    SandboxProfileProvider,
+    SecretScopeProvider,
+)
 
 
 _RUN_END = object()
@@ -76,7 +86,9 @@ class _RunHandle(AgentRunHandle):
     def __init__(self) -> None:
         """Initialize queue, result future, and lifecycle flags."""
         self._queue: asyncio.Queue[object] = asyncio.Queue()
-        self._result_fut: asyncio.Future[AgentResult | None] = asyncio.get_running_loop().create_future()
+        self._result_fut: asyncio.Future[AgentResult | None] = (
+            asyncio.get_running_loop().create_future()
+        )
         self._task: asyncio.Task[None] | None = None
         self._events_consumed = False
         self._paused_by_user = False
