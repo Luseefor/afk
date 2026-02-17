@@ -10,7 +10,13 @@ from afk.agents import Agent
 from afk.core import Runner
 from afk.evals import EvalScenario, compare_event_types, run_scenario
 from afk.llms import LLM
-from afk.llms.types import EmbeddingRequest, EmbeddingResponse, LLMCapabilities, LLMRequest, LLMResponse
+from afk.llms.types import (
+    EmbeddingRequest,
+    EmbeddingResponse,
+    LLMCapabilities,
+    LLMRequest,
+    LLMResponse,
+)
 
 
 class _EvalLLM(LLM):
@@ -32,7 +38,9 @@ class _EvalLLM(LLM):
         _ = response_model
         return LLMResponse(text="golden-ok")
 
-    async def _chat_stream_core(self, req: LLMRequest, *, response_model=None) -> AsyncIterator:
+    async def _chat_stream_core(
+        self, req: LLMRequest, *, response_model=None
+    ) -> AsyncIterator:
         _ = req
         _ = response_model
         raise NotImplementedError

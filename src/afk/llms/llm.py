@@ -269,9 +269,13 @@ class _TokenSessionHandle(LLMSessionHandle):
             session_token=req.session_token or self._session_token,
             checkpoint_token=req.checkpoint_token or self._checkpoint_token,
         )
-        handle = await self._llm.chat_stream_handle(scoped, response_model=response_model)
+        handle = await self._llm.chat_stream_handle(
+            scoped, response_model=response_model
+        )
         self._active_stream = handle
-        self._active_stream_task = asyncio.create_task(self._capture_stream_result(handle))
+        self._active_stream_task = asyncio.create_task(
+            self._capture_stream_result(handle)
+        )
         return handle
 
     async def pause(self) -> None:
@@ -642,7 +646,9 @@ class LLM(ABC):
         request_id = self._new_request_id()
 
         async def _base_handler(current_req: EmbeddingRequest) -> EmbeddingResponse:
-            return await self._embed_core_with_safety(current_req, request_id=request_id)
+            return await self._embed_core_with_safety(
+                current_req, request_id=request_id
+            )
 
         call_next: LLMEmbedNext = _base_handler
         for middleware in reversed(self.middlewares.embed):
@@ -799,7 +805,9 @@ class LLM(ABC):
                 except Exception as e:
                     if isinstance(e, (LLMCancelledError, LLMInterruptedError)):
                         raise
-                    classified = e if isinstance(e, LLMError) else self._classify_error(e)
+                    classified = (
+                        e if isinstance(e, LLMError) else self._classify_error(e)
+                    )
                     raise classified from e
 
             return _guarded()
@@ -1140,7 +1148,9 @@ class LLM(ABC):
                 field_name="thinking_effort_aliases value",
             )
             if normalized_key is None or normalized_value is None:
-                raise LLMError("thinking_effort_aliases cannot contain empty keys/values")
+                raise LLMError(
+                    "thinking_effort_aliases cannot contain empty keys/values"
+                )
             out[normalized_key] = normalized_value
         return out
 
@@ -1238,7 +1248,9 @@ class LLM(ABC):
         """Generate a new opaque correlation id."""
         return uuid.uuid4().hex
 
-    def _apply_response_context(self, req: LLMRequest, response: LLMResponse) -> LLMResponse:
+    def _apply_response_context(
+        self, req: LLMRequest, response: LLMResponse
+    ) -> LLMResponse:
         """
         Ensure response carries normalized request/session/checkpoint context.
         """
@@ -1249,7 +1261,9 @@ class LLM(ABC):
             checkpoint_token=response.checkpoint_token or req.checkpoint_token,
         )
 
-    def _can_retry_request(self, req: LLMRequest, safe_without_idempotency: bool) -> bool:
+    def _can_retry_request(
+        self, req: LLMRequest, safe_without_idempotency: bool
+    ) -> bool:
         """
         Decide retry eligibility for one request path.
 

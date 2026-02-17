@@ -32,9 +32,11 @@ __all__ = [
     "TaskWorkerConfig",
 ]
 
+
 # Lazy import for Redis queue
 def __getattr__(name: str):
     if name == "RedisTaskQueue":
         from .redis_queue import RedisTaskQueue
+
         return RedisTaskQueue
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

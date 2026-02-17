@@ -167,7 +167,9 @@ def extract_tool_calls(raw_tool_calls: Any) -> list[ToolCall]:
     return out
 
 
-def finalize_stream_tool_calls(tool_buffers: dict[int, dict[str, Any]]) -> list[ToolCall]:
+def finalize_stream_tool_calls(
+    tool_buffers: dict[int, dict[str, Any]],
+) -> list[ToolCall]:
     """Build final normalized tool calls from accumulated stream deltas."""
     out: list[ToolCall] = []
     for idx in sorted(tool_buffers.keys()):

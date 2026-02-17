@@ -139,13 +139,17 @@ def test_redis_capabilities_and_upsert_preserve_embedding():
         await store.upsert_long_term_memory(original, embedding=[1.0, 0.0])
 
         await store.delete_long_term_memory(f"{user_id}-other", memory_id)
-        still_there = await store.search_long_term_memory_vector(user_id, [1.0, 0.0], limit=5)
+        still_there = await store.search_long_term_memory_vector(
+            user_id, [1.0, 0.0], limit=5
+        )
         assert [m.id for m, _ in still_there] == [memory_id]
 
         updated = make_memory(memory_id, user_id, "global", "Updated", 2000)
         await store.upsert_long_term_memory(updated, embedding=None)
 
-        vec_hits = await store.search_long_term_memory_vector(user_id, [1.0, 0.0], limit=5)
+        vec_hits = await store.search_long_term_memory_vector(
+            user_id, [1.0, 0.0], limit=5
+        )
         assert [m.id for m, _ in vec_hits] == [memory_id]
         assert vec_hits[0][0].text == "Updated"
 

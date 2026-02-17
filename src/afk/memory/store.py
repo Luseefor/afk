@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from importlib import import_module
 from typing import Optional, Sequence
 
 from afk.memory.types import JsonValue, LongTermMemory, MemoryEvent
@@ -177,20 +176,4 @@ class MemoryStore(ABC):
 __all__ = [
     "MemoryCapabilities",
     "MemoryStore",
-    "InMemoryMemoryStore",  # backward-compatible export
-    "SQLiteMemoryStore",  # backward-compatible export
-    "RedisMemoryStore",  # backward-compatible export
-    "PostgresMemoryStore",  # backward-compatible export
 ]
-
-
-def __getattr__(name: str) -> object:
-    if name == "InMemoryMemoryStore":
-        return getattr(import_module("afk.memory.adapters.in_memory"), name)
-    if name == "SQLiteMemoryStore":
-        return getattr(import_module("afk.memory.adapters.sqlite"), name)
-    if name == "RedisMemoryStore":
-        return getattr(import_module("afk.memory.adapters.redis"), name)
-    if name == "PostgresMemoryStore":
-        return getattr(import_module("afk.memory.adapters.postgres"), name)
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

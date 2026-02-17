@@ -192,7 +192,9 @@ class RunnerExecutionMixin:
             step = int(restored.get("step", step))
             started_at_s = float(restored.get("started_at_s", started_at_s))
             total_cost_usd = float(restored.get("total_cost_usd", total_cost_usd))
-            session_token = self._maybe_str(restored.get("session_token")) or session_token
+            session_token = (
+                self._maybe_str(restored.get("session_token")) or session_token
+            )
             checkpoint_token = (
                 self._maybe_str(restored.get("checkpoint_token")) or checkpoint_token
             )
@@ -316,7 +318,9 @@ class RunnerExecutionMixin:
 
                     skill_policy = replace(
                         skill_policy,
-                        command_allowlist=list(self.config.default_allowlisted_commands),
+                        command_allowlist=list(
+                            self.config.default_allowlisted_commands
+                        ),
                     )
                 extra_tools.extend(
                     build_skill_tools(
@@ -328,7 +332,9 @@ class RunnerExecutionMixin:
             registry = agent.build_tool_registry(
                 extra_tools=extra_tools,
             )
-            llm_tools = registry.to_openai_function_tools() if registry.names() else None
+            llm_tools = (
+                registry.to_openai_function_tools() if registry.names() else None
+            )
 
             if not messages:
                 sys_chunks: list[str] = []
@@ -343,7 +349,9 @@ class RunnerExecutionMixin:
                 if skill_manifest:
                     sys_chunks.append(skill_manifest)
                 if sys_chunks:
-                    messages.append(Message(role="system", content="\n\n".join(sys_chunks)))
+                    messages.append(
+                        Message(role="system", content="\n\n".join(sys_chunks))
+                    )
                 if isinstance(user_message, str) and user_message.strip():
                     messages.append(Message(role="user", content=user_message.strip()))
 
@@ -430,7 +438,10 @@ class RunnerExecutionMixin:
                         messages=messages,
                     )
                     if r_decision.targets:
-                        if len(r_decision.targets) > fail_safe.max_subagent_fanout_per_step:
+                        if (
+                            len(r_decision.targets)
+                            > fail_safe.max_subagent_fanout_per_step
+                        ):
                             raise SubagentRoutingError(
                                 "Subagent fanout exceeded guard "
                                 f"({len(r_decision.targets)}>{fail_safe.max_subagent_fanout_per_step})"
@@ -475,7 +486,9 @@ class RunnerExecutionMixin:
                             memory=memory,
                             user_id=self._maybe_str(ctx.get("user_id")),
                         )
-                        subagent_latency_ms = (time.time() - subagent_batch_started_s) * 1000.0
+                        subagent_latency_ms = (
+                            time.time() - subagent_batch_started_s
+                        ) * 1000.0
                         self._telemetry_histogram(
                             "agent.subagent.batch.latency_ms",
                             value=subagent_latency_ms,
@@ -488,17 +501,25 @@ class RunnerExecutionMixin:
                             "agent.subagent.batches.total",
                             value=1,
                             attributes={
-                                "result": "success" if all(record.success for record in records) else "partial_or_error",
+                                "result": "success"
+                                if all(record.success for record in records)
+                                else "partial_or_error",
                                 "parallel": parallel_mode,
                             },
                         )
                         self._telemetry_end_span(
                             subagent_span,
-                            status="ok" if all(record.success for record in records) else "error",
+                            status="ok"
+                            if all(record.success for record in records)
+                            else "error",
                             attributes={
                                 "latency_ms": subagent_latency_ms,
-                                "success_count": sum(1 for record in records if record.success),
-                                "failure_count": sum(1 for record in records if not record.success),
+                                "success_count": sum(
+                                    1 for record in records if record.success
+                                ),
+                                "failure_count": sum(
+                                    1 for record in records if not record.success
+                                ),
                             },
                         )
                         sub_execs.extend(records)
@@ -509,8 +530,12 @@ class RunnerExecutionMixin:
                             step=step,
                             phase="post_subagent_batch",
                             payload={
-                                "success_count": sum(1 for record in records if record.success),
-                                "failure_count": sum(1 for record in records if not record.success),
+                                "success_count": sum(
+                                    1 for record in records if record.success
+                                ),
+                                "failure_count": sum(
+                                    1 for record in records if not record.success
+                                ),
                             },
                         )
                         if any(not record.success for record in records):
@@ -523,7 +548,9 @@ class RunnerExecutionMixin:
                                 )
                             if sub_policy_outcome == "degrade":
                                 state = self._transition_state(state, "degraded")
-                                final_text = "Subagent execution failed under degrade policy"
+                                final_text = (
+                                    "Subagent execution failed under degrade policy"
+                                )
                                 break
                         if bridge:
                             messages.append(Message(role="assistant", content=bridge))
@@ -598,7 +625,9 @@ class RunnerExecutionMixin:
                             )
                             if denial_outcome == "degrade":
                                 state = self._transition_state(state, "degraded")
-                                final_text = "LLM call approval denied under degrade setting"
+                                final_text = (
+                                    "LLM call approval denied under degrade setting"
+                                )
                                 break
                             raise AgentExecutionError("LLM call approval denied")
                     if llm_policy_decision.action == "request_user_input":
@@ -621,10 +650,13 @@ class RunnerExecutionMixin:
                             )
                             if denial_outcome == "degrade":
                                 state = self._transition_state(state, "degraded")
-                                final_text = "LLM user-input gate denied under degrade setting"
+                                final_text = (
+                                    "LLM user-input gate denied under degrade setting"
+                                )
                                 break
                             raise AgentExecutionError(
-                                llm_input_decision.reason or "LLM user-input gate denied"
+                                llm_input_decision.reason
+                                or "LLM user-input gate denied"
                             )
                         if (
                             isinstance(llm_input_decision.value, str)
@@ -677,7 +709,9 @@ class RunnerExecutionMixin:
                     llm_error: Exception | None = None
                     resp = None
                     for candidate in llm_candidates:
-                        candidate_key = f"llm:{candidate.adapter}:{candidate.normalized_model}"
+                        candidate_key = (
+                            f"llm:{candidate.adapter}:{candidate.normalized_model}"
+                        )
                         llm_call_started_s: float | None = None
                         llm_span = None
                         try:
@@ -749,7 +783,9 @@ class RunnerExecutionMixin:
                             resp = response
                             final_resp = response
                             breaker.record_success(candidate_key)
-                            requested_model = requested_model or candidate.requested_model
+                            requested_model = (
+                                requested_model or candidate.requested_model
+                            )
                             normalized_model = candidate.normalized_model
                             provider_adapter = candidate.adapter
                             model_name = candidate.normalized_model
@@ -757,7 +793,9 @@ class RunnerExecutionMixin:
                             break
                         except Exception as e:
                             if llm_call_started_s is not None:
-                                llm_latency_ms = (time.time() - llm_call_started_s) * 1000.0
+                                llm_latency_ms = (
+                                    time.time() - llm_call_started_s
+                                ) * 1000.0
                                 self._telemetry_histogram(
                                     "agent.llm.latency_ms",
                                     value=llm_latency_ms,
@@ -979,15 +1017,18 @@ class RunnerExecutionMixin:
                             )
                         if denial_outcome == "degrade":
                             state = self._transition_state(state, "degraded")
-                            final_text = (
-                                f"Tool '{tool_name}' denied by policy under degrade setting"
-                            )
+                            final_text = f"Tool '{tool_name}' denied by policy under degrade setting"
                             break
                         continue
 
-                    if decision.action in {"defer", "request_approval", "request_user_input"}:
+                    if decision.action in {
+                        "defer",
+                        "request_approval",
+                        "request_user_input",
+                    }:
                         if decision.action == "request_user_input" or (
-                            decision.action == "defer" and self._is_defer_user_input(decision)
+                            decision.action == "defer"
+                            and self._is_defer_user_input(decision)
                         ):
                             user_decision = await self._request_user_input(
                                 handle=handle,
@@ -1029,9 +1070,7 @@ class RunnerExecutionMixin:
                                     )
                                 if denial_outcome == "degrade":
                                     state = self._transition_state(state, "degraded")
-                                    final_text = (
-                                        f"Tool '{tool_name}' blocked by user input under degrade setting"
-                                    )
+                                    final_text = f"Tool '{tool_name}' blocked by user input under degrade setting"
                                     break
                                 continue
                             target_arg = decision.request_payload.get("target_arg")
@@ -1044,7 +1083,8 @@ class RunnerExecutionMixin:
                                 run_id=run_id,
                                 thread_id=t_id,
                                 step=step,
-                                reason=decision.reason or f"Approval requested for {tool_name}",
+                                reason=decision.reason
+                                or f"Approval requested for {tool_name}",
                                 payload=decision.request_payload,
                                 user_id=self._maybe_str(ctx.get("user_id")),
                             )
@@ -1061,7 +1101,10 @@ class RunnerExecutionMixin:
                                         role="tool",
                                         name=tool_name,
                                         content=json.dumps(
-                                            {"success": False, "error": "Approval denied"},
+                                            {
+                                                "success": False,
+                                                "error": "Approval denied",
+                                            },
                                             ensure_ascii=True,
                                         ),
                                     )
@@ -1075,9 +1118,7 @@ class RunnerExecutionMixin:
                                     )
                                 if denial_outcome == "degrade":
                                     state = self._transition_state(state, "degraded")
-                                    final_text = (
-                                        f"Tool '{tool_name}' approval denied under degrade setting"
-                                    )
+                                    final_text = f"Tool '{tool_name}' approval denied under degrade setting"
                                     break
                                 continue
 
@@ -1125,9 +1166,7 @@ class RunnerExecutionMixin:
                                 )
                             if denial_outcome == "degrade":
                                 state = self._transition_state(state, "degraded")
-                                final_text = (
-                                    f"Tool '{tool_name}' blocked by sandbox under degrade setting"
-                                )
+                                final_text = f"Tool '{tool_name}' blocked by sandbox under degrade setting"
                                 break
                             continue
 
@@ -1225,12 +1264,17 @@ class RunnerExecutionMixin:
                         break
 
                     if execution_indices:
-                        async def _exec_one(mapped_idx: int) -> ToolResult[Any] | Exception:
+
+                        async def _exec_one(
+                            mapped_idx: int,
+                        ) -> ToolResult[Any] | Exception:
                             """Execute one tool call for mapped index and capture exceptions."""
                             call_name, call_args = calls[mapped_idx]
                             call_ctx = call_contexts[mapped_idx]
                             call_timeout = call_timeouts[mapped_idx]
-                            call_tool_id = tool_ids[mapped_idx] or f"{run_id}:{step}:{mapped_idx}"
+                            call_tool_id = (
+                                tool_ids[mapped_idx] or f"{run_id}:{step}:{mapped_idx}"
+                            )
                             try:
                                 return await registry.call(
                                     call_name,
@@ -1246,7 +1290,9 @@ class RunnerExecutionMixin:
                             *[_exec_one(idx) for idx in execution_indices],
                             return_exceptions=False,
                         )
-                        for mapped_idx, result in zip(execution_indices, execution_results):
+                        for mapped_idx, result in zip(
+                            execution_indices, execution_results
+                        ):
                             resolved_results[mapped_idx] = result
 
                     for idx, result in enumerate(resolved_results):
@@ -1315,7 +1361,9 @@ class RunnerExecutionMixin:
                         tool_execs.append(rec)
 
                         if call_id:
-                            input_hash = json_hash({"tool_name": tool_name, "args": call_args})
+                            input_hash = json_hash(
+                                {"tool_name": tool_name, "args": call_args}
+                            )
                             output_value = json_value_from_tool_result(tr.output)
                             output_hash = json_hash({"output": output_value})
                             await self._persist_effect_result(
@@ -1343,7 +1391,9 @@ class RunnerExecutionMixin:
                                     ),
                                 )
                             )
-                        if tool_name == "run_skill_command" and isinstance(tr.output, dict):
+                        if tool_name == "run_skill_command" and isinstance(
+                            tr.output, dict
+                        ):
                             cmd = tr.output.get("command")
                             if isinstance(cmd, list):
                                 skill_cmd_execs.append(
@@ -1424,11 +1474,16 @@ class RunnerExecutionMixin:
                         payload={
                             "tool_calls_total": len(calls),
                             "tool_failures": sum(
-                                1 for record in tool_execs if not record.success and record.tool_call_id in tool_ids
+                                1
+                                for record in tool_execs
+                                if not record.success
+                                and record.tool_call_id in tool_ids
                             ),
                         },
                     )
-                    tool_batch_latency_ms = (time.time() - tool_batch_started_s) * 1000.0
+                    tool_batch_latency_ms = (
+                        time.time() - tool_batch_started_s
+                    ) * 1000.0
                     tool_failure_count = sum(
                         1
                         for record in tool_execs
@@ -1446,7 +1501,9 @@ class RunnerExecutionMixin:
                         "agent.tool.batches.total",
                         value=1,
                         attributes={
-                            "result": "success" if tool_failure_count == 0 else "partial_or_error",
+                            "result": "success"
+                            if tool_failure_count == 0
+                            else "partial_or_error",
                         },
                     )
                     self._telemetry_end_span(

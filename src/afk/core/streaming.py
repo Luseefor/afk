@@ -75,6 +75,7 @@ class AgentStreamEvent:
 # Convenience constructors
 # ---------------------------------------------------------------------------
 
+
 def text_delta(delta: str, *, step: int | None = None) -> AgentStreamEvent:
     """Create a text delta stream event."""
     return AgentStreamEvent(type="text_delta", text_delta=delta, step=step)
@@ -134,7 +135,10 @@ def status_update(
 ) -> AgentStreamEvent:
     """Create a status update stream event."""
     return AgentStreamEvent(
-        type="status_update", state=state, step=step, data=data or {},
+        type="status_update",
+        state=state,
+        step=step,
+        data=data or {},
     )
 
 

@@ -83,7 +83,9 @@ class AgentMailbox:
         """Name of the agent this mailbox belongs to."""
         return self._agent_name
 
-    async def send(self, recipient: str, content: str | JSONValue, **kwargs: Any) -> AgentMessage:
+    async def send(
+        self, recipient: str, content: str | JSONValue, **kwargs: Any
+    ) -> AgentMessage:
         """
         Send a message to another agent.
 
@@ -201,7 +203,9 @@ class MessageBus(ABC):
         ...
 
     @abstractmethod
-    async def receive(self, agent_name: str, *, timeout: float | None = None) -> AgentMessage | None:
+    async def receive(
+        self, agent_name: str, *, timeout: float | None = None
+    ) -> AgentMessage | None:
         """
         Wait for the next message for an agent.
 

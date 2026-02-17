@@ -8,7 +8,10 @@ from afk.agents.types import (
     ApprovalRequest,
     UserInputRequest,
 )
-from afk.core.interaction import HeadlessInteractionProvider, InMemoryInteractiveProvider
+from afk.core.interaction import (
+    HeadlessInteractionProvider,
+    InMemoryInteractiveProvider,
+)
 
 
 def run_async(coro):
@@ -16,7 +19,9 @@ def run_async(coro):
 
 
 def test_headless_provider_uses_fallback_decisions():
-    provider = HeadlessInteractionProvider(approval_fallback="deny", input_fallback="deny")
+    provider = HeadlessInteractionProvider(
+        approval_fallback="deny", input_fallback="deny"
+    )
     approval = run_async(
         provider.request_approval(
             ApprovalRequest(
@@ -71,4 +76,3 @@ def test_provider_collects_notifications():
     run_async(provider.notify(event))
     notes = provider.notifications()
     assert notes and notes[0].type == "run_started"
-

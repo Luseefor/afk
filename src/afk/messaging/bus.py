@@ -70,7 +70,9 @@ class InMemoryMessageBus(MessageBus):
                 await queue.put(message)
                 self._pending_snapshots[name].append(message)
 
-    async def receive(self, agent_name: str, *, timeout: float | None = None) -> AgentMessage | None:
+    async def receive(
+        self, agent_name: str, *, timeout: float | None = None
+    ) -> AgentMessage | None:
         """
         Wait for next message with optional timeout.
 

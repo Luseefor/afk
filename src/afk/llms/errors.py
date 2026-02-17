@@ -9,7 +9,6 @@ This module defines custom exceptions for error handling in the llm package.
 from __future__ import annotations
 
 
-
 class LLMError(Exception):
     """Base exception for all AFK LLM-related errors."""
 

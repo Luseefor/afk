@@ -20,7 +20,9 @@ from ..llms.types import JSONValue
 # Task types
 # ---------------------------------------------------------------------------
 
-TaskStatus = Literal["pending", "running", "completed", "failed", "retrying", "cancelled"]
+TaskStatus = Literal[
+    "pending", "running", "completed", "failed", "retrying", "cancelled"
+]
 
 
 @dataclass(slots=True)

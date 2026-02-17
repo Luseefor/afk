@@ -205,7 +205,9 @@ class RedisMemoryStore(MemoryStore):
                         if isinstance(existing_payload, dict):
                             candidate_embedding = existing_payload.get("embedding")
                             if isinstance(candidate_embedding, list):
-                                existing_embedding = [float(v) for v in candidate_embedding]
+                                existing_embedding = [
+                                    float(v) for v in candidate_embedding
+                                ]
 
                     chosen_embedding = (
                         existing_embedding

@@ -25,7 +25,9 @@ class _FastLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = response_model
@@ -69,7 +71,9 @@ class _SlowLoopLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = response_model
@@ -110,7 +114,9 @@ class _FailingThenRecoverLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = req

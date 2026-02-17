@@ -8,6 +8,7 @@ This module provides the public API for the AFK memory subsystem, including mode
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
 from .types import JsonObject, JsonValue, LongTermMemory, MemoryEvent
 from .utils import now_ms, new_id
@@ -26,6 +27,9 @@ from .lifecycle import (
     apply_state_retention,
     compact_thread_memory,
 )
+
+RedisMemoryStore = None  # type: ignore[assignment]
+PostgresMemoryStore = None  # type: ignore[assignment]
 
 
 __all__ = [
@@ -47,18 +51,25 @@ __all__ = [
     "apply_event_retention",
     "apply_state_retention",
     "compact_thread_memory",
+    "RedisMemoryStore",
+    "PostgresMemoryStore",
 ]
 
 try:
-    from .adapters.redis import RedisMemoryStore
+    from .adapters.redis import RedisMemoryStore as _RedisMemoryStore
 except ModuleNotFoundError:
     pass
 else:
-    __all__.append("RedisMemoryStore")
+    RedisMemoryStore = _RedisMemoryStore
 
 try:
-    from .adapters.postgres import PostgresMemoryStore
+    from .adapters.postgres import PostgresMemoryStore as _PostgresMemoryStore
 except ModuleNotFoundError:
     pass
 else:
-    __all__.append("PostgresMemoryStore")
+    PostgresMemoryStore = _PostgresMemoryStore
+
+if TYPE_CHECKING:
+    # For type checking, import all store classes directly
+    from .adapters.redis import RedisMemoryStore
+    from .adapters.postgres import PostgresMemoryStore

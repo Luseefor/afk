@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import time
-from typing import TypeAlias, cast
+from typing import TypeAlias
 from typing import List, Literal, Optional
 
 EventType = Literal["tool_call", "tool_result", "message", "system", "trace"]

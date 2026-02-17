@@ -123,7 +123,9 @@ def build_skill_tools(
         if args.cwd:
             maybe = Path(args.cwd).expanduser().resolve()
             if not any(_is_inside(maybe, root) for root in roots.values()):
-                raise SkillAccessError("Command cwd must be inside one of the skill roots")
+                raise SkillAccessError(
+                    "Command cwd must be inside one of the skill roots"
+                )
             cwd = str(maybe)
 
         timeout_s = args.timeout_s or policy.command_timeout_s

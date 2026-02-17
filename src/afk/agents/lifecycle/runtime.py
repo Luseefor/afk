@@ -144,9 +144,7 @@ def validate_state_transition(current: AgentState, target: AgentState) -> AgentS
         return target
     allowed = _ALLOWED_TRANSITIONS.get(current, set())
     if target not in allowed:
-        raise AgentExecutionError(
-            f"Invalid state transition: {current} -> {target}"
-        )
+        raise AgentExecutionError(f"Invalid state transition: {current} -> {target}")
     return target
 
 
@@ -219,7 +217,7 @@ class CircuitBreaker:
                 raise AgentCircuitOpenError(
                     f"Circuit open for dependency '{key}' "
                     f"(failures={len(rows)} threshold={self.config.breaker_failure_threshold})."
-                    )
+                )
 
 
 def state_snapshot(

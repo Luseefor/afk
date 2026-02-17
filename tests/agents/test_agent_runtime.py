@@ -404,14 +404,18 @@ class _FailingLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = req
         _ = response_model
         raise RuntimeError(self.error)
 
-    async def _chat_stream_core(self, req: LLMRequest, *, response_model=None) -> AsyncIterator:
+    async def _chat_stream_core(
+        self, req: LLMRequest, *, response_model=None
+    ) -> AsyncIterator:
         _ = req
         _ = response_model
         raise NotImplementedError
@@ -440,13 +444,17 @@ class _StaticLLM(LLM):
 
     @property
     def capabilities(self) -> LLMCapabilities:
-        return LLMCapabilities(chat=True, streaming=False, tool_calling=True, structured_output=True)
+        return LLMCapabilities(
+            chat=True, streaming=False, tool_calling=True, structured_output=True
+        )
 
     async def _chat_core(self, req: LLMRequest, *, response_model=None) -> LLMResponse:
         _ = response_model
         return LLMResponse(text=self._text, model=req.model, raw=dict(self._raw))
 
-    async def _chat_stream_core(self, req: LLMRequest, *, response_model=None) -> AsyncIterator:
+    async def _chat_stream_core(
+        self, req: LLMRequest, *, response_model=None
+    ) -> AsyncIterator:
         _ = req
         _ = response_model
         raise NotImplementedError
@@ -728,7 +736,9 @@ def test_subagent_context_inheritance_and_isolation():
         instructions="parent",
     )
     result = run_async(
-        Runner().run(parent, user_message="invoke child", context={"secret": "s1", "drop": "x"})
+        Runner().run(
+            parent, user_message="invoke child", context={"secret": "s1", "drop": "x"}
+        )
     )
     assert result.subagent_executions
     assert result.subagent_executions[0].success is True
@@ -743,7 +753,9 @@ def test_subagent_failure_policy_fail_run():
     parent = Agent(
         model=_StaticLLM(text="parent"),
         subagents=[bad_child],
-        subagent_router=lambda _: RouterDecision(targets=[bad_child.name], parallel=False),
+        subagent_router=lambda _: RouterDecision(
+            targets=[bad_child.name], parallel=False
+        ),
         fail_safe=FailSafeConfig(subagent_failure_policy="fail_run"),
         instructions="parent",
     )
@@ -930,7 +942,9 @@ def test_effect_replay_input_hash_mismatch_raises(monkeypatch):
 
     store = InMemoryMemoryStore()
     run_async(store.setup())
-    bad_input_hash = json_hash({"tool_name": "counting_add", "args": {"a": 999, "b": 1}})
+    bad_input_hash = json_hash(
+        {"tool_name": "counting_add", "args": {"a": 999, "b": 1}}
+    )
     run_async(
         store.put_state(
             "thread_mismatch",
@@ -1106,13 +1120,16 @@ def test_secret_scope_provider_injects_tool_metadata_secrets():
         instructions="secret scope test",
     )
     result = run_async(
-        Runner(
-            config=RunnerConfig(secret_scope_provider=_StaticSecretProvider())
-        ).run(agent, user_message="run secret tool")
+        Runner(config=RunnerConfig(secret_scope_provider=_StaticSecretProvider())).run(
+            agent, user_message="run secret tool"
+        )
     )
     assert result.final_text == "secret done"
     assert result.tool_executions
-    assert result.tool_executions[0].output == {"echo": "hello", "secret": "test-secret"}
+    assert result.tool_executions[0].output == {
+        "echo": "hello",
+        "secret": "test-secret",
+    }
 
 
 def test_tool_output_sanitization_redacts_injection_tokens():
@@ -1126,7 +1143,9 @@ def test_tool_output_sanitization_redacts_injection_tokens():
     assert result.final_text == "safe"
     tool_messages = [msg for msg in llm.last_request_messages if msg.role == "tool"]
     assert tool_messages
-    content = tool_messages[0].content if isinstance(tool_messages[0].content, str) else ""
+    content = (
+        tool_messages[0].content if isinstance(tool_messages[0].content, str) else ""
+    )
     assert "[untrusted_tool_output:dangerous_output]" in content
     assert "ignore previous instructions" not in content.lower()
     assert "[redacted]" in content

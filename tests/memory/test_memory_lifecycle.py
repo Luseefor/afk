@@ -82,8 +82,16 @@ def test_apply_state_retention_keeps_resume_safe_checkpoint_keys():
             "timestamp_ms": 10,
             "payload": {"messages": []},
         },
-        "effect:run_new:4:tc_1": {"input_hash": "a", "output_hash": "b", "success": True},
-        "effect:run_old:1:tc_1": {"input_hash": "a", "output_hash": "b", "success": True},
+        "effect:run_new:4:tc_1": {
+            "input_hash": "a",
+            "output_hash": "b",
+            "success": True,
+        },
+        "effect:run_old:1:tc_1": {
+            "input_hash": "a",
+            "output_hash": "b",
+            "success": True,
+        },
         "custom:key": {"value": 1},
     }
     compacted = apply_state_retention(
@@ -147,7 +155,9 @@ def test_compact_thread_memory_applies_event_and_state_retention():
         result = await compact_thread_memory(
             store,
             thread_id="thread_1",
-            event_policy=RetentionPolicy(max_events_per_thread=3, keep_event_types=["trace"]),
+            event_policy=RetentionPolicy(
+                max_events_per_thread=3, keep_event_types=["trace"]
+            ),
             state_policy=StateRetentionPolicy(max_runs=1),
         )
         remaining_state = await store.list_state("thread_1")

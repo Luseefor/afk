@@ -37,8 +37,7 @@ class SecretScopeProvider(Protocol):
         tool_name: str,
         tool_args: dict[str, Any],
         run_context: dict[str, Any],
-    ) -> dict[str, str]:
-        ...
+    ) -> dict[str, str]: ...
 
 
 class SandboxProfileProvider(Protocol):
@@ -48,8 +47,7 @@ class SandboxProfileProvider(Protocol):
         tool_name: str,
         tool_args: dict[str, Any],
         run_context: dict[str, Any],
-    ) -> SandboxProfile | None:
-        ...
+    ) -> SandboxProfile | None: ...
 
 
 def validate_tool_args_against_sandbox(
@@ -71,15 +69,17 @@ def validate_tool_args_against_sandbox(
             return f"Network access denied by sandbox profile '{profile.profile_id}'"
 
         for key, value in _iter_leaf_values(tool_args):
-            if key in {"url", "uri"} and isinstance(value, str) and value.strip().startswith(("http://", "https://")):
+            if (
+                key in {"url", "uri"}
+                and isinstance(value, str)
+                and value.strip().startswith(("http://", "https://"))
+            ):
                 return f"Network URL argument denied by sandbox profile '{profile.profile_id}'"
 
     command_parts = _extract_command_parts(tool_args)
     if command_parts:
         if not profile.allow_command_execution:
-            return (
-                f"Command execution denied by sandbox profile '{profile.profile_id}'"
-            )
+            return f"Command execution denied by sandbox profile '{profile.profile_id}'"
 
         command = command_parts[0].strip()
         if profile.allowed_command_prefixes:
@@ -115,10 +115,10 @@ def validate_tool_args_against_sandbox(
             return (
                 f"Path '{candidate}' denied by sandbox profile '{profile.profile_id}'"
             )
-        if allowed_roots and not any(_is_under(candidate, root) for root in allowed_roots):
-            return (
-                f"Path '{candidate}' not in allowlist for sandbox profile '{profile.profile_id}'"
-            )
+        if allowed_roots and not any(
+            _is_under(candidate, root) for root in allowed_roots
+        ):
+            return f"Path '{candidate}' not in allowlist for sandbox profile '{profile.profile_id}'"
 
     return None
 

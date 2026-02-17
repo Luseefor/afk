@@ -72,7 +72,9 @@ class RedisMessageBus(MessageBus):
         is_member = await self._redis.sismember(self._agents_key(), message.recipient)
         if not is_member:
             raise KeyError(f"Agent '{message.recipient}' is not registered")
-        await self._redis.rpush(self._mailbox_key(message.recipient), self._serialize(message))
+        await self._redis.rpush(
+            self._mailbox_key(message.recipient), self._serialize(message)
+        )
 
     async def broadcast(self, message: AgentMessage) -> None:
         """Push message to all registered agents except sender."""
@@ -84,7 +86,9 @@ class RedisMessageBus(MessageBus):
                     self._mailbox_key(agent_name), self._serialize(message)
                 )
 
-    async def receive(self, agent_name: str, *, timeout: float | None = None) -> AgentMessage | None:
+    async def receive(
+        self, agent_name: str, *, timeout: float | None = None
+    ) -> AgentMessage | None:
         """
         Block-pop next message from agent's Redis list.
 

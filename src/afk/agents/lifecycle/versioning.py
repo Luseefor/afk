@@ -191,7 +191,9 @@ def migrate_checkpoint_record(record: dict[str, Any]) -> MigrationResult:
         applied.append("data->payload")
 
     version = migrated.get("schema_version")
-    check = check_checkpoint_schema_version(version if isinstance(version, str) else None)
+    check = check_checkpoint_schema_version(
+        version if isinstance(version, str) else None
+    )
     if not check.compatible:
         raise ValueError(check.message)
 

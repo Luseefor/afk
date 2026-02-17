@@ -175,15 +175,17 @@ class ObservabilityCollector:
         """End span and persist metadata."""
         if span is None:
             return
-        self._spans.append({
-            "name": span.name,
-            "started_at_ms": span.started_at_ms,
-            "ended_at_ms": _now_ms(),
-            "duration_ms": _now_ms() - span.started_at_ms,
-            "status": status,
-            "error": error,
-            "attributes": {**span.attributes, **dict(attributes or {})},
-        })
+        self._spans.append(
+            {
+                "name": span.name,
+                "started_at_ms": span.started_at_ms,
+                "ended_at_ms": _now_ms(),
+                "duration_ms": _now_ms() - span.started_at_ms,
+                "status": status,
+                "error": error,
+                "attributes": {**span.attributes, **dict(attributes or {})},
+            }
+        )
 
     def increment_counter(
         self,
@@ -277,9 +279,9 @@ class ObservabilityCollector:
         # Extract tool latencies
         for tool_exec in result.tool_executions:
             if tool_exec.latency_ms is not None:
-                metrics.tool_latencies_ms.setdefault(
-                    tool_exec.tool_name, []
-                ).append(tool_exec.latency_ms)
+                metrics.tool_latencies_ms.setdefault(tool_exec.tool_name, []).append(
+                    tool_exec.latency_ms
+                )
 
         # Extract errors
         for tool_exec in result.tool_executions:

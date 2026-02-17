@@ -73,7 +73,9 @@ def test_inline_instructions_win_over_instruction_file(tmp_path: Path):
     assert out == "INLINE"
 
 
-def test_prompts_dir_argument_overrides_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_prompts_dir_argument_overrides_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     env_root = tmp_path / "env_prompts"
     arg_root = tmp_path / "arg_prompts"
     _write_prompt(env_root, "DUAL_SOURCE.md", "from env")
@@ -116,7 +118,9 @@ def test_default_prompts_dir_used_when_no_arg_and_no_env(
 
 
 def test_missing_auto_prompt_file_raises_resolution_error(tmp_path: Path):
-    agent = Agent(model="gpt-4.1-mini", name="MissingPrompt", prompts_dir=tmp_path / "prompts")
+    agent = Agent(
+        model="gpt-4.1-mini", name="MissingPrompt", prompts_dir=tmp_path / "prompts"
+    )
     with pytest.raises(PromptResolutionError):
         run_async(agent.resolve_instructions({}))
 
@@ -159,7 +163,9 @@ def test_prompt_template_renders_context_and_reserved_keys(tmp_path: Path):
             }
         )
     )
-    assert out == "user=u1; account=acc-1; locale=en-US; name=TemplateAgent; class=Agent"
+    assert (
+        out == "user=u1; account=acc-1; locale=en-US; name=TemplateAgent; class=Agent"
+    )
 
 
 def test_prompt_template_missing_variable_raises(tmp_path: Path):

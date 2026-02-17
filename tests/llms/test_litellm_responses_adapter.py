@@ -29,6 +29,7 @@ def fake_litellm(monkeypatch):
         calls.append(kwargs)
 
         if kwargs.get("stream"):
+
             async def _iter():
                 yield {
                     "type": "response.output_text.delta",

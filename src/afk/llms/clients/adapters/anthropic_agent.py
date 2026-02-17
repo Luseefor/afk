@@ -40,6 +40,7 @@ from ...types import (
 
 class AnthropicAgentClient(LLM):
     """Concrete adapter that integrates with `claude-agent-sdk`."""
+
     _CAPABILITIES = LLMCapabilities(
         chat=True,
         streaming=True,
@@ -112,7 +113,9 @@ class AnthropicAgentClient(LLM):
                 result_structured = self._extract_result_structured(message)
                 if isinstance(result_structured, dict):
                     structured = result_structured
-                session_token = self._extract_result_session_token(message) or session_token
+                session_token = (
+                    self._extract_result_session_token(message) or session_token
+                )
                 checkpoint_token = (
                     self._extract_result_checkpoint_token(message) or checkpoint_token
                 )
@@ -191,13 +194,16 @@ class AnthropicAgentClient(LLM):
                             continue
 
                         if msg_type == "ResultMessage":
-                            finish_reason = get_attr_str(message, "subtype") or finish_reason
+                            finish_reason = (
+                                get_attr_str(message, "subtype") or finish_reason
+                            )
                             usage = self._usage_from_obj(get_attr(message, "usage"))
                             result_structured = self._extract_result_structured(message)
                             if isinstance(result_structured, dict):
                                 structured = result_structured
                             session_token = (
-                                self._extract_result_session_token(message) or session_token
+                                self._extract_result_session_token(message)
+                                or session_token
                             )
                             checkpoint_token = (
                                 self._extract_result_checkpoint_token(message)
@@ -238,7 +244,9 @@ class AnthropicAgentClient(LLM):
                         continue
 
                     if msg_type == "ResultMessage":
-                        finish_reason = get_attr_str(message, "subtype") or finish_reason
+                        finish_reason = (
+                            get_attr_str(message, "subtype") or finish_reason
+                        )
                         usage = self._usage_from_obj(get_attr(message, "usage"))
                         result_structured = self._extract_result_structured(message)
                         if isinstance(result_structured, dict):
@@ -281,7 +289,9 @@ class AnthropicAgentClient(LLM):
         """Interrupt active SDK streaming request for the given request id."""
         request_id = req.request_id
         if not isinstance(request_id, str) or not request_id:
-            raise LLMCapabilityError("Interrupt requires a request_id for AnthropicAgentClient")
+            raise LLMCapabilityError(
+                "Interrupt requires a request_id for AnthropicAgentClient"
+            )
 
         client = self._active_stream_clients.get(request_id)
         if client is None:
@@ -501,7 +511,9 @@ class AnthropicAgentClient(LLM):
             if p_type == "image_url":
                 image_url = part.get("image_url")
                 url = image_url.get("url") if isinstance(image_url, dict) else None
-                out.append(f"[image_url] {url}" if isinstance(url, str) else "[image_url]")
+                out.append(
+                    f"[image_url] {url}" if isinstance(url, str) else "[image_url]"
+                )
                 continue
 
             out.append(json.dumps(part, ensure_ascii=True, default=str))
@@ -553,7 +565,9 @@ class AnthropicAgentClient(LLM):
                 args = block.get("input")
                 out.append(
                     ToolCall(
-                        id=block.get("id") if isinstance(block.get("id"), str) else None,
+                        id=block.get("id")
+                        if isinstance(block.get("id"), str)
+                        else None,
                         tool_name=name if isinstance(name, str) else "",
                         arguments=args if isinstance(args, dict) else {},
                     )
@@ -592,7 +606,9 @@ class AnthropicAgentClient(LLM):
                 out.append(
                     StreamToolCallDeltaEvent(
                         index=index,
-                        call_id=block.get("id") if isinstance(block.get("id"), str) else None,
+                        call_id=block.get("id")
+                        if isinstance(block.get("id"), str)
+                        else None,
                         tool_name=block.get("name")
                         if isinstance(block.get("name"), str)
                         else None,
@@ -619,7 +635,9 @@ class AnthropicAgentClient(LLM):
 
     def _usage_from_obj(self, usage_obj: Any) -> Usage:
         """Normalize usage counters from SDK result usage object/dict."""
-        usage_dict = usage_obj if isinstance(usage_obj, dict) else to_plain_dict(usage_obj)
+        usage_dict = (
+            usage_obj if isinstance(usage_obj, dict) else to_plain_dict(usage_obj)
+        )
 
         input_tokens = usage_dict.get("input_tokens")
         if input_tokens is None:

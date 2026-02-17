@@ -10,7 +10,16 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, AsyncIterator, Literal, NotRequired, Protocol, TypeAlias, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncIterator,
+    Literal,
+    NotRequired,
+    Protocol,
+    TypeAlias,
+    TypedDict,
+)
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -53,10 +62,7 @@ class ToolResultContentPart(TypedDict):
 
 
 MessagePart: TypeAlias = (
-    TextContentPart
-    | ImageURLContentPart
-    | ToolUseContentPart
-    | ToolResultContentPart
+    TextContentPart | ImageURLContentPart | ToolUseContentPart | ToolResultContentPart
 )
 MessageContent: TypeAlias = str | list[MessagePart]
 
@@ -264,17 +270,13 @@ class LLMStreamHandle(Protocol):
     """
 
     @property
-    def events(self) -> AsyncIterator[LLMStreamEvent]:
-        ...
+    def events(self) -> AsyncIterator[LLMStreamEvent]: ...
 
-    async def cancel(self) -> None:
-        ...
+    async def cancel(self) -> None: ...
 
-    async def interrupt(self) -> None:
-        ...
+    async def interrupt(self) -> None: ...
 
-    async def await_result(self) -> LLMResponse | None:
-        ...
+    async def await_result(self) -> LLMResponse | None: ...
 
 
 class LLMSessionHandle(Protocol):
@@ -290,28 +292,21 @@ class LLMSessionHandle(Protocol):
         req: LLMRequest,
         *,
         response_model: type["BaseModel"] | None = None,
-    ) -> LLMResponse:
-        ...
+    ) -> LLMResponse: ...
 
     async def stream(
         self,
         req: LLMRequest,
         *,
         response_model: type["BaseModel"] | None = None,
-    ) -> LLMStreamHandle:
-        ...
+    ) -> LLMStreamHandle: ...
 
-    async def pause(self) -> None:
-        ...
+    async def pause(self) -> None: ...
 
-    async def resume(self, session_token: str | None = None) -> None:
-        ...
+    async def resume(self, session_token: str | None = None) -> None: ...
 
-    async def interrupt(self) -> None:
-        ...
+    async def interrupt(self) -> None: ...
 
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
-    async def snapshot(self) -> LLMSessionSnapshot:
-        ...
+    async def snapshot(self) -> LLMSessionSnapshot: ...

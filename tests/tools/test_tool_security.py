@@ -70,7 +70,9 @@ def test_registry_sandbox_policy_blocks_at_call_time(tmp_path):
         profile_id="registry",
         denied_paths=["/etc"],
     )
-    registry = ToolRegistry(policy=build_registry_sandbox_policy(profile=profile, cwd=tmp_path))
+    registry = ToolRegistry(
+        policy=build_registry_sandbox_policy(profile=profile, cwd=tmp_path)
+    )
     registry.register(read_any)
 
     with_error = False
@@ -90,7 +92,9 @@ def test_registry_sandbox_policy_blocks_at_call_time(tmp_path):
 
 def test_registry_output_limit_middleware_truncates_strings():
     profile = SandboxProfile(profile_id="cap", max_output_chars=64)
-    registry = ToolRegistry(middlewares=[build_registry_output_limit_middleware(profile=profile)])
+    registry = ToolRegistry(
+        middlewares=[build_registry_output_limit_middleware(profile=profile)]
+    )
     registry.register(large_text)
 
     result = run_async(

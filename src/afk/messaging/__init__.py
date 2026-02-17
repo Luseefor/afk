@@ -32,9 +32,11 @@ __all__ = [
     "InMemoryMessageBus",
 ]
 
+
 # Lazy import for Redis bus to avoid hard dependency
 def __getattr__(name: str):
     if name == "RedisMessageBus":
         from .redis_bus import RedisMessageBus
+
         return RedisMessageBus
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

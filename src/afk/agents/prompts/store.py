@@ -36,7 +36,9 @@ def derive_auto_prompt_filename(agent_name: str) -> str:
     """
     value = (agent_name or "").strip()
     if not value:
-        raise PromptResolutionError("agent name must be non-empty for auto prompt loading")
+        raise PromptResolutionError(
+            "agent name must be non-empty for auto prompt loading"
+        )
 
     # Split camel/pascal boundaries first.
     normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
@@ -278,4 +280,3 @@ def reset_prompt_store() -> None:
     global _PROMPT_STORE
     with _PROMPT_STORE_LOCK:
         _PROMPT_STORE = None
-

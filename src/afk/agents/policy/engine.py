@@ -12,7 +12,13 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from typing import Any, Iterable, Literal
 
-from ..types import JSONValue, PolicyAction, PolicyDecision, PolicyEvent, json_value_from_tool_result
+from ..types import (
+    JSONValue,
+    PolicyAction,
+    PolicyDecision,
+    PolicyEvent,
+    json_value_from_tool_result,
+)
 
 
 PolicySubject = Literal["llm_call", "tool_call", "subagent_call", "interaction", "any"]
@@ -157,7 +163,11 @@ def infer_policy_subject(event_type: str) -> PolicySubject:
         return "llm_call"
     if normalized.startswith("subagent_"):
         return "subagent_call"
-    if "approval" in normalized or "user_input" in normalized or "interaction" in normalized:
+    if (
+        "approval" in normalized
+        or "user_input" in normalized
+        or "interaction" in normalized
+    ):
         return "interaction"
     return "any"
 

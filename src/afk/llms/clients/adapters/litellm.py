@@ -48,9 +48,13 @@ class LiteLLMClient(ResponsesClientBase):
 
         return await aembedding(**self._with_transport_defaults(payload))
 
-    def _message_to_responses_input_items(self, message: Message) -> list[dict[str, Any]]:
+    def _message_to_responses_input_items(
+        self, message: Message
+    ) -> list[dict[str, Any]]:
         """Convert one normalized message into one LiteLLM/OpenAI-style input item."""
-        role = message.role if message.role in ("user", "assistant", "system") else "user"
+        role = (
+            message.role if message.role in ("user", "assistant", "system") else "user"
+        )
 
         if isinstance(message.content, str):
             content: str | list[dict[str, Any]] = message.content
@@ -85,7 +89,9 @@ class LiteLLMClient(ResponsesClientBase):
 
             if p_type == "image_url":
                 image_url = part.get("image_url")
-                if isinstance(image_url, dict) and isinstance(image_url.get("url"), str):
+                if isinstance(image_url, dict) and isinstance(
+                    image_url.get("url"), str
+                ):
                     parts.append(
                         {
                             "type": "input_image",

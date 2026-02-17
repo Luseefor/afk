@@ -28,6 +28,7 @@ class SkillRef:
         skill_md_path: Absolute path to the skill's `SKILL.md`.
         checksum: Optional SHA checksum for skill content integrity tracking.
     """
+
     name: str
     description: str
     root_dir: str
@@ -44,6 +45,7 @@ class SkillResolutionResult:
         resolved_skills: Successfully resolved skill references.
         missing_skills: Skill names that could not be resolved.
     """
+
     resolved_skills: list[SkillRef]
     missing_skills: list[str] = field(default_factory=list)
 
