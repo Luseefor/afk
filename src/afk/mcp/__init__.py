@@ -25,8 +25,8 @@ Quick start::
     server.run()  # starts on http://0.0.0.0:8000
 """
 
-from afk.mcp.server import MCPServer, MCPServerConfig, create_mcp_server
-from afk.mcp.store import (
+from .server import MCPServer, MCPServerConfig, create_mcp_server
+from .store import (
     MCPRemoteCallError,
     MCPRemoteProtocolError,
     MCPRemoteTool,

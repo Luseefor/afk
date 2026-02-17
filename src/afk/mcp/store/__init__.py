@@ -4,8 +4,8 @@ MCP external store package.
 Contains external MCP server resolution, tool discovery/calls, and transport/types.
 """
 
-from afk.mcp.store.registry import MCPStore, get_mcp_store, reset_mcp_store
-from afk.mcp.store.types import (
+from .registry import MCPStore, get_mcp_store, reset_mcp_store
+from .types import (
     MCPRemoteCallError,
     MCPRemoteProtocolError,
     MCPRemoteTool,
@@ -13,7 +13,7 @@ from afk.mcp.store.types import (
     MCPServerResolutionError,
     MCPStoreError,
 )
-from afk.mcp.store.utils import normalize_json_schema
+from .utils import normalize_json_schema
 
 __all__ = [
     "MCPServerRef",
