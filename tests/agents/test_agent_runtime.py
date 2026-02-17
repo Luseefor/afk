@@ -32,7 +32,7 @@ from afk.agents.types import (
     UserInputRequest,
 )
 from afk.core.runner import Runner, RunnerConfig
-from afk.core.telemetry import InMemoryTelemetrySink
+from afk.observability.backends import InMemoryTelemetrySink
 from afk.evals import EvalScenario, run_scenario
 from afk.llms import LLM
 from afk.llms.types import (

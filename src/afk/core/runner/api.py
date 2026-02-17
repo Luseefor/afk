@@ -9,6 +9,7 @@ Public runner API and lifecycle entrypoints.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from typing import Any
 
 from ...agents.core.base import BaseAgent
@@ -20,6 +21,7 @@ from ...agents.errors import (
 from ...agents.policy.engine import PolicyEngine
 from ...agents.lifecycle.runtime import EffectJournal, checkpoint_latest_key
 from ...agents.types import AgentResult, AgentRunHandle
+from ...llms.types import JSONValue
 from ...memory import (
     MemoryCompactionResult,
     MemoryStore,
@@ -27,8 +29,9 @@ from ...memory import (
     StateRetentionPolicy,
     compact_thread_memory,
 )
+from ...observability.backends import create_telemetry_sink
 from ..interaction import HeadlessInteractionProvider, InteractionProvider
-from ..telemetry import NullTelemetrySink, TelemetrySink
+from ..telemetry import TelemetrySink
 from .types import RunnerConfig, _RunHandle
 
 
@@ -47,7 +50,8 @@ class RunnerAPIMixin:
         memory_store: MemoryStore | None = None,
         interaction_provider: InteractionProvider | None = None,
         policy_engine: PolicyEngine | None = None,
-        telemetry: TelemetrySink | None = None,
+        telemetry: str | TelemetrySink | None = None,
+        telemetry_config: Mapping[str, JSONValue] | None = None,
         config: RunnerConfig | None = None,
     ) -> None:
         """
@@ -59,7 +63,8 @@ class RunnerAPIMixin:
             interaction_provider: Human-in-the-loop provider. Required when
                 `config.interaction_mode` is not `headless`.
             policy_engine: Optional deterministic policy engine shared across runs.
-            telemetry: Telemetry sink for counters/spans/events.
+            telemetry: Telemetry sink instance or backend id.
+            telemetry_config: Optional backend-specific sink config.
             config: Runner configuration. Defaults to `RunnerConfig()`.
 
         Raises:
@@ -83,7 +88,10 @@ class RunnerAPIMixin:
         else:
             self._interaction = interaction_provider
         self._policy_engine = policy_engine
-        self._telemetry = telemetry or NullTelemetrySink()
+        self._telemetry = create_telemetry_sink(
+            telemetry,
+            config=telemetry_config,
+        )
         self._effect_journal = EffectJournal()
         self._active_runs = 0
 

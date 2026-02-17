@@ -14,9 +14,6 @@ from .interaction import (
 from .runner import Runner, RunnerConfig
 from .streaming import AgentStreamEvent, AgentStreamHandle
 from .telemetry import (
-    InMemoryTelemetrySink,
-    NullTelemetrySink,
-    OpenTelemetrySink,
     TelemetryEvent,
     TelemetrySink,
     TelemetrySpan,
@@ -33,7 +30,4 @@ __all__ = [
     "TelemetrySink",
     "TelemetryEvent",
     "TelemetrySpan",
-    "NullTelemetrySink",
-    "InMemoryTelemetrySink",
-    "OpenTelemetrySink",
 ]
