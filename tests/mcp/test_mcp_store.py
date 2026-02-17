@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import types
 
+import pytest
+
 from afk.mcp import MCPStore
-from afk.mcp.store import normalize_json_schema
+from afk.mcp.store import MCPServerResolutionError, normalize_json_schema
 from afk.tools import ToolRegistry
 
 
@@ -154,3 +156,15 @@ def test_normalize_json_schema_coerces_invalid_fields():
     }
     assert normalized["required"] == ["ok"]
     assert normalized["additionalProperties"] is False
+
+
+def test_resolve_server_rejects_non_http_scheme_for_name_url_string():
+    store = MCPStore()
+    with pytest.raises(MCPServerResolutionError, match="http or https"):
+        store.resolve_server("bad=file:///etc/passwd")
+
+
+def test_resolve_server_rejects_non_http_scheme_for_dict_url():
+    store = MCPStore()
+    with pytest.raises(MCPServerResolutionError, match="http or https"):
+        store.resolve_server({"name": "bad", "url": "ftp://example.com/mcp"})

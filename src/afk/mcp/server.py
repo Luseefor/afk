@@ -23,11 +23,18 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
+try:
+    from fastapi import Request as FastAPIRequest
+    from fastapi.responses import Response as FastAPIResponse
+except Exception:  # pragma: no cover
+    FastAPIRequest = Any  # type: ignore[assignment]
+    FastAPIResponse = Any  # type: ignore[assignment]
+
 from ..tools import ToolRegistry, ToolContext
 
 logger = logging.getLogger("afk.mcp")
 
-MCP_PROTOCOL_VERSION = "2024-11-05"
+MCP_PROTOCOL_VERSION = "2026-02-20"
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +193,7 @@ class MCPServer:
     def _create_router(self):
         """Build an APIRouter containing MCP routes."""
         try:
-            from fastapi import APIRouter, Request
+            from fastapi import APIRouter
             from fastapi.responses import JSONResponse, StreamingResponse
         except ImportError:
             raise ImportError(
@@ -208,7 +215,7 @@ class MCPServer:
                 }
 
         @router.post(self._config.mcp_path)
-        async def mcp_endpoint(request: Request):
+        async def mcp_endpoint(request: FastAPIRequest):
             """Main JSON-RPC 2.0 endpoint for MCP."""
             try:
                 body = await request.json()
@@ -233,13 +240,13 @@ class MCPServer:
 
             result = await self._handle_jsonrpc(body)
             if result is None:
-                return JSONResponse({}, status_code=200)
+                return FastAPIResponse(status_code=204)
             return JSONResponse(result, status_code=200)
 
         if self._config.enable_sse:
 
             @router.get(self._config.sse_path)
-            async def sse_endpoint(request: Request):
+            async def sse_endpoint(request: FastAPIRequest):
                 """SSE transport for MCP — sends JSON-RPC messages as events."""
                 _ = request
                 import asyncio

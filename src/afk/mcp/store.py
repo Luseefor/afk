@@ -123,16 +123,18 @@ class MCPStore:
 
             if "=" in parsed:
                 name, url = parsed.split("=", 1)
-                resolved = MCPServerRef(name=name.strip(), url=url.strip())
+                normalized_url = _validate_http_url(url.strip())
+                resolved = MCPServerRef(name=name.strip(), url=normalized_url)
             else:
                 if not parsed.startswith(("http://", "https://")):
                     raise MCPServerResolutionError(
                         "String MCP server refs must be 'name=url' or an http(s) URL"
                     )
-                url_parts = urllib.parse.urlparse(parsed)
+                normalized_url = _validate_http_url(parsed)
+                url_parts = urllib.parse.urlparse(normalized_url)
                 base = url_parts.netloc or "mcp_server"
                 derived_name = _sanitize_name(base.replace(":", "_"))
-                resolved = MCPServerRef(name=derived_name, url=parsed)
+                resolved = MCPServerRef(name=derived_name, url=normalized_url)
             self.register_server(resolved)
             return resolved
 
@@ -140,11 +142,12 @@ class MCPStore:
             url = ref.get("url")
             if not isinstance(url, str) or not url.strip():
                 raise MCPServerResolutionError("MCP server dict ref requires non-empty 'url'")
+            normalized_url = _validate_http_url(url.strip())
             name_raw = ref.get("name")
             if isinstance(name_raw, str) and name_raw.strip():
                 name = name_raw.strip()
             else:
-                netloc = urllib.parse.urlparse(url).netloc or "mcp_server"
+                netloc = urllib.parse.urlparse(normalized_url).netloc or "mcp_server"
                 name = _sanitize_name(netloc.replace(":", "_"))
             headers = ref.get("headers") or {}
             if not isinstance(headers, dict):
@@ -160,7 +163,7 @@ class MCPStore:
                 )
             resolved = MCPServerRef(
                 name=name,
-                url=url.strip(),
+                url=normalized_url,
                 headers={str(k): str(v) for k, v in headers.items()},
                 timeout_s=float(timeout_s),
                 prefix_tools=prefix_tools,
@@ -378,6 +381,17 @@ def _sanitize_name(value: str) -> str:
     out = re.sub(r"[^a-zA-Z0-9_]+", "_", value)
     out = out.strip("_")
     return out or "mcp"
+
+
+def _validate_http_url(url: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise MCPServerResolutionError(
+            "MCP server URL scheme must be http or https"
+        )
+    if not parsed.netloc:
+        raise MCPServerResolutionError("MCP server URL must include network location")
+    return url
 
 
 def _extract_mcp_text(content: Any) -> str | None:
