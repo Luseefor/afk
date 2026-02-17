@@ -54,6 +54,7 @@ from ...memory import (
     new_id,
     now_ms,
 )
+from ...observability import contracts as obs_contracts
 from ...tools import ToolResult
 from ..telemetry import TelemetryEvent, TelemetrySpan
 from .types import _RunHandle
@@ -150,7 +151,7 @@ class RunnerInternalsMixin:
         try:
             self._telemetry.record_event(
                 TelemetryEvent(
-                    name="agent.run.event",
+                    name=obs_contracts.AGENT_RUN_EVENT,
                     timestamp_ms=now_ms(),
                     attributes={
                         "event_type": event.type,
@@ -163,7 +164,7 @@ class RunnerInternalsMixin:
                 )
             )
             self._telemetry.increment_counter(
-                "agent.run.events.total",
+                obs_contracts.AGENT_RUN_EVENTS_TOTAL,
                 value=1,
                 attributes={
                     "event_type": event.type,

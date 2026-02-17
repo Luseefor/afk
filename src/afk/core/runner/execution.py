@@ -89,6 +89,7 @@ from ...agents.types import (
 )
 from ...llms.types import LLMRequest, LLMResponse, Message
 from ...mcp import get_mcp_store
+from ...observability import contracts as obs_contracts
 from ...tools import ToolContext, ToolResult
 from ...tools.prebuilts import build_runtime_tools, build_skill_tools
 from ...tools.security import (
@@ -159,7 +160,7 @@ class RunnerExecutionMixin:
         reuse_current_step = False
         replayed_effect_count = 0
         run_span = self._telemetry_start_span(
-            "agent.run",
+            obs_contracts.SPAN_AGENT_RUN,
             attributes={
                 "run_id": run_id,
                 "thread_id": t_id,
@@ -474,7 +475,7 @@ class RunnerExecutionMixin:
                         )
                         subagent_batch_started_s = time.time()
                         subagent_span = self._telemetry_start_span(
-                            "agent.subagent.batch",
+                            obs_contracts.SPAN_AGENT_SUBAGENT_BATCH,
                             attributes={
                                 "run_id": run_id,
                                 "thread_id": t_id,
@@ -501,7 +502,7 @@ class RunnerExecutionMixin:
                             time.time() - subagent_batch_started_s
                         ) * 1000.0
                         self._telemetry_histogram(
-                            "agent.subagent.batch.latency_ms",
+                            obs_contracts.METRIC_AGENT_SUBAGENT_BATCH_LATENCY_MS,
                             value=subagent_latency_ms,
                             attributes={
                                 "parallel": parallel_mode,
@@ -509,7 +510,7 @@ class RunnerExecutionMixin:
                             },
                         )
                         self._telemetry_counter(
-                            "agent.subagent.batches.total",
+                            obs_contracts.METRIC_AGENT_SUBAGENT_BATCHES_TOTAL,
                             value=1,
                             attributes={
                                 "result": "success"
@@ -749,7 +750,7 @@ class RunnerExecutionMixin:
                             )
                             llm_call_started_s = time.time()
                             llm_span = self._telemetry_start_span(
-                                "agent.llm.call",
+                                obs_contracts.SPAN_AGENT_LLM_CALL,
                                 attributes={
                                     "run_id": run_id,
                                     "thread_id": t_id,
@@ -766,7 +767,7 @@ class RunnerExecutionMixin:
                             )
                             llm_latency_ms = (time.time() - llm_call_started_s) * 1000.0
                             self._telemetry_histogram(
-                                "agent.llm.latency_ms",
+                                obs_contracts.METRIC_AGENT_LLM_LATENCY_MS,
                                 value=llm_latency_ms,
                                 attributes={
                                     "provider": candidate.llm.provider_id,
@@ -775,7 +776,7 @@ class RunnerExecutionMixin:
                                 },
                             )
                             self._telemetry_counter(
-                                "agent.llm.calls.total",
+                                obs_contracts.METRIC_AGENT_LLM_CALLS_TOTAL,
                                 value=1,
                                 attributes={
                                     "result": "success",
@@ -808,7 +809,7 @@ class RunnerExecutionMixin:
                                     time.time() - llm_call_started_s
                                 ) * 1000.0
                                 self._telemetry_histogram(
-                                    "agent.llm.latency_ms",
+                                    obs_contracts.METRIC_AGENT_LLM_LATENCY_MS,
                                     value=llm_latency_ms,
                                     attributes={
                                         "provider": candidate.llm.provider_id,
@@ -823,7 +824,7 @@ class RunnerExecutionMixin:
                                     attributes={"latency_ms": llm_latency_ms},
                                 )
                             self._telemetry_counter(
-                                "agent.llm.calls.total",
+                                obs_contracts.METRIC_AGENT_LLM_CALLS_TOTAL,
                                 value=1,
                                 attributes={
                                     "result": "error",
@@ -1228,7 +1229,7 @@ class RunnerExecutionMixin:
                 if calls:
                     tool_batch_started_s = time.time()
                     tool_span = self._telemetry_start_span(
-                        "agent.tool.batch",
+                        obs_contracts.SPAN_AGENT_TOOL_BATCH,
                         attributes={
                             "run_id": run_id,
                             "thread_id": t_id,
@@ -1239,6 +1240,7 @@ class RunnerExecutionMixin:
                     resolved_results: list[Any | None] = [None] * len(calls)
                     replayed_indices: set[int] = set()
                     execution_indices: list[int] = []
+                    call_latency_ms: dict[int, float] = {}
 
                     for idx, (tool_name, call_args) in enumerate(calls):
                         call_id = tool_ids[idx] if idx < len(tool_ids) else None
@@ -1278,7 +1280,7 @@ class RunnerExecutionMixin:
 
                         async def _exec_one(
                             mapped_idx: int,
-                        ) -> ToolResult[Any] | Exception:
+                        ) -> tuple[ToolResult[Any] | Exception, float]:
                             """Execute one tool call for mapped index and capture exceptions."""
                             call_name, call_args = calls[mapped_idx]
                             call_ctx = call_contexts[mapped_idx]
@@ -1286,25 +1288,29 @@ class RunnerExecutionMixin:
                             call_tool_id = (
                                 tool_ids[mapped_idx] or f"{run_id}:{step}:{mapped_idx}"
                             )
+                            started = time.time()
                             try:
-                                return await registry.call(
-                                    call_name,
-                                    call_args,
-                                    ctx=call_ctx,
-                                    timeout=call_timeout,
-                                    tool_call_id=call_tool_id,
+                                return (
+                                    await registry.call(
+                                        call_name,
+                                        call_args,
+                                        ctx=call_ctx,
+                                        timeout=call_timeout,
+                                        tool_call_id=call_tool_id,
+                                    ),
+                                    (time.time() - started) * 1000.0,
                                 )
                             except Exception as exc:
-                                return exc
+                                return exc, (time.time() - started) * 1000.0
 
                         execution_results = await asyncio.gather(
                             *[_exec_one(idx) for idx in execution_indices],
                             return_exceptions=False,
                         )
-                        for mapped_idx, result in zip(
-                            execution_indices, execution_results
-                        ):
+                        for mapped_idx, row in zip(execution_indices, execution_results):
+                            result, latency_ms = row
                             resolved_results[mapped_idx] = result
+                            call_latency_ms[mapped_idx] = latency_ms
 
                     for idx, result in enumerate(resolved_results):
                         tool_name = calls[idx][0]
@@ -1317,6 +1323,7 @@ class RunnerExecutionMixin:
                         )
                         tool_calls += 1
 
+                        source = "replay" if idx in replayed_indices else "execute"
                         tool_key = f"tool:{tool_name}"
                         if idx in replayed_indices:
                             tr = (
@@ -1363,12 +1370,38 @@ class RunnerExecutionMixin:
                             else:
                                 await breaker.record_failure(tool_key)
 
+                        latency_ms = call_latency_ms.get(idx)
+                        self._telemetry_counter(
+                            obs_contracts.METRIC_AGENT_TOOL_CALLS_TOTAL,
+                            value=1,
+                            attributes={
+                                "tool_name": tool_name,
+                                "result": "success" if tr.success else "error",
+                                "source": source,
+                            },
+                        )
+                        if latency_ms is not None:
+                            self._telemetry_histogram(
+                                obs_contracts.METRIC_AGENT_TOOL_CALL_LATENCY_MS,
+                                value=latency_ms,
+                                attributes={
+                                    "tool_name": tool_name,
+                                    "result": "success" if tr.success else "error",
+                                    "source": source,
+                                },
+                            )
+
                         tr = apply_tool_output_limits(
                             tr,
                             profile=call_profile,
                         )
 
-                        rec = tool_record_from_result(tool_name, call_id, tr)
+                        rec = tool_record_from_result(
+                            tool_name,
+                            call_id,
+                            tr,
+                            latency_ms=latency_ms,
+                        )
                         tool_execs.append(rec)
 
                         if call_id:
@@ -1501,7 +1534,7 @@ class RunnerExecutionMixin:
                         if not record.success and record.tool_call_id in tool_ids
                     )
                     self._telemetry_histogram(
-                        "agent.tool.batch.latency_ms",
+                        obs_contracts.METRIC_AGENT_TOOL_BATCH_LATENCY_MS,
                         value=tool_batch_latency_ms,
                         attributes={
                             "call_count": len(calls),
@@ -1509,7 +1542,7 @@ class RunnerExecutionMixin:
                         },
                     )
                     self._telemetry_counter(
-                        "agent.tool.batches.total",
+                        obs_contracts.METRIC_AGENT_TOOL_BATCHES_TOTAL,
                         value=1,
                         attributes={
                             "result": "success"
@@ -1811,7 +1844,7 @@ class RunnerExecutionMixin:
         finally:
             run_duration_ms = (time.time() - run_started_s) * 1000.0
             self._telemetry_histogram(
-                "agent.run.duration_ms",
+                obs_contracts.METRIC_AGENT_RUN_DURATION_MS,
                 value=run_duration_ms,
                 attributes={
                     "state": state,
@@ -1819,7 +1852,7 @@ class RunnerExecutionMixin:
                 },
             )
             self._telemetry_counter(
-                "agent.runs.total",
+                obs_contracts.METRIC_AGENT_RUNS_TOTAL,
                 value=1,
                 attributes={
                     "state": state,
@@ -1834,8 +1867,13 @@ class RunnerExecutionMixin:
                     "state": state,
                     "status": run_span_status,
                     "duration_ms": run_duration_ms,
+                    "steps": step,
                     "llm_calls": llm_calls,
                     "tool_calls": tool_calls,
+                    "input_tokens": usage.input_tokens,
+                    "output_tokens": usage.output_tokens,
+                    "total_tokens": usage.total_tokens,
+                    "total_cost_usd": total_cost_usd,
                 },
             )
             self._active_runs -= 1

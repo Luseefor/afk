@@ -38,6 +38,7 @@ from ...agents.types import (
 )
 from ...llms.types import Message
 from ...memory import MemoryStore
+from ...observability import contracts as obs_contracts
 from .types import _RunHandle
 
 
@@ -457,7 +458,7 @@ class RunnerInteractionMixin:
         )
         wait_started_s = time.time()
         wait_span = self._telemetry_start_span(
-            "agent.interaction.wait",
+            obs_contracts.SPAN_AGENT_INTERACTION_WAIT,
             attributes={
                 "run_id": run_id,
                 "thread_id": thread_id,
@@ -471,12 +472,12 @@ class RunnerInteractionMixin:
         )
         wait_latency_ms = (time.time() - wait_started_s) * 1000.0
         self._telemetry_histogram(
-            "agent.interaction.wait_ms",
+            obs_contracts.METRIC_AGENT_INTERACTION_WAIT_MS,
             value=wait_latency_ms,
             attributes={"kind": "approval"},
         )
         self._telemetry_counter(
-            "agent.interaction.wait.total",
+            obs_contracts.METRIC_AGENT_INTERACTION_WAIT_TOTAL,
             value=1,
             attributes={
                 "kind": "approval",
@@ -581,7 +582,7 @@ class RunnerInteractionMixin:
         )
         wait_started_s = time.time()
         wait_span = self._telemetry_start_span(
-            "agent.interaction.wait",
+            obs_contracts.SPAN_AGENT_INTERACTION_WAIT,
             attributes={
                 "run_id": run_id,
                 "thread_id": thread_id,
@@ -595,12 +596,12 @@ class RunnerInteractionMixin:
         )
         wait_latency_ms = (time.time() - wait_started_s) * 1000.0
         self._telemetry_histogram(
-            "agent.interaction.wait_ms",
+            obs_contracts.METRIC_AGENT_INTERACTION_WAIT_MS,
             value=wait_latency_ms,
             attributes={"kind": "user_input"},
         )
         self._telemetry_counter(
-            "agent.interaction.wait.total",
+            obs_contracts.METRIC_AGENT_INTERACTION_WAIT_TOTAL,
             value=1,
             attributes={
                 "kind": "user_input",
