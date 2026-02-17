@@ -18,14 +18,6 @@ from .errors import (
     ToolTimeoutError,
     ToolValidationError,
 )
-from .export import (
-    export_tools,
-    normalize_json_schema,
-    to_litellm_tools,
-    to_litellm_tools_from_specs,
-    tool_to_litellm_tool,
-    toolspec_to_litellm_tool,
-)
 
 __all__ = [
     "Tool",
@@ -42,12 +34,6 @@ __all__ = [
     "posthook",
     "middleware",
     "registry_middleware",
-    "export_tools",
-    "normalize_json_schema",
-    "to_litellm_tools",
-    "to_litellm_tools_from_specs",
-    "tool_to_litellm_tool",
-    "toolspec_to_litellm_tool",
     "ToolAlreadyRegisteredError",
     "ToolExecutionError",
     "ToolNotFoundError",

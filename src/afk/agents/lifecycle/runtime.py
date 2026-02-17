@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ...llms.types import JSONValue
+from ..skills import get_skill_store
 from ..errors import AgentCircuitOpenError, AgentExecutionError, SkillResolutionError
 from ..types import (
     AgentState,
@@ -37,9 +38,11 @@ def resolve_skills(
     """
     base = skills_dir if skills_dir.is_absolute() else (cwd / skills_dir)
     base = base.resolve()
+    store = get_skill_store()
 
     resolved: list[SkillRef] = []
     missing: list[str] = []
+    seen_names: set[str] = set()
 
     for name in skill_names:
         normalized = name.strip()
@@ -49,13 +52,22 @@ def resolve_skills(
         if not _is_under(skill_file, base) or not skill_file.exists():
             missing.append(normalized)
             continue
-        checksum = _sha256(skill_file.read_bytes())
+
+        doc = store.load_skill_md(skill_file)
+        resolved_name = doc.name.strip()
+        if resolved_name in seen_names:
+            raise SkillResolutionError(
+                f"Duplicate resolved skill name '{resolved_name}' from SKILL.md frontmatter"
+            )
+        seen_names.add(resolved_name)
+
         resolved.append(
             SkillRef(
-                name=normalized,
+                name=resolved_name,
+                description=doc.description,
                 root_dir=str(base),
                 skill_md_path=str(skill_file),
-                checksum=checksum,
+                checksum=doc.checksum,
             )
         )
 
@@ -81,7 +93,10 @@ def build_skill_manifest_prompt(skills: list[SkillRef]) -> str:
     ]
     for skill in skills:
         lines.append(
-            f"- {skill.name} (path: {skill.skill_md_path}, checksum: {skill.checksum or 'n/a'})"
+            (
+                f"- {skill.name}: {skill.description} "
+                f"(path: {skill.skill_md_path}, checksum: {skill.checksum or 'n/a'})"
+            )
         )
     return "\n".join(lines)
 

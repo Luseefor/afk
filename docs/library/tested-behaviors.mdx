@@ -251,12 +251,19 @@ Covered behaviors:
 - `test_registry_rejects_invalid_max_concurrency` (`tests/tools/test_tools_additional_standard.py:48`): registry rejects invalid max concurrency
 - `test_registry_call_many_raises_when_return_exceptions_false` (`tests/tools/test_tools_additional_standard.py:53`): registry call many raises when return exceptions false
 - `test_registry_recent_calls_limit_and_error_recording` (`tests/tools/test_tools_additional_standard.py:70`): registry recent calls limit and error recording
-- `test_normalize_json_schema_handles_non_dict_and_missing_fields` (`tests/tools/test_tools_additional_standard.py:92`): normalize json schema handles non dict and missing fields
-- `test_export_tools_format_aliases` (`tests/tools/test_tools_additional_standard.py:101`): export tools format aliases
 - `test_tool_middleware_timeout_is_enforced` (`tests/tools/test_tools_additional_standard.py:111`): tool middleware timeout is enforced
 - `test_middleware_signature_validation_rejects_varargs` (`tests/tools/test_tools_additional_standard.py:129`): middleware signature validation rejects varargs
 - `test_registry_middleware_signature_validation_rejects_varargs` (`tests/tools/test_tools_additional_standard.py:139`): registry middleware signature validation rejects varargs
 - `test_registry_plugin_loader_no_group_returns_zero` (`tests/tools/test_tools_additional_standard.py:147`): registry plugin loader no group returns zero
+
+## `tests/llms/test_tool_export.py`
+
+Covered behaviors:
+
+- `test_normalize_json_schema_handles_non_dict_and_missing_fields` (`tests/llms/test_tool_export.py:23`): normalize json schema handles non dict and missing fields
+- `test_toolspec_to_openai_tool_maps_core_fields` (`tests/llms/test_tool_export.py:31`): toolspec to openai tool maps core fields
+- `test_export_tools_for_provider_supports_aliases` (`tests/llms/test_tool_export.py:41`): export tools for provider supports aliases
+- `test_export_tools_for_provider_rejects_unknown_format` (`tests/llms/test_tool_export.py:51`): export tools for provider rejects unknown format
 
 ## `tests/tools/test_tools_unit_and_integration.py`
 

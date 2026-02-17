@@ -30,15 +30,35 @@ class _ReadFileArgs(BaseModel):
 
 
 def build_runtime_tools(*, root_dir: Path) -> list[Tool[Any, Any]]:
+    """
+    Construct runtime-safe filesystem tools bound to an explicit `root_dir`.
+
+    Tools produced:
+      - `list_directory`: list directory entries under the root
+      - `read_file`: read a file under the root with truncation limits
+
+    All handlers enforce that requested paths remain inside `root_dir` to
+    prevent directory traversal or accidental exposure of host files.
+    """
+
+    # Resolve and fix the tool runtime root once per registry construction.
     root = root_dir.resolve()
 
     @tool(
         args_model=_ListDirectoryArgs,
         name="list_directory",
-        description="List the contents of a directory. Returns a list of entries with their name, path, and type (file or directory).",
+        description=(
+            "List the contents of a directory. Returns a list of entries with "
+            "their name, path, and type (file or directory)."
+        ),
     )
     async def list_directory(args: _ListDirectoryArgs) -> dict[str, Any]:
+        """Return listing for `args.path` under the configured `root`.
+
+        The returned `entries` elements include `name`, `path`, and type flags.
+        """
         target = (root / args.path).resolve()
+        # Enforce that the resolved target does not escape the configured root.
         _ensure_inside(target, root)
         if not target.exists() or not target.is_dir():
             raise FileAccessError(f"Directory not found: {args.path}")
@@ -63,7 +83,13 @@ def build_runtime_tools(*, root_dir: Path) -> list[Tool[Any, Any]]:
         description="Read the contents of a file.",
     )
     async def read_file(args: _ReadFileArgs) -> dict[str, Any]:
+        """Read up to `args.max_chars` characters from a skill file.
+
+        The content is truncated when larger than the configured limit and the
+        `truncated` flag indicates truncation. Access is bounded to `root`.
+        """
         target = (root / args.path).resolve()
+        # Prevent reading files outside of the runtime root.
         _ensure_inside(target, root)
         if not target.exists() or not target.is_file():
             raise FileAccessError(f"File not found: {args.path}")
@@ -87,6 +113,7 @@ def _ensure_inside(path: Path, root: Path) -> None:
     Raises FileAccessError if the path escapes the root.
     """
     try:
+        # Use `relative_to` for a simple containment check; ValueError indicates escape.
         path.relative_to(root)
     except ValueError as e:
         raise FileAccessError(f"Path '{path}' escapes root '{root}'") from e

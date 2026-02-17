@@ -592,7 +592,17 @@ def test_missing_skill_raises_configuration_error(tmp_path: Path):
 def test_skill_tools_are_auto_registered_and_used(tmp_path: Path):
     skill_root = tmp_path / ".agents" / "skills" / "skill_a"
     skill_root.mkdir(parents=True)
-    (skill_root / "SKILL.md").write_text("# skill-a\nuse this\n", encoding="utf-8")
+    (skill_root / "SKILL.md").write_text(
+        (
+            "---\n"
+            "name: skill_a\n"
+            "description: Skill A description\n"
+            "---\n\n"
+            "# skill-a\n"
+            "use this\n"
+        ),
+        encoding="utf-8",
+    )
 
     agent = Agent(
         model=_SkillReaderLLM(),
@@ -606,6 +616,58 @@ def test_skill_tools_are_auto_registered_and_used(tmp_path: Path):
     assert result.skills_used == ["skill_a"]
     assert result.skill_reads
     assert result.skill_reads[0].skill_name == "skill_a"
+
+
+def test_skill_name_is_overridden_from_skill_md_frontmatter(tmp_path: Path):
+    class _OverriddenSkillReaderLLM(_ToolCallingLLM):
+        async def _chat_core(
+            self,
+            req: LLMRequest,
+            *,
+            response_model=None,
+        ) -> LLMResponse:
+            _ = response_model
+            self.calls += 1
+            if self.calls == 1:
+                return LLMResponse(
+                    text="",
+                    tool_calls=[
+                        ToolCall(
+                            id="tc_skill_override_1",
+                            tool_name="read_skill_md",
+                            arguments={"skill_name": "frontend-design"},
+                        )
+                    ],
+                    model=req.model,
+                )
+            return LLMResponse(text="used overridden skill", model=req.model)
+
+    skill_root = tmp_path / ".agents" / "skills" / "folder_name_is_ignored"
+    skill_root.mkdir(parents=True)
+    (skill_root / "SKILL.md").write_text(
+        (
+            "---\n"
+            "name: frontend-design\n"
+            "description: Build polished frontend interfaces\n"
+            "---\n\n"
+            "# Frontend Design\n"
+            "details\n"
+        ),
+        encoding="utf-8",
+    )
+
+    agent = Agent(
+        model=_OverriddenSkillReaderLLM(),
+        instructions="skills enabled",
+        skills=["folder_name_is_ignored"],
+        skills_dir=tmp_path / ".agents" / "skills",
+    )
+    result = run_async(Runner().run(agent, user_message="read skill"))
+
+    assert result.final_text == "used overridden skill"
+    assert result.skills_used == ["frontend-design"]
+    assert result.skill_reads
+    assert result.skill_reads[0].skill_name == "frontend-design"
 
 
 def test_policy_can_request_user_input_and_continue_tool_execution():

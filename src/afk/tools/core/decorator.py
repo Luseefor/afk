@@ -15,7 +15,7 @@ from typing import Any, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
-from .base import (
+from afk.tools.core.base import (
     Middleware,
     PostHook,
     PreHook,
@@ -26,7 +26,7 @@ from .base import (
 
 # Registry-level middleware wrapper lives in registry.py
 # (Avoid importing ToolRegistry here to prevent heavy imports.)
-from ..registry import RegistryMiddleware, RegistryMiddlewareFn  # noqa: E402
+from afk.tools.registry import RegistryMiddleware, RegistryMiddlewareFn  # noqa: E402
 
 
 ArgsT = TypeVar("ArgsT", bound=BaseModel)

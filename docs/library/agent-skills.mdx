@@ -18,6 +18,7 @@ Primary code paths:
 
 - Skills are declared on `Agent(skills=[...], skills_dir=...)`.
 - Each skill must exist at `<skills_dir>/<skill_name>/SKILL.md`.
+- `SKILL.md` frontmatter `name` and `description` are required and define runtime skill identity.
 - When skills resolve, AFK injects a skill manifest into system instructions.
 - AFK can auto-register skill tools (`list_skills`, `read_skill_md`, `read_skill_file`, `run_skill_command`).
 - Skill reads and command runs are recorded in `AgentResult` for auditability.
@@ -51,8 +52,19 @@ Expected layout:
 
 Rules:
 
-- `skills` values are folder names under `skills_dir`.
+- `skills` values are folder names under `skills_dir` (lookup key only).
 - Each skill folder must contain `SKILL.md`.
+- `SKILL.md` must start with YAML frontmatter:
+
+```yaml
+---
+name: runtime-skill-name
+description: Short runtime-visible description
+---
+```
+
+- Runtime skill name is read from frontmatter `name` (folder name is ignored after resolution).
+- Runtime skill description is read from frontmatter `description`.
 - Missing skills fail run startup with `SkillResolutionError`.
 
 ## Configure Skills on an Agent

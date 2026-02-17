@@ -5,9 +5,8 @@ import asyncio
 import pytest
 from pydantic import BaseModel
 
-from afk.tools import ToolContext, ToolRegistry, ToolSpec, export_tools, tool
+from afk.tools import ToolContext, ToolRegistry, ToolSpec, tool
 from afk.tools.core.base import Middleware
-from afk.tools.core.export import normalize_json_schema
 from afk.tools.registry import RegistryMiddleware
 
 
@@ -87,26 +86,6 @@ def test_registry_recent_calls_limit_and_error_recording():
     assert limited[1].tool_call_id == "t2"
     # Unknown-tool failures happen before execution and are not recorded.
     assert all(record.ok is True for record in limited)
-
-
-def test_normalize_json_schema_handles_non_dict_and_missing_fields():
-    assert normalize_json_schema("bad") == {"type": "object", "properties": {}}
-    assert normalize_json_schema({}) == {"type": "object", "properties": {}}
-    assert normalize_json_schema({"type": "array"}) == {
-        "type": "array",
-        "properties": {},
-    }
-
-
-def test_export_tools_format_aliases():
-    @tool(args_model=EchoArgs, name="echo_alias")
-    def echo_alias(args: EchoArgs) -> str:
-        return args.text
-
-    exported = export_tools([echo_alias], format="function")
-    assert exported[0]["type"] == "function"
-    assert exported[0]["function"]["name"] == "echo_alias"
-
 
 def test_tool_middleware_timeout_is_enforced():
     async def slow_mw(call_next, args, ctx):
