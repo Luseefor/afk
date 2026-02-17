@@ -204,9 +204,9 @@ Runner emits telemetry for:
 
 Sinks:
 
-- `NullTelemetrySink` (default no-op)
-- `InMemoryTelemetrySink` (tests/debug)
-- `OpenTelemetrySink` (if OTel packages are installed)
+- backend id resolution (`Runner(telemetry=\"null\" | \"inmemory\" | \"otel\")`)
+- sink instance injection (`Runner(telemetry=<TelemetrySink>)`)
+- backend registry extensibility via `afk.observability.backends.register_telemetry_backend(...)`
 
 ## Failure Modes
 

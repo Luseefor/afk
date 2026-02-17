@@ -86,6 +86,7 @@
           "library/messaging",
           "library/task-queues",
           "library/observability",
+          "library/evals",
           "library/mcp-server"
         ]
       },

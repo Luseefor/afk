@@ -34,7 +34,7 @@ This reference covers the public API exported by `afk/*/__init__.py`, plus key r
 - Persist/resume: `afk.memory.*` + `Runner.resume(...)`
 - Expose MCP server: `afk.mcp.MCPServer`, `afk.mcp.create_mcp_server`
 - Use external MCP tools: `Agent(mcp_servers=[...])`
-- Run eval scenarios: `afk.evals.EvalScenario`, `afk.evals.run_eval_scenario`
+- Run eval cases/suites: `afk.evals.EvalCase`, `afk.evals.run_case`, `afk.evals.run_suite`
 - Configure system prompts: `afk.agents.BaseAgent` (`instruction_file`, `prompts_dir`)
 
 ## Public Import Style
@@ -345,14 +345,11 @@ Exported:
 - `TelemetrySink` (protocol)
 - `TelemetryEvent`
 - `TelemetrySpan`
-- `NullTelemetrySink`
-- `InMemoryTelemetrySink`
-- `OpenTelemetrySink`
 
 Behavior:
 
 - Telemetry failures are intentionally non-fatal throughout runner code.
-- `OpenTelemetrySink` lazy-loads OTel dependencies.
+- Concrete telemetry backends (`null` / `inmemory` / `otel`) are exposed from `afk.observability.backends`.
 
 ---
 
@@ -737,19 +734,28 @@ Source: [afk/evals/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/
 
 Exported:
 
-- `EvalScenario`
-- `EvalResult`
-- `run_scenario(...)`
-- `run_scenarios(...)`
+- `EvalCase`
+- `EvalCaseResult`
+- `EvalSuiteConfig`
+- `EvalSuiteResult`
+- `run_case(...)`
+- `arun_case(...)`
+- `run_suite(...)`
+- `arun_suite(...)`
+- `EvalBudget`
+- assertion/scorer contracts and built-ins
 - `compare_event_types(...)`
 - `write_golden_trace(...)`
+- `load_eval_cases_json(...)`
+- `write_suite_report_json(...)`
 
-Source: [afk/evals/harness.py](https://github.com/socioy/afk/blob/main/src/afk/evals/harness.py)
+Key modules:
 
-Behavior notes:
-
-- `run_scenarios(...)` is sync wrapper that internally uses `asyncio.run(...)`.
-- `run_scenario(...)` raises on cancellation.
+- `afk/evals/executor.py`
+- `afk/evals/suite.py`
+- `afk/evals/assertions.py`
+- `afk/evals/budgets.py`
+- `afk/evals/reporting.py`
 
 ---
 

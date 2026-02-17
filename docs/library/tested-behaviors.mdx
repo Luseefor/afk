@@ -69,7 +69,7 @@ Covered behaviors:
 - `test_tool_output_sanitization_redacts_injection_tokens` (`tests/agents/test_agent_runtime.py:1118`): tool output sanitization redacts injection tokens
 - `test_runner_emits_telemetry_events` (`tests/agents/test_agent_runtime.py:1135`): runner emits telemetry events
 - `test_runner_emits_telemetry_spans_and_metrics` (`tests/agents/test_agent_runtime.py:1149`): runner emits telemetry spans and metrics
-- `test_eval_harness_runs_scenario` (`tests/agents/test_agent_runtime.py:1169`): eval harness runs scenario
+- `test_eval_harness_runs_case` (`tests/agents/test_agent_runtime.py:1252`): eval case execution works end-to-end
 - `test_runtime_sandbox_policy_blocks_shell_operator_commands` (`tests/agents/test_agent_runtime.py:1181`): runtime sandbox policy blocks shell operator commands
 - `test_per_tool_sandbox_provider_overrides_default_profile` (`tests/agents/test_agent_runtime.py:1208`): per tool sandbox provider overrides default profile
 - `test_runtime_output_limit_middleware_truncates_tool_output` (`tests/agents/test_agent_runtime.py:1240`): runtime output limit middleware truncates tool output
@@ -142,6 +142,33 @@ Covered behaviors:
 Covered behaviors:
 
 - `test_eval_event_types_match_golden_trace` (`tests/evals/test_eval_golden_trace.py:45`): eval event types match golden trace
+
+## `tests/evals/test_suite_execution.py`
+
+Covered behaviors:
+
+- adaptive suite mode selection and deterministic parallel output ordering
+
+## `tests/evals/test_budgets_and_assertions.py`
+
+Covered behaviors:
+
+- budget violations mark case as failed
+- assertion failures mark case as failed
+
+## `tests/evals/test_reporting_and_datasets.py`
+
+Covered behaviors:
+
+- JSON dataset loader resolves eval cases
+- suite JSON report envelope is emitted with schema metadata
+
+## `tests/evals/test_fail_policies.py`
+
+Covered behaviors:
+
+- `fail_fast=True` stops sequential suite on first failure
+- `fail_fast=False` runs entire suite even with failures
 
 ## `tests/llms/test_anthropic_agent_sdk_adapter.py`
 

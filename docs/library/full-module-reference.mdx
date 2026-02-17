@@ -440,48 +440,22 @@ Top-level symbols:
 
 Source: [afk/core/telemetry.py](https://github.com/socioy/afk/blob/main/src/afk/core/telemetry.py)
 
-Module summary: Telemetry sinks for runner observability.
+Module summary: Telemetry event/span types and sink protocol.
 
 Top-level symbols:
 
-- `class TelemetryEvent` at `afk/core/telemetry.py:18` - Point-in-time telemetry event.
-- `class TelemetrySpan` at `afk/core/telemetry.py:34` - Started telemetry span.
-- `class TelemetrySink` at `afk/core/telemetry.py:51` - Protocol implemented by telemetry backends.
+- `class TelemetryEvent` - Point-in-time telemetry event.
+- `class TelemetrySpan` - Started telemetry span.
+- `class TelemetrySink` - Protocol implemented by telemetry backends.
   Methods:
-  - `sync record_event(self, event: TelemetryEvent)` at `afk/core/telemetry.py:54` - Record a single event.
-  - `sync start_span(self, name: str, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:63` - Start a span when backend supports spans.
-  - `sync end_span(self, span: TelemetrySpan | None, *, status: str, error: str | None=None, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:76` - End a span with status and optional metadata.
-  - `sync increment_counter(self, name: str, value: int=1, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:95` - Increment a named counter.
-  - `sync record_histogram(self, name: str, value: float, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:112` - Record a histogram measurement.
-- `class NullTelemetrySink` at `afk/core/telemetry.py:131` - No-op telemetry sink used as safe default.
-  Methods:
-  - `sync record_event(self, event: TelemetryEvent)` at `afk/core/telemetry.py:134` - Ignore event payload.
-  - `sync start_span(self, name: str, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:144` - Return `None` because spans are disabled.
-  - `sync end_span(self, span: TelemetrySpan | None, *, status: str, error: str | None=None, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:156` - Ignore span completion call.
-  - `sync increment_counter(self, name: str, value: int=1, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:179` - Ignore counter call.
-  - `sync record_histogram(self, name: str, value: float, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:199` - Ignore histogram call.
-- `class InMemoryTelemetrySink` at `afk/core/telemetry.py:221` - Test/debug telemetry sink that stores emitted measurements.
-  Methods:
-  - `sync record_event(self, event: TelemetryEvent)` at `afk/core/telemetry.py:230` - Store emitted event.
-  - `sync start_span(self, name: str, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:239` - Start and store in-memory span.
-  - `sync end_span(self, span: TelemetrySpan | None, *, status: str, error: str | None=None, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:254` - Close span and persist completed record.
-  - `sync increment_counter(self, name: str, value: int=1, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:288` - Record counter data point.
-  - `sync record_histogram(self, name: str, value: float, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:312` - Record histogram data point.
-  - `sync events(self)` at `afk/core/telemetry.py:336` - Return captured events.
-  - `sync spans(self)` at `afk/core/telemetry.py:345` - Return closed span records.
-  - `sync counters(self)` at `afk/core/telemetry.py:354` - Return captured counter records.
-  - `sync histograms(self)` at `afk/core/telemetry.py:363` - Return captured histogram records.
-- `class OpenTelemetrySink` at `afk/core/telemetry.py:374` - OpenTelemetry sink using the global tracer/meter providers.
-  Methods:
-  - `sync _ensure_clients(self)` at `afk/core/telemetry.py:390` - Lazily initialize OpenTelemetry tracer and meter clients.
-  - `sync _attr(self, value: dict[str, JSONValue] | None)` at `afk/core/telemetry.py:404` - Convert JSON attribute map into OpenTelemetry-compatible attributes.
-  - `sync record_event(self, event: TelemetryEvent)` at `afk/core/telemetry.py:411` - Record event by incrementing OpenTelemetry counter.
-  - `sync start_span(self, name: str, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:424` - Start OpenTelemetry span.
-  - `sync end_span(self, span: TelemetrySpan | None, *, status: str, error: str | None=None, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:450` - End OpenTelemetry span with status metadata.
-  - `sync increment_counter(self, name: str, value: int=1, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:487` - Increment or create OpenTelemetry counter.
-  - `sync record_histogram(self, name: str, value: float, *, attributes: dict[str, JSONValue] | None=None)` at `afk/core/telemetry.py:512` - Record OpenTelemetry histogram measurement.
-- `def now_ms` at `afk/core/telemetry.py:538` - Return current Unix epoch time in milliseconds.
-- `def _to_attr(value: JSONValue)` at `afk/core/telemetry.py:548` - Convert JSON-safe values into OpenTelemetry attribute-compatible values.
+  - `record_event(...)` - Record one event.
+  - `start_span(...)` - Start one span.
+  - `end_span(...)` - End one span.
+  - `increment_counter(...)` - Increment one counter.
+  - `record_histogram(...)` - Record one histogram value.
+- `def now_ms` - Return current Unix epoch time in milliseconds.
+
+Concrete backends now live under `afk/observability/backends/` (`null`, `inmemory`, `otel`).
 
 ## Package: `evals`
 
@@ -489,22 +463,18 @@ Top-level symbols:
 
 Source: [afk/evals/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/evals/__init__.py)
 
-Module summary: Evaluation harness exports.
+Module summary: Evaluation APIs for case/suite execution.
 
 Symbols: none (re-export or namespace module).
 
-### Module `afk/evals/harness.py`
+Modules:
 
-Source: [afk/evals/harness.py](https://github.com/socioy/afk/blob/main/src/afk/evals/harness.py)
-
-Top-level symbols:
-
-- `class EvalScenario` at `afk/evals/harness.py:18`
-- `class EvalResult` at `afk/evals/harness.py:27`
-- `async def run_scenario(runner: Runner, scenario: EvalScenario)` at `afk/evals/harness.py:36`
-- `def write_golden_trace(path: str | Path, events: list[AgentRunEvent])` at `afk/evals/harness.py:61`
-- `def compare_event_types(expected: list[str], observed: list[str])` at `afk/evals/harness.py:75`
-- `def run_scenarios(*, runner_factory: Callable[[], Runner], scenarios: list[EvalScenario])` at `afk/evals/harness.py:81`
+- `afk/evals/models.py` - `EvalCase`, `EvalCaseResult`, `EvalSuiteConfig`, `EvalSuiteResult`
+- `afk/evals/executor.py` - `run_case(...)`, `arun_case(...)`
+- `afk/evals/suite.py` - `run_suite(...)`, `arun_suite(...)`
+- `afk/evals/assertions.py` - built-in assertions/scorers
+- `afk/evals/budgets.py` - budget limits and validators
+- `afk/evals/reporting.py` - suite report envelope writers
 
 ## Package: `llms`
 

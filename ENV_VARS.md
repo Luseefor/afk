@@ -18,6 +18,19 @@ All configuration variables use the `AFK_` prefix. None are required — sensibl
 | `AFK_LLM_JSON_MAX_RETRIES` | `2`            | Max retries for invalid JSON structured output      |
 | `AFK_LLM_MAX_INPUT_CHARS`  | `200000`       | Max input character limit                           |
 
+## Observability Configuration
+
+No environment variables are required for observability backend selection.
+
+Telemetry is configured at runner construction time:
+
+- `Runner(telemetry=\"null\" | \"inmemory\" | \"otel\")`
+- `Runner(telemetry=<TelemetrySink instance>)`
+- `Runner(..., telemetry_config={...})` for backend-specific options
+
+You can register custom telemetry providers with:
+- `afk.observability.backends.register_telemetry_backend(...)`
+
 ## Memory Backend
 
 | Variable             | Default  | Description                                             |
