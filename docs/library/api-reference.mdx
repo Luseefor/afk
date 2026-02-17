@@ -32,6 +32,8 @@ This reference covers the public API exported by `afk/*/__init__.py`, plus key r
 - Build tools: `afk.tools.tool`, `afk.tools.ToolRegistry`
 - Enforce security: `afk.tools.SandboxProfile`, `RunnerConfig` sandbox fields
 - Persist/resume: `afk.memory.*` + `Runner.resume(...)`
+- Expose MCP server: `afk.mcp.MCPServer`, `afk.mcp.create_mcp_server`
+- Use external MCP tools: `Agent(mcp_servers=[...])`
 - Run eval scenarios: `afk.evals.EvalScenario`, `afk.evals.run_eval_scenario`
 - Configure system prompts: `afk.agents.BaseAgent` (`instruction_file`, `prompts_dir`)
 
@@ -43,6 +45,7 @@ Use these import styles in app code:
 from afk.agents import Agent, ChatAgent
 from afk.core import Runner, RunnerConfig
 from afk.llms import create_llm, LLMConfig
+from afk.mcp import MCPServer, create_mcp_server
 from afk.tools import tool, ToolRegistry
 from afk.memory import create_memory_store_from_env
 ```
@@ -50,7 +53,7 @@ from afk.memory import create_memory_store_from_env
 You can also import top-level namespaces when useful:
 
 ```python
-from afk import agents, core, llms, tools, memory, evals
+from afk import agents, core, llms, mcp, tools, memory, evals
 ```
 
 Do not import via `src/...` paths in integration code.
@@ -76,7 +79,7 @@ Companion references:
 
 ## Top-Level Package
 
-- `afk` exports: `agents`, `core`, `llms`, `memory`, `tools`, `evals`
+- `afk` exports: `agents`, `core`, `llms`, `mcp`, `memory`, `tools`, `evals`
 - Source: [afk/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/__init__.py)
 
 ---
@@ -112,6 +115,7 @@ Key fields:
 - `subagent_router`
 - `fail_safe: FailSafeConfig`
 - `skill_tool_policy`, `skills`, `skills_dir`, `enable_skill_tools`
+- `mcp_servers`, `enable_mcp_tools`
 
 Validation/edge cases:
 
@@ -500,6 +504,36 @@ Exported errors:
 - `LLMInterruptedError`
 - `LLMSessionError`
 - `LLMSessionPausedError`
+
+---
+
+## `afk.mcp`
+
+Source: [afk/mcp/**init**.py](https://github.com/socioy/afk/blob/main/src/afk/mcp/__init__.py)
+
+Exported:
+
+- server:
+  - `MCPServer`
+  - `MCPServerConfig`
+  - `create_mcp_server(...)`
+- external server store:
+  - `MCPServerRef`
+  - `MCPRemoteTool`
+  - `MCPStore`
+  - `get_mcp_store()`, `reset_mcp_store()`
+- errors:
+  - `MCPStoreError`
+  - `MCPServerResolutionError`
+  - `MCPRemoteProtocolError`
+  - `MCPRemoteCallError`
+
+Behavior highlights:
+
+- `MCPServer.from_tools(...)` builds a registry-backed server directly from AFK tools.
+- `create_mcp_server(...)` accepts either `registry=` or `tools=`.
+- `MCPServerConfig` supports route toggles/paths (`mcp_path`, `sse_path`, `health_path`, `enable_sse`, `enable_health`, `allow_batch_requests`).
+- `MCPStore.tools_from_servers(...)` materializes external MCP tools so they can run through standard AFK runner tool orchestration.
 
 ---
 

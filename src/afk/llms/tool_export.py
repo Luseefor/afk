@@ -18,14 +18,49 @@ from typing import Any, Iterable
 
 def normalize_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """
-    Ensure schema is at least an object schema with properties.
+    Ensure schema is a safe object-parameter schema.
+
+    Coerces invalid/malformed fields to predictable defaults so providers
+    always receive a well-formed function-parameters schema.
     """
     if not isinstance(schema, dict):
-        return {"type": "object", "properties": {}}
+        return {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": False,
+        }
 
     out = dict(schema)
-    out.setdefault("type", "object")
-    out.setdefault("properties", {})
+
+    # Tool parameters should always be object-shaped.
+    out["type"] = "object"
+
+    properties_raw = out.get("properties")
+    if not isinstance(properties_raw, dict):
+        properties: dict[str, Any] = {}
+    else:
+        properties = {
+            str(key): (value if isinstance(value, dict) else {})
+            for key, value in properties_raw.items()
+        }
+    out["properties"] = properties
+
+    required_raw = out.get("required")
+    if isinstance(required_raw, list):
+        required = [
+            str(name)
+            for name in required_raw
+            if isinstance(name, str) and name in properties
+        ]
+    else:
+        required = []
+    out["required"] = required
+
+    additional_properties = out.get("additionalProperties")
+    if not isinstance(additional_properties, (bool, dict)):
+        out["additionalProperties"] = False
+
     return out
 
 

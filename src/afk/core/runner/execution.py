@@ -88,6 +88,7 @@ from ...agents.types import (
     tool_record_from_result,
 )
 from ...llms.types import LLMRequest, LLMResponse, Message
+from ...mcp import get_mcp_store
 from ...tools import ToolContext, ToolResult
 from ...tools.prebuilts import build_runtime_tools, build_skill_tools
 from ...tools.security import (
@@ -328,6 +329,16 @@ class RunnerExecutionMixin:
                         policy=skill_policy,
                     )
                 )
+            if agent.enable_mcp_tools and agent.mcp_servers:
+                try:
+                    mcp_store = get_mcp_store()
+                    extra_tools.extend(
+                        await mcp_store.tools_from_servers(agent.mcp_servers)
+                    )
+                except Exception as e:
+                    raise AgentExecutionError(
+                        f"Failed to load MCP tools for agent '{agent.name}': {e}"
+                    ) from e
             extra_tools.extend(build_runtime_tools(root_dir=Path.cwd()))
             registry = agent.build_tool_registry(
                 extra_tools=extra_tools,

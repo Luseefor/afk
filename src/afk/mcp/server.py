@@ -21,7 +21,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Iterable
 
 from ..tools import ToolRegistry, ToolContext
 
@@ -47,6 +47,12 @@ class MCPServerConfig:
         port: Bind port for the FastAPI server.
         instructions: Optional instructions describing the server's purpose.
         cors_origins: List of allowed CORS origins.
+        mcp_path: JSON-RPC endpoint path.
+        sse_path: SSE endpoint path.
+        health_path: Health endpoint path.
+        enable_sse: Whether to expose SSE endpoint.
+        enable_health: Whether to expose health endpoint.
+        allow_batch_requests: Whether JSON-RPC batch requests are accepted.
     """
 
     name: str = "afk-mcp-server"
@@ -55,6 +61,12 @@ class MCPServerConfig:
     port: int = 8000
     instructions: str | None = None
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    mcp_path: str = "/mcp"
+    sse_path: str = "/mcp/sse"
+    health_path: str = "/health"
+    enable_sse: bool = True
+    enable_health: bool = True
+    allow_batch_requests: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +140,31 @@ class MCPServer:
         registry: ToolRegistry,
         *,
         config: MCPServerConfig | None = None,
+        app: Any | None = None,
     ) -> None:
         self._registry = registry
         self._config = config or MCPServerConfig()
-        self._app = self._create_app()
+        self._app = app or self._create_app()
+        if app is not None:
+            self.mount(app)
+
+    @classmethod
+    def from_tools(
+        cls,
+        tools: Iterable[Any],
+        *,
+        config: MCPServerConfig | None = None,
+        app: Any | None = None,
+    ) -> "MCPServer":
+        """
+        Build an MCP server from an iterable of AFK tools.
+
+        This is a DX-focused convenience for simple setups where callers have
+        tools but not an explicit ``ToolRegistry`` instance.
+        """
+        registry = ToolRegistry()
+        registry.register_many(tools)
+        return cls(registry, config=config, app=app)
 
     @property
     def app(self):
@@ -150,11 +183,101 @@ class MCPServer:
         """Server configuration."""
         return self._config
 
+    def _create_router(self):
+        """Build an APIRouter containing MCP routes."""
+        try:
+            from fastapi import APIRouter, Request
+            from fastapi.responses import JSONResponse, StreamingResponse
+        except ImportError:
+            raise ImportError(
+                "FastAPI is required for MCPServer. "
+                "Install it with: pip install fastapi uvicorn"
+            )
+
+        router = APIRouter()
+
+        if self._config.enable_health:
+
+            @router.get(self._config.health_path)
+            async def health():
+                return {
+                    "status": "ok",
+                    "server": self._config.name,
+                    "version": self._config.version,
+                    "tools_count": len(self._registry.names()),
+                }
+
+        @router.post(self._config.mcp_path)
+        async def mcp_endpoint(request: Request):
+            """Main JSON-RPC 2.0 endpoint for MCP."""
+            try:
+                body = await request.json()
+            except Exception:
+                return JSONResponse(
+                    _jsonrpc_error(None, PARSE_ERROR, "Parse error"),
+                    status_code=200,
+                )
+
+            if isinstance(body, list):
+                if not self._config.allow_batch_requests:
+                    return JSONResponse(
+                        _jsonrpc_error(None, INVALID_REQUEST, "Batch requests disabled"),
+                        status_code=200,
+                    )
+                responses = []
+                for item in body:
+                    resp = await self._handle_jsonrpc(item)
+                    if resp is not None:
+                        responses.append(resp)
+                return JSONResponse(responses, status_code=200)
+
+            result = await self._handle_jsonrpc(body)
+            if result is None:
+                return JSONResponse({}, status_code=200)
+            return JSONResponse(result, status_code=200)
+
+        if self._config.enable_sse:
+
+            @router.get(self._config.sse_path)
+            async def sse_endpoint(request: Request):
+                """SSE transport for MCP — sends JSON-RPC messages as events."""
+                _ = request
+                import asyncio
+
+                session_id = uuid.uuid4().hex
+
+                async def event_stream():
+                    endpoint_data = json.dumps(
+                        {
+                            "endpoint": self._config.mcp_path,
+                            "sessionId": session_id,
+                        }
+                    )
+                    yield f"event: endpoint\ndata: {endpoint_data}\n\n"
+
+                    try:
+                        while True:
+                            await asyncio.sleep(30)
+                            yield ": heartbeat\n\n"
+                    except asyncio.CancelledError:
+                        pass
+
+                return StreamingResponse(
+                    event_stream(),
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "X-Accel-Buffering": "no",
+                    },
+                )
+
+        return router
+
     def _create_app(self):
         """Build the FastAPI application with MCP routes."""
         try:
-            from fastapi import FastAPI, Request
-            from fastapi.responses import JSONResponse, StreamingResponse
+            from fastapi import FastAPI
             from fastapi.middleware.cors import CORSMiddleware
         except ImportError:
             raise ImportError(
@@ -175,74 +298,19 @@ class MCPServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-
-        @app.get("/health")
-        async def health():
-            return {
-                "status": "ok",
-                "server": self._config.name,
-                "version": self._config.version,
-                "tools_count": len(self._registry.names()),
-            }
-
-        @app.post("/mcp")
-        async def mcp_endpoint(request: Request):
-            """Main JSON-RPC 2.0 endpoint for MCP."""
-            try:
-                body = await request.json()
-            except Exception:
-                return JSONResponse(
-                    _jsonrpc_error(None, PARSE_ERROR, "Parse error"),
-                    status_code=200,
-                )
-
-            # Handle batch requests
-            if isinstance(body, list):
-                responses = []
-                for item in body:
-                    resp = await self._handle_jsonrpc(item)
-                    if resp is not None:
-                        responses.append(resp)
-                return JSONResponse(responses, status_code=200)
-
-            result = await self._handle_jsonrpc(body)
-            return JSONResponse(result, status_code=200)
-
-        @app.get("/mcp/sse")
-        async def sse_endpoint(request: Request):
-            """SSE transport for MCP — sends JSON-RPC messages as events."""
-            import asyncio
-
-            session_id = uuid.uuid4().hex
-
-            async def event_stream():
-                # Send initial endpoint event
-                endpoint_data = json.dumps(
-                    {"endpoint": "/mcp", "sessionId": session_id}
-                )
-                yield f"event: endpoint\ndata: {endpoint_data}\n\n"
-
-                # Keep connection alive with heartbeats
-                try:
-                    while True:
-                        await asyncio.sleep(30)
-                        yield f": heartbeat\n\n"
-                except asyncio.CancelledError:
-                    pass
-
-            return StreamingResponse(
-                event_stream(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no",
-                },
-            )
-
+        app.include_router(self._create_router())
         return app
 
-    async def _handle_jsonrpc(self, message: dict[str, Any]) -> dict[str, Any]:
+    def mount(self, app: Any) -> Any:
+        """
+        Mount MCP routes into an existing FastAPI app.
+
+        Returns the provided app for fluent usage.
+        """
+        app.include_router(self._create_router())
+        return app
+
+    async def _handle_jsonrpc(self, message: dict[str, Any]) -> dict[str, Any] | None:
         """
         Route a JSON-RPC 2.0 message to the appropriate handler.
         """
@@ -262,6 +330,8 @@ class MCPServer:
         if not method:
             return _jsonrpc_error(msg_id, INVALID_REQUEST, "Missing method")
 
+        is_notification = msg_id is None
+
         try:
             if method == "initialize":
                 result = self._handle_initialize(params)
@@ -272,13 +342,16 @@ class MCPServer:
             elif method == "ping":
                 result = {}
             elif method == "notifications/initialized":
-                # Client notification — no response needed
+                if is_notification:
+                    return None
                 return _jsonrpc_response(msg_id, {})
             else:
                 return _jsonrpc_error(
                     msg_id, METHOD_NOT_FOUND, f"Method not found: {method}"
                 )
 
+            if is_notification:
+                return None
             return _jsonrpc_response(msg_id, result)
 
         except Exception as exc:
@@ -395,3 +468,22 @@ class MCPServer:
             port=kwargs.pop("port", self._config.port),
             **kwargs,
         )
+
+
+def create_mcp_server(
+    *,
+    registry: ToolRegistry | None = None,
+    tools: Iterable[Any] | None = None,
+    config: MCPServerConfig | None = None,
+    app: Any | None = None,
+) -> MCPServer:
+    """
+    DX-first constructor for MCP servers.
+
+    Callers can pass either an existing registry or a list of tools.
+    """
+    if registry is not None and tools is not None:
+        raise ValueError("Pass either 'registry' or 'tools', not both")
+    if registry is not None:
+        return MCPServer(registry, config=config, app=app)
+    return MCPServer.from_tools(tools or [], config=config, app=app)

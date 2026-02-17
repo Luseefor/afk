@@ -14,6 +14,7 @@ from afk.llms.types import JSONValue
 
 if TYPE_CHECKING:
     from afk.tools.core.base import Tool
+    from afk.mcp.store import MCPServerRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,4 +109,5 @@ class RouterDecision:
 
 InstructionProvider: TypeAlias = Callable[[dict[str, JSONValue]], str]
 ToolLike: TypeAlias = "Tool[Any, Any] | Callable[[], Tool[Any, Any]]"
+MCPServerLike: TypeAlias = "str | dict[str, Any] | MCPServerRef"
 ContextInheritance: TypeAlias = list[str]
