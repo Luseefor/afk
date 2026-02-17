@@ -14,16 +14,15 @@ from typing import Optional, Sequence, cast
 import numpy as np
 from redis.asyncio import Redis
 
-from ..models import (
+from afk.memory.types import (
     JsonObject,
     JsonValue,
     LongTermMemory,
     MemoryEvent,
-    json_dumps,
-    json_loads,
 )
-from ..vector import cosine_similarity
-from .base import MemoryCapabilities, MemoryStore
+from afk.memory.utils import json_dumps, json_loads
+from afk.memory.vector import cosine_similarity
+from afk.memory.store import MemoryCapabilities, MemoryStore
 
 
 class RedisMemoryStore(MemoryStore):

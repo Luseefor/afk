@@ -5,12 +5,14 @@ See LICENSE file for full license text.
 
 Utility functions for memory functionality.
 """
+
 import json
 import time
 import uuid
 from typing import Any, cast
 
 from afk.memory.types import JsonValue
+
 
 def now_ms() -> int:
     return int(time.time() * 1000)

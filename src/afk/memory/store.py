@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
-from ..models import JsonValue, LongTermMemory, MemoryEvent
+from afk.memory.types import JsonValue, LongTermMemory, MemoryEvent
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +54,9 @@ class MemoryStore(ABC):
         await self.setup()
         return self
 
-    async def __aexit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> None:
+    async def __aexit__(
+        self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object
+    ) -> None:
         """Release resources on context exit."""
         await self.close()
 

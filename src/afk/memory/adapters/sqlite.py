@@ -14,17 +14,15 @@ from typing import Optional, Sequence, cast
 import aiosqlite
 import numpy as np
 
-from ..models import (
+from afk.memory.types import (
     JsonObject,
     JsonValue,
     LongTermMemory,
     MemoryEvent,
-    json_dumps,
-    json_loads,
-    now_ms,
 )
-from ..vector import cosine_similarity
-from .base import MemoryCapabilities, MemoryStore
+from afk.memory.utils import json_dumps, json_loads, now_ms
+from afk.memory.vector import cosine_similarity
+from afk.memory.store import MemoryCapabilities, MemoryStore
 
 
 class SQLiteMemoryStore(MemoryStore):

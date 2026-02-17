@@ -9,13 +9,15 @@ This module provides the public API for the AFK memory subsystem, including mode
 from __future__ import annotations
 
 
-from .models import JsonObject, JsonValue, LongTermMemory, MemoryEvent, now_ms, new_id
-from .store import (
+from .types import JsonObject, JsonValue, LongTermMemory, MemoryEvent
+from .utils import now_ms, new_id
+from .adapters import (
     InMemoryMemoryStore,
-    MemoryCapabilities,
-    MemoryStore,
     SQLiteMemoryStore,
+    RedisMemoryStore,
+    PostgresMemoryStore,
 )
+from .store import MemoryCapabilities, MemoryStore
 from .vector import cosine_similarity
 from .factory import create_memory_store_from_env
 from .lifecycle import (
@@ -26,18 +28,6 @@ from .lifecycle import (
     apply_state_retention,
     compact_thread_memory,
 )
-
-
-def __getattr__(name: str):
-    if name == "RedisMemoryStore":
-        from .store.redis import RedisMemoryStore
-
-        return RedisMemoryStore
-    if name == "PostgresMemoryStore":
-        from .store.postgres import PostgresMemoryStore
-
-        return PostgresMemoryStore
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [

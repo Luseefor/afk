@@ -13,16 +13,15 @@ from typing import Optional, Sequence, cast
 
 import asyncpg
 
-from ..models import (
+from afk.memory.types import (
     JsonObject,
     JsonValue,
     LongTermMemory,
     MemoryEvent,
-    json_dumps,
-    now_ms,
 )
-from ..vector import format_pgvector
-from .base import MemoryCapabilities, MemoryStore
+from afk.memory.utils import json_dumps, now_ms
+from afk.memory.vector import format_pgvector
+from afk.memory.types import MemoryCapabilities, MemoryStore
 
 
 class PostgresMemoryStore(MemoryStore):
