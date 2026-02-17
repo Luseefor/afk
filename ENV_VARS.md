@@ -66,6 +66,30 @@ All configuration variables use the `AFK_` prefix. None are required — sensibl
 | `AFK_PG_POOL_MAX` | `10`         | Maximum connection pool size                   |
 | `AFK_VECTOR_DIM`  | _(required)_ | Embedding vector dimension (e.g. `1536`)       |
 
+## Task Queue Backend
+
+| Variable            | Default    | Description                             |
+| ------------------- | ---------- | --------------------------------------- |
+| `AFK_QUEUE_BACKEND` | `inmemory` | Backend type: `inmemory`, `redis`       |
+| `AFK_QUEUE_RETRY_BACKOFF_BASE_S` | `0.5` | Retry backoff base delay in seconds     |
+| `AFK_QUEUE_RETRY_BACKOFF_MAX_S` | `30` | Retry backoff maximum delay cap in seconds |
+| `AFK_QUEUE_RETRY_BACKOFF_JITTER_S` | `0.2` | Random retry jitter window in seconds   |
+
+> Execution contracts are configured at worker construction time
+> (`TaskWorker(..., execution_contracts=..., job_handlers=...)`), not by
+> environment variables in this release.
+
+### Queue Redis
+
+| Variable                   | Default     | Description                                              |
+| -------------------------- | ----------- | -------------------------------------------------------- |
+| `AFK_QUEUE_REDIS_URL`      | _(none)_    | Full Redis URL (falls back to `AFK_REDIS_URL`)          |
+| `AFK_QUEUE_REDIS_HOST`     | `localhost` | Redis host (fallback to `AFK_REDIS_HOST`)               |
+| `AFK_QUEUE_REDIS_PORT`     | `6379`      | Redis port (fallback to `AFK_REDIS_PORT`)               |
+| `AFK_QUEUE_REDIS_DB`       | `0`         | Redis DB number (fallback to `AFK_REDIS_DB`)            |
+| `AFK_QUEUE_REDIS_PASSWORD` | _(empty)_   | Redis password (fallback to `AFK_REDIS_PASSWORD`)       |
+| `AFK_QUEUE_REDIS_PREFIX`   | `afk:queue` | Key prefix for queue list/hash (`<prefix>:pending/tasks`) |
+
 ## Agent Prompts
 
 | Variable                | Default          | Description                            |
