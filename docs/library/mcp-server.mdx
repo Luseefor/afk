@@ -1,17 +1,20 @@
 ---
 title: MCP Server
-description: Expose ToolRegistry tools as an MCP server using FastAPI and JSON-RPC 2.0.
+description: Expose AFK tools over MCP and consume external MCP servers from AFK agents.
 ---
 
-The `MCPServer` class creates a fully compliant Model Context Protocol server from your existing `ToolRegistry`. Any registered tool is automatically exposed via JSON-RPC 2.0 endpoints that MCP clients (like Claude Desktop, Cursor, etc.) can connect to.
+AFK supports both sides of MCP:
+
+- **Server mode**: expose your AFK `ToolRegistry` as an MCP server.
+- **Client mode**: connect AFK agents to external MCP servers and use those remote tools in the normal runner tool-call pipeline.
 
 ## TL;DR
 
-- `MCPServer(registry)` wraps a `ToolRegistry` into a FastAPI server.
-- Implements MCP methods: `initialize`, `tools/list`, `tools/call`, `ping`.
-- Tools are auto-discovered from the registry — no extra configuration.
-- SSE transport available at `/mcp/sse` for streaming MCP clients.
-- Swagger docs auto-generated at `/docs`.
+- `MCPServer(registry)` exposes registered tools over MCP JSON-RPC.
+- New DX constructors: `MCPServer.from_tools(...)` and `create_mcp_server(...)`.
+- Routes are configurable (`mcp_path`, `sse_path`, `health_path`) and can be mounted into an existing FastAPI app via `mount(...)`.
+- Agents can load tools from external MCP servers with `Agent(mcp_servers=[...])`.
+- External MCP tools run through AFK’s existing tool runtime (policy/sandbox/fail-safe/telemetry).
 
 ## When to Use
 
@@ -19,7 +22,7 @@ The `MCPServer` class creates a fully compliant Model Context Protocol server fr
 - You are integrating with Claude Desktop, Cursor, or other MCP hosts.
 - You need a standard protocol for tool discovery and execution.
 
-## Architecture
+## Server Mode: Expose AFK Tools as MCP
 
 ```mermaid
 flowchart LR
@@ -35,30 +38,40 @@ flowchart LR
     SSE -->|"endpoint event"| MC2
 ```
 
-## Quick Start
+### Quick Start
 
 ```python
+from pydantic import BaseModel
+
 from afk.tools import ToolRegistry, tool
 from afk.mcp import MCPServer
 
+
+class GreetArgs(BaseModel):
+    name: str
+
 registry = ToolRegistry()
 
-@tool(name="calculate", description="Evaluate a math expression")
-def calculate(expression: str) -> str:
-    return str(eval(expression))  # simplified example
+@tool(args_model=GreetArgs, name="greet", description="Greet someone")
+def greet(args: GreetArgs) -> str:
+    return f"Hello, {args.name}!"
 
-@tool(name="greet", description="Greet someone by name")
-def greet(name: str) -> str:
-    return f"Hello, {name}! Welcome to AFK."
-
-registry.register(calculate)
 registry.register(greet)
 
 server = MCPServer(registry)
 server.run()  # http://0.0.0.0:8000
 ```
 
-## Endpoints
+### DX Constructor
+
+```python
+from afk.mcp import create_mcp_server
+
+server = create_mcp_server(tools=[greet])
+server.run()
+```
+
+### Endpoints
 
 | Endpoint   | Method | Description                               |
 | ---------- | ------ | ----------------------------------------- |
@@ -67,7 +80,7 @@ server.run()  # http://0.0.0.0:8000
 | `/health`  | `GET`  | Health check with tool count              |
 | `/docs`    | `GET`  | Swagger UI (auto from FastAPI)            |
 
-## MCP Methods
+### MCP Methods
 
 ### `initialize`
 
@@ -150,73 +163,82 @@ Response:
 
 ```json
 {
-  "content": [{ "type": "text", "text": "Hello, Alice! Welcome to AFK." }],
+  "content": [{ "type": "text", "text": "Hello, Alice!" }],
   "isError": false
 }
 ```
 
-## Configuration
+### Configuration
 
 ```python
-from afk.mcp import MCPServer, MCPServerConfig
+from afk.mcp import MCPServerConfig, create_mcp_server
 
-server = MCPServer(
-    registry,
-    config=MCPServerConfig(
-        name="my-agent-tools",
-        version="2.0.0",
-        host="127.0.0.1",
-        port=3000,
-        instructions="Tools for data analysis and reporting",
-        cors_origins=["http://localhost:*"],
-    ),
+server = create_mcp_server(
+  tools=[greet],
+  config=MCPServerConfig(
+    name="my-agent-tools",
+    version="2.0.0",
+    mcp_path="/rpc/mcp",
+    sse_path="/rpc/mcp/sse",
+    health_path="/status",
+    enable_sse=True,
+    enable_health=True,
+    allow_batch_requests=True,
+  ),
 )
 ```
 
-| Option         | Default            | Description                              |
-| -------------- | ------------------ | ---------------------------------------- |
-| `name`         | `"afk-mcp-server"` | Server name (advertised in `initialize`) |
-| `version`      | `"1.0.0"`          | Server version                           |
-| `host`         | `"0.0.0.0"`        | Bind host                                |
-| `port`         | `8000`             | Bind port                                |
-| `instructions` | `None`             | Optional server-level instructions       |
-| `cors_origins` | `["*"]`            | Allowed CORS origins                     |
-
-## Mounting into Existing Apps
-
-If you already have a FastAPI app, access the underlying app instance:
+### FastAPI Mounting
 
 ```python
 from fastapi import FastAPI
+from afk.mcp import create_mcp_server
 
-main_app = FastAPI()
-mcp = MCPServer(registry)
-
-main_app.mount("/tools", mcp.app)
+app = FastAPI()
+mcp_server = create_mcp_server(tools=[greet])
+mcp_server.mount(app)
 ```
 
-## Testing
+## Client Mode: Use External MCP Servers in AFK Agents
 
-Use FastAPI's `TestClient` for integration tests:
+AFK can materialize tools from external MCP servers and add them to agent runs.
 
 ```python
-from fastapi.testclient import TestClient
+from afk.agents import Agent
+from afk.core import Runner
 
-client = TestClient(server.app)
+agent = Agent(
+  model="gpt-4.1-mini",
+  instructions="Use MCP tools when helpful.",
+  mcp_servers=[
+    "filesystem=http://localhost:8001/mcp",
+    {
+      "name": "knowledge",
+      "url": "http://localhost:8010/mcp",
+      "headers": {"Authorization": "Bearer <token>"},
+      "timeout_s": 20,
+      "prefix_tools": True,
+    },
+  ],
+)
 
-# Health check
-resp = client.get("/health")
-assert resp.json()["tools_count"] == 2
+result = Runner().run_sync(agent, user_message="Summarize notes in ./docs")
+print(result.final_text)
+```
 
-# List tools
-resp = client.post("/mcp", json={
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/list",
-    "params": {},
-})
-tools = resp.json()["result"]["tools"]
-assert len(tools) == 2
+Remote tool names are prefixed by default (for example `filesystem__read_file`) to avoid collisions with local tool names.
+
+### MCP Store APIs
+
+Use `MCPStore` directly when you need explicit control/caching:
+
+```python
+from afk.mcp import MCPStore
+
+store = MCPStore()
+tools = await store.tools_from_servers([
+  "filesystem=http://localhost:8001/mcp",
+])
 ```
 
 ## Continue Reading
@@ -224,3 +246,4 @@ assert len(tools) == 2
 1. [Tools System](/library/tools-system-walkthrough)
 2. [Tool Call Lifecycle](/library/tool-call-lifecycle)
 3. [Security Model](/library/security-model)
+4. [API Reference](/library/api-reference)

@@ -115,6 +115,48 @@ agent = Agent(
 # Auto file: .agents/prompt/CHAT_AGENT.md
 ```
 
+## MCP (Model Context Protocol)
+
+AFK supports both exposing and consuming MCP tools.
+
+### Expose AFK tools as an MCP server
+
+```python
+from pydantic import BaseModel
+
+from afk.mcp import create_mcp_server
+from afk.tools import tool
+
+
+class GreetArgs(BaseModel):
+  name: str
+
+
+@tool(args_model=GreetArgs, name="greet", description="Greet a user")
+def greet(args: GreetArgs) -> str:
+  return f"Hello, {args.name}!"
+
+
+server = create_mcp_server(tools=[greet])
+server.run()
+```
+
+### Use external MCP servers in an AFK agent
+
+```python
+from afk.agents import Agent
+
+agent = Agent(
+  model="gpt-4.1-mini",
+  instructions="Use external MCP tools when needed.",
+  mcp_servers=[
+    "filesystem=http://localhost:8001/mcp",
+  ],
+)
+```
+
+See docs: `docs/library/mcp-server.mdx`.
+
 ## Documentation
 
 - Public docs: `https://afk.arpan.sh`

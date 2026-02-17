@@ -1342,3 +1342,117 @@ def test_runtime_output_limit_middleware_truncates_tool_output():
     assert isinstance(text, str)
     assert "truncated" in text
     assert len(text) < 300
+
+
+def test_runner_loads_and_executes_external_mcp_tools(monkeypatch):
+    from afk.mcp import MCPStore
+    import afk.core.runner.execution as runner_execution
+
+    class _MCPToolLLM(LLM):
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls = 0
+
+        @property
+        def provider_id(self) -> str:
+            return "dummy"
+
+        @property
+        def capabilities(self) -> LLMCapabilities:
+            return LLMCapabilities(
+                chat=True,
+                streaming=False,
+                tool_calling=True,
+                structured_output=True,
+            )
+
+        async def _chat_core(
+            self,
+            req: LLMRequest,
+            *,
+            response_model=None,
+        ) -> LLMResponse:
+            _ = response_model
+            self.calls += 1
+            if self.calls == 1:
+                return LLMResponse(
+                    text="",
+                    tool_calls=[
+                        ToolCall(
+                            id="tc_mcp_1",
+                            tool_name="calc__add",
+                            arguments={"a": 2, "b": 4},
+                        )
+                    ],
+                    model=req.model,
+                )
+            return LLMResponse(text="mcp-ok", model=req.model)
+
+        async def _chat_stream_core(
+            self,
+            req: LLMRequest,
+            *,
+            response_model=None,
+        ) -> AsyncIterator:
+            _ = req
+            _ = response_model
+            raise NotImplementedError
+
+        async def _embed_core(self, req: EmbeddingRequest) -> EmbeddingResponse:
+            _ = req
+            raise NotImplementedError
+
+    store = MCPStore()
+
+    async def fake_jsonrpc(self, server, *, method: str, params: dict):
+        _ = self
+        _ = server
+        if method == "tools/list":
+            return {
+                "tools": [
+                    {
+                        "name": "add",
+                        "description": "Add numbers",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "a": {"type": "integer"},
+                                "b": {"type": "integer"},
+                            },
+                        },
+                    }
+                ]
+            }
+        if method == "tools/call":
+            assert params["name"] == "add"
+            assert params["arguments"] == {"a": 2, "b": 4}
+            return {
+                "content": [{"type": "text", "text": "6"}],
+                "isError": False,
+            }
+        raise AssertionError(f"unexpected MCP method: {method}")
+
+    import types
+
+    store._jsonrpc = types.MethodType(fake_jsonrpc, store)
+    monkeypatch.setattr(runner_execution, "get_mcp_store", lambda: store)
+
+    agent = Agent(
+        model=_MCPToolLLM(),
+        instructions="Use external MCP tools",
+        mcp_servers=["calc=https://fake.example/mcp"],
+    )
+
+    result = run_async(
+        Runner(memory_store=InMemoryMemoryStore()).run(
+            agent,
+            user_message="calculate",
+        )
+    )
+
+    assert result.state == "completed"
+    assert result.final_text == "mcp-ok"
+    assert any(
+        record.tool_name == "calc__add" and record.success
+        for record in result.tool_executions
+    )

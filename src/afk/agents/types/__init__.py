@@ -63,6 +63,7 @@ from .interaction import (
 from .config import (
     ContextInheritance,
     InstructionProvider,
+    MCPServerLike,
     RouterDecision,
     RouterInput,
     SkillRef,
@@ -118,6 +119,7 @@ __all__ = [
     "RouterInput",
     "RouterDecision",
     "InstructionProvider",
+    "MCPServerLike",
     "ToolLike",
     "ContextInheritance",
     # Protocols

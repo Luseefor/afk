@@ -73,6 +73,15 @@ Covered behaviors:
 - `test_runtime_sandbox_policy_blocks_shell_operator_commands` (`tests/agents/test_agent_runtime.py:1181`): runtime sandbox policy blocks shell operator commands
 - `test_per_tool_sandbox_provider_overrides_default_profile` (`tests/agents/test_agent_runtime.py:1208`): per tool sandbox provider overrides default profile
 - `test_runtime_output_limit_middleware_truncates_tool_output` (`tests/agents/test_agent_runtime.py:1240`): runtime output limit middleware truncates tool output
+- `test_runner_loads_and_executes_external_mcp_tools` (`tests/agents/test_agent_runtime.py:1347`): runner loads external MCP tools and executes them through standard tool pipeline
+
+## `tests/mcp/test_mcp_store.py`
+
+Covered behaviors:
+
+- `test_mcp_store_materializes_remote_tools_and_executes_call` (`tests/mcp/test_mcp_store.py:14`): external MCP tools are materialized as AFK tools and callable through `ToolRegistry`
+- `test_mcp_store_list_tools_uses_cache_until_refresh` (`tests/mcp/test_mcp_store.py:63`): MCP tool discovery cache is reused unless `refresh=True`
+- `test_mcp_remote_tool_error_surfaces_as_failed_tool_result` (`tests/mcp/test_mcp_store.py:90`): remote MCP tool errors are surfaced as failed AFK tool results
 
 ## `tests/agents/test_prompt_loader.py`
 

@@ -62,6 +62,7 @@ class BaseAgent:
         inherit_context_keys: list[str] | None = None,
         model_resolver: "ModelResolver | None" = None,
         skills: list[str] | None = None,
+        mcp_servers: list[Any] | None = None,
         skills_dir: str | Path = ".agents/skills",
         instruction_roles: list[InstructionRole] | None = None,
         policy_roles: list[PolicyRole] | None = None,
@@ -73,6 +74,7 @@ class BaseAgent:
         fail_safe: FailSafeConfig | None = None,
         skill_tool_policy: SkillToolPolicy | None = None,
         enable_skill_tools: bool = True,
+        enable_mcp_tools: bool = True,
         runner: "Runner | None" = None,
     ) -> None:
         """
@@ -99,6 +101,9 @@ class BaseAgent:
                 when used as subagent.
             model_resolver: Optional override resolver for model strings.
             skills: Skill names to resolve under `skills_dir`.
+            mcp_servers: External MCP server refs (string URL, `name=url`,
+                dict config, or `MCPServerRef`) whose tools should be exposed
+                to this agent.
             skills_dir: Root directory for skills (`<skill>/SKILL.md`).
             instruction_roles: Callbacks that append dynamic instruction text.
             policy_roles: Callbacks that can allow/deny/defer runtime actions.
@@ -112,6 +117,8 @@ class BaseAgent:
             fail_safe: Runtime limits and failure policies for this agent.
             skill_tool_policy: Security/limits policy for built-in skill tools.
             enable_skill_tools: Whether to auto-register built-in skill tools.
+            enable_mcp_tools: Whether to auto-register tools from configured
+                external MCP servers.
             runner: Optional runner override; defaults to `Runner()` at call time.
 
         Raises:
@@ -131,6 +138,7 @@ class BaseAgent:
         self.inherit_context_keys = list(inherit_context_keys or [])
         self.model_resolver = model_resolver
         self.skills = list(skills or [])
+        self.mcp_servers = list(mcp_servers or [])
         self.skills_dir = Path(skills_dir)
         self.instruction_roles = list(instruction_roles or [])
         self.policy_roles = list(policy_roles or [])
@@ -142,6 +150,7 @@ class BaseAgent:
         self.fail_safe = fail_safe or FailSafeConfig(max_steps=max_steps)
         self.skill_tool_policy = skill_tool_policy or SkillToolPolicy()
         self.enable_skill_tools = enable_skill_tools
+        self.enable_mcp_tools = enable_mcp_tools
         self.runner = runner
 
         if max_steps < 1:
