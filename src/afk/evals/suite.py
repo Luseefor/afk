@@ -12,8 +12,16 @@ import asyncio
 from collections.abc import Callable
 
 from ..core.runner import Runner
+from .budgets import EvalBudget
+from .contracts import AsyncEvalAssertion, EvalAssertion, EvalScorer
 from .executor import arun_case
-from .models import EvalCase, EvalCaseResult, EvalSuiteConfig, EvalSuiteResult, ExecutionMode
+from .models import (
+    EvalCase,
+    EvalCaseResult,
+    EvalSuiteConfig,
+    EvalSuiteResult,
+    ExecutionMode,
+)
 
 
 async def arun_suite(
@@ -32,6 +40,9 @@ async def arun_suite(
             runner_factory=runner_factory,
             cases=cases,
             fail_fast=cfg.fail_fast,
+            assertions=cfg.assertions,
+            scorers=cfg.scorers,
+            budget=cfg.budget,
         )
     else:
         results = await _run_parallel(
@@ -39,6 +50,9 @@ async def arun_suite(
             cases=cases,
             max_concurrency=max(1, cfg.max_concurrency),
             fail_fast=cfg.fail_fast,
+            assertions=cfg.assertions,
+            scorers=cfg.scorers,
+            budget=cfg.budget,
         )
 
     return EvalSuiteResult(results=results, execution_mode=mode)
@@ -60,10 +74,19 @@ async def _run_sequential(
     runner_factory: Callable[[], Runner],
     cases: list[EvalCase],
     fail_fast: bool,
+    assertions: tuple[EvalAssertion | AsyncEvalAssertion, ...],
+    scorers: tuple[EvalScorer, ...],
+    budget: EvalBudget | None,
 ) -> list[EvalCaseResult]:
     out: list[EvalCaseResult] = []
     for case in cases:
-        row = await arun_case(runner_factory(), case)
+        row = await arun_case(
+            runner_factory(),
+            case,
+            assertions=assertions,
+            scorers=scorers,
+            budget=budget,
+        )
         out.append(row)
         if fail_fast and not row.passed:
             break
@@ -76,6 +99,9 @@ async def _run_parallel(
     cases: list[EvalCase],
     max_concurrency: int,
     fail_fast: bool,
+    assertions: tuple[EvalAssertion | AsyncEvalAssertion, ...],
+    scorers: tuple[EvalScorer, ...],
+    budget: EvalBudget | None,
 ) -> list[EvalCaseResult]:
     semaphore = asyncio.Semaphore(max_concurrency)
     stop = asyncio.Event()
@@ -87,7 +113,13 @@ async def _run_parallel(
         async with semaphore:
             if stop.is_set():
                 return
-            row = await arun_case(runner_factory(), case)
+            row = await arun_case(
+                runner_factory(),
+                case,
+                assertions=assertions,
+                scorers=scorers,
+                budget=budget,
+            )
             rows[index] = row
             if fail_fast and not row.passed:
                 stop.set()

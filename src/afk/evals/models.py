@@ -9,11 +9,15 @@ Core models for deterministic eval case/suite execution.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from ..agents import BaseAgent
 from ..agents.types import AgentState, JSONValue
 from ..observability.models import RunMetrics
+
+if TYPE_CHECKING:
+    from .budgets import EvalBudget
+    from .contracts import AsyncEvalAssertion, EvalAssertion, EvalScorer
 
 
 ExecutionMode = Literal["adaptive", "sequential", "parallel"]
@@ -29,6 +33,7 @@ class EvalCase:
     context: dict[str, JSONValue] = field(default_factory=dict)
     thread_id: str | None = None
     tags: tuple[str, ...] = ()
+    budget: "EvalBudget | None" = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +69,9 @@ class EvalSuiteConfig:
     execution_mode: ExecutionMode = "adaptive"
     max_concurrency: int = 4
     fail_fast: bool = False
+    assertions: tuple["EvalAssertion | AsyncEvalAssertion", ...] = ()
+    scorers: tuple["EvalScorer", ...] = ()
+    budget: "EvalBudget | None" = None
 
 
 @dataclass(frozen=True, slots=True)
