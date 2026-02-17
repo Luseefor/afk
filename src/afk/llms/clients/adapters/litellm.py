@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from ..base.responses import ResponsesClientBase
+from ..shared import collect_headers, json_text, normalize_role, to_input_text_part, tool_result_label
 from ...errors import LLMConfigurationError
 from ...types import Message
 
@@ -52,14 +53,12 @@ class LiteLLMClient(ResponsesClientBase):
         self, message: Message
     ) -> list[dict[str, Any]]:
         """Convert one normalized message into one LiteLLM/OpenAI-style input item."""
-        role = (
-            message.role if message.role in ("user", "assistant", "system") else "user"
-        )
+        role = normalize_role(message.role)
 
         if isinstance(message.content, str):
             content: str | list[dict[str, Any]] = message.content
             if message.role == "tool":
-                label = message.name or "tool"
+                label = tool_result_label(message.name)
                 content = f"[tool_result:{label}] {message.content}"
             return [
                 {
@@ -72,12 +71,7 @@ class LiteLLMClient(ResponsesClientBase):
         parts: list[dict[str, Any]] = []
         for part in message.content:
             if not isinstance(part, dict):
-                parts.append(
-                    {
-                        "type": "input_text",
-                        "text": str(part),
-                    }
-                )
+                parts.append(to_input_text_part(part))
                 continue
 
             p_type = part.get("type")
@@ -106,7 +100,7 @@ class LiteLLMClient(ResponsesClientBase):
                         "type": "input_text",
                         "text": (
                             f"[tool_use:{part.get('name')}] "
-                            f"{json.dumps(part.get('input'), ensure_ascii=True, default=str)}"
+                            f"{json_text(part.get('input'))}"
                         ),
                     }
                 )
@@ -124,15 +118,10 @@ class LiteLLMClient(ResponsesClientBase):
                 )
                 continue
 
-            parts.append(
-                {
-                    "type": "input_text",
-                    "text": json.dumps(part, ensure_ascii=True, default=str),
-                }
-            )
+            parts.append(to_input_text_part(json_text(part)))
 
         if message.role == "tool":
-            label = message.name or "tool"
+            label = tool_result_label(message.name)
             prefix = {"type": "input_text", "text": f"[tool_result:{label}]"}
             parts = [prefix, *parts]
 
@@ -157,23 +146,11 @@ class LiteLLMClient(ResponsesClientBase):
     def _with_transport_defaults(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Apply config-level transport defaults without overriding explicit extras."""
         out = dict(payload)
-
-        idempotency_key = out.pop("idempotency_key", None)
-        headers = out.get("headers")
-        header_map: dict[str, str] = {}
-        if isinstance(headers, dict):
-            for key, value in headers.items():
-                if isinstance(key, str) and isinstance(value, str):
-                    header_map[key] = value
-
-        if isinstance(idempotency_key, str) and idempotency_key:
-            header_map.setdefault("Idempotency-Key", idempotency_key)
-
-        metadata = out.get("metadata")
-        if isinstance(metadata, dict):
-            request_id = metadata.get("afk_request_id")
-            if isinstance(request_id, str) and request_id:
-                header_map.setdefault("X-Request-Id", request_id)
+        header_map = collect_headers(
+            out.get("headers"),
+            idempotency_key=out.pop("idempotency_key", None),
+            metadata=out.get("metadata"),
+        )
 
         if header_map:
             out["headers"] = header_map

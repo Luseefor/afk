@@ -1,96 +1,69 @@
 ---
 title: LLM Overview
-description: Provider-agnostic contracts, adapter capabilities, stream/session controls, and agent integration boundaries in afk.llms.
+description: Enterprise, provider-driven LLM runtime with builder-first DX.
 ---
 
-`afk.llms` is the transport and normalization layer for all model providers used by AFK.
-
-<Info>
-Use `afk.llms` when you need direct model control. Use `afk.agents` when you need orchestration and tool execution.
-</Info>
+`afk.llms` now uses a modular provider registry and runtime policies.
 
 ## TL;DR
 
-- `afk.llms` provides one stable contract across multiple model providers.
-- Adapters expose capability flags so unsupported operations fail explicitly.
-- Streaming, sessions, retries, and structured output validation are built into the same interface.
+- Primary API: `create_llm_client(...)` or `LLMBuilder`.
+- Hard break: legacy factory APIs are removed.
+- Built-ins: `openai`, `litellm`, `anthropic_agent`.
 
-## When to Use
-
-- You need direct request/response control over provider calls.
-- You are building custom orchestration outside `afk.agents`.
-- You need portable transport behavior across providers.
-
-## What This Layer Owns
-
-- Normalized request/response contracts (`LLMRequest`, `LLMResponse`)
-- Adapter abstraction and provider capability gating
-- Structured output validation and repair
-- Stream control (`cancel`, `interrupt`, `await_result`)
-- Session token continuity APIs (adapter-dependent)
-
-## Read by Task
-
-<CardGroup cols={2}>
-  <Card title="Contracts" icon="file-code" href="/llms/contracts">
-    Understand core request/response types and error guarantees.
-  </Card>
-  <Card title="Adapter Guide" icon="code" href="/llms/adapters">
-    Built-in adapters, capability matrix, and custom adapter rules.
-  </Card>
-  <Card title="Stream + Sessions" icon="play-circle" href="/llms/control-and-session">
-    Handle streaming lifecycle, cancellation, interruption, and session state.
-  </Card>
-  <Card title="Agent Integration" icon="file-code" href="/llms/agent-integration">
-    Clear boundary between orchestration (`afk.agents`) and transport (`afk.llms`).
-  </Card>
-</CardGroup>
-
-## Minimal Usage
-
-<Tabs>
-  <Tab title="OpenAI">
+## Quickstart
 
 ```python
-from afk.llms import LLMRequest, Message, create_llm
+from afk.llms import LLMBuilder, LLMRequest, Message
 
-llm = create_llm("openai")
+llm = (
+    LLMBuilder()
+    .provider("openai")
+    .for_agent_runtime()
+    .build()
+)
+
+resp = await llm.chat(
+    LLMRequest(
+        model="gpt-4.1-mini",
+        messages=[Message(role="user", content="Plan next steps")],
+    )
+)
+print(resp.text)
+```
+
+## New Architecture
+
+- Providers: registry-backed (`register_llm_provider`, `get_llm_provider`).
+- Runtime policies: retry, timeout, rate limit, breaker, hedging, caching, coalescing.
+- Routing: pluggable router contracts with fallback ordering.
+- Cache: pluggable backends (`inmemory`, custom, optional Redis).
+- Agent DX helper: `LLMBuilder().for_agent_runtime()` for production defaults.
+
+## Complex Agent Baseline
+
+Use this setup when building multi-step agents with strict reliability needs:
+
+```python
+from afk.llms import LLMBuilder, LLMRequest, Message, RoutePolicy
+
+llm = (
+    LLMBuilder()
+    .provider("openai")
+    .for_agent_runtime()
+    .build()
+)
+
 req = LLMRequest(
     model="gpt-4.1-mini",
-    messages=[Message(role="user", content="Plan the next 3 steps")],
+    messages=[Message(role="user", content="execute plan")],
+    route_policy=RoutePolicy(provider_order=("openai", "litellm")),
 )
 resp = await llm.chat(req)
-print(resp.text)
 ```
 
-  </Tab>
-  <Tab title="LiteLLM">
+This gives deterministic provider order while retaining runtime safeguards.
 
-```python
-from afk.llms import LLMRequest, Message, create_llm
+## Removed APIs
 
-llm = create_llm("litellm")
-req = LLMRequest(
-    model="ollama_chat/gpt-oss:20b",
-    messages=[Message(role="user", content="Plan the next 3 steps")],
-)
-resp = await llm.chat(req)
-print(resp.text)
-```
-
-  </Tab>
-</Tabs>
-
-## Integration Rule
-
-Keep orchestration in `afk.agents` and `afk.core`.
-Keep provider-specific transport concerns in `afk.llms`.
-
-This separation makes retry behavior, observability, and provider migration consistent.
-
-## Continue Reading
-
-1. [Contracts](/llms/contracts)
-2. [Adapters](/llms/adapters)
-3. [Streaming & Sessions](/llms/control-and-session)
-4. [Agent Integration](/llms/agent-integration)
+- Legacy adapter-factory APIs from llms v1 are removed in the hard-break upgrade.

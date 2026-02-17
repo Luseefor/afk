@@ -23,6 +23,12 @@ from typing import (
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
+    from .runtime.contracts import (
+        CachePolicy,
+        RetryPolicy,
+        RoutePolicy,
+        TimeoutPolicy,
+    )
 
 
 JSONPrimitive: TypeAlias = str | int | float | bool | None
@@ -34,20 +40,24 @@ Role = Literal["user", "assistant", "system", "tool"]
 
 
 class TextContentPart(TypedDict):
+    """Message content part payload for text content."""
     type: Literal["text"]
     text: str
 
 
 class ImageURLRef(TypedDict):
+    """URL reference payload for image content parts."""
     url: str
 
 
 class ImageURLContentPart(TypedDict):
+    """Image content part payload used in multimodal requests."""
     type: Literal["image_url"]
     image_url: ImageURLRef
 
 
 class ToolUseContentPart(TypedDict):
+    """Message content part payload for tool use content."""
     type: Literal["tool_use"]
     id: str
     name: str
@@ -55,6 +65,7 @@ class ToolUseContentPart(TypedDict):
 
 
 class ToolResultContentPart(TypedDict):
+    """Message content part payload for tool result content."""
     type: Literal["tool_result"]
     tool_use_id: str
     content: str
@@ -68,21 +79,25 @@ MessageContent: TypeAlias = str | list[MessagePart]
 
 
 class ToolFunctionSpec(TypedDict):
+    """Schema/spec payload for tool function definitions."""
     name: str
     parameters: JSONSchema
     description: NotRequired[str]
 
 
 class ToolDefinition(TypedDict):
+    """Data type for tool definition."""
     type: Literal["function"]
     function: ToolFunctionSpec
 
 
 class ToolChoiceFunction(TypedDict):
+    """Structured helper payload for tool choice function."""
     name: str
 
 
 class ToolChoiceNamed(TypedDict):
+    """Structured helper payload for tool choice named."""
     type: Literal["function"]
     function: ToolChoiceFunction
 
@@ -95,6 +110,7 @@ ThinkingEffort: TypeAlias = str
 
 @dataclass(frozen=True, slots=True)
 class Message:
+    """Normalized chat message payload."""
     role: Role
     content: MessageContent
     name: str | None = None
@@ -102,6 +118,7 @@ class Message:
 
 @dataclass(frozen=True, slots=True)
 class Usage:
+    """Token usage counters returned by provider responses."""
     input_tokens: int | None = None
     output_tokens: int | None = None
     total_tokens: int | None = None
@@ -121,6 +138,7 @@ class ToolCall:
 
 @dataclass(frozen=True, slots=True)
 class LLMResponse:
+    """Normalized response payload for chat requests."""
     text: str
     request_id: str | None = None
     provider_request_id: str | None = None
@@ -136,6 +154,7 @@ class LLMResponse:
 
 @dataclass(frozen=True, slots=True)
 class EmbeddingResponse:
+    """Embedding response payload containing vector rows."""
     embeddings: list[list[float]]
     raw: dict[str, Any] = field(default_factory=dict)
     model: str | None = None
@@ -163,12 +182,18 @@ class LLMRequest:
     thinking_effort: ThinkingEffort | None = None
     max_thinking_tokens: int | None = None
     timeout_s: float | None = None
+    retry_policy: "RetryPolicy | None" = None
+    timeout_policy: "TimeoutPolicy | None" = None
+    stream_idle_timeout_s: float | None = None
+    route_policy: "RoutePolicy | None" = None
+    cache_policy: "CachePolicy | None" = None
     metadata: JSONObject = field(default_factory=dict)
     extra: JSONObject = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
 class EmbeddingRequest:
+    """Embedding request payload for batch text embedding calls."""
     model: str | None = None
     inputs: list[str] = field(default_factory=list)
     timeout_s: float | None = None
@@ -178,6 +203,7 @@ class EmbeddingRequest:
 
 @dataclass(frozen=True, slots=True)
 class LLMCapabilities:
+    """Capability flags advertised by one LLM transport."""
     chat: bool = True
     streaming: bool = False
     tool_calling: bool = False
@@ -205,18 +231,21 @@ class ThinkingConfig:
 
 @dataclass(frozen=True, slots=True)
 class StreamMessageStartEvent:
+    """Stream event indicating assistant message start."""
     type: Literal["message_start"] = "message_start"
     model: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class StreamTextDeltaEvent:
+    """Stream event carrying incremental text output."""
     type: Literal["text_delta"] = "text_delta"
     delta: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class StreamToolCallDeltaEvent:
+    """Stream event carrying incremental tool-call argument output."""
     type: Literal["tool_call_delta"] = "tool_call_delta"
     index: int = 0
     call_id: str | None = None
@@ -226,18 +255,21 @@ class StreamToolCallDeltaEvent:
 
 @dataclass(frozen=True, slots=True)
 class StreamMessageStopEvent:
+    """Stream event indicating assistant message stop."""
     type: Literal["message_stop"] = "message_stop"
     finish_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class StreamErrorEvent:
+    """Stream event carrying provider-reported stream error text."""
     error: str
     type: Literal["error"] = "error"
 
 
 @dataclass(frozen=True, slots=True)
 class StreamCompletedEvent:
+    """Terminal stream event carrying normalized final response."""
     response: LLMResponse
     type: Literal["completed"] = "completed"
 
@@ -254,6 +286,7 @@ LLMStreamEvent: TypeAlias = (
 
 @dataclass(frozen=True, slots=True)
 class LLMSessionSnapshot:
+    """Session continuity snapshot payload used by orchestration layers."""
     session_token: str | None = None
     checkpoint_token: str | None = None
     paused: bool = False

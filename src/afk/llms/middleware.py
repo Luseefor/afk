@@ -27,18 +27,21 @@ LLMChatStreamNext = Callable[[LLMRequest], AsyncIterator[LLMStreamEvent]]
 
 
 class LLMChatMiddleware(Protocol):
+    """Middleware protocol for non-streaming chat requests."""
     async def __call__(
         self, call_next: LLMChatNext, req: LLMRequest
     ) -> LLMResponse: ...
 
 
 class LLMEmbedMiddleware(Protocol):
+    """Middleware protocol for embedding requests."""
     async def __call__(
         self, call_next: LLMEmbedNext, req: EmbeddingRequest
     ) -> EmbeddingResponse: ...
 
 
 class LLMStreamMiddleware(Protocol):
+    """Middleware protocol for streaming chat requests."""
     def __call__(
         self, call_next: LLMChatStreamNext, req: LLMRequest
     ) -> AsyncIterator[LLMStreamEvent]: ...
@@ -46,6 +49,7 @@ class LLMStreamMiddleware(Protocol):
 
 @dataclass
 class MiddlewareStack:
+    """Container for configured chat/embed/stream middleware pipelines."""
     chat: list[LLMChatMiddleware]
     embed: list[LLMEmbedMiddleware]
     stream: list[LLMStreamMiddleware]

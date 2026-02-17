@@ -1,66 +1,41 @@
 ---
 title: Streaming & Sessions
-description: Streaming control handle semantics and token-based session continuity behavior.
+description: Stream control, idle timeout handling, and session continuity.
 ---
 
-## TL;DR
+## Streaming
 
-- Stream handles add cancellation/interruption controls without changing basic stream consumption.
-- Session handles expose token continuity primitives when the adapter supports session control.
-- Persistence remains the responsibility of orchestration/storage layers, not `afk.llms`.
+Use `chat_stream(...)` for event iteration and `chat_stream_handle(...)` for control.
 
-## When to Use
+- Idle-timeout enforcement is supported via `LLMRequest.stream_idle_timeout_s`
+  or `TimeoutPolicy.stream_idle_timeout_s`.
+- Streaming provider fallback is supported through `RoutePolicy(provider_order=...)`.
+- `cancel()` and `interrupt()` are available on stream handles.
+- Stream lifecycle enforces exactly one terminal completion event.
 
-- You need to cancel or interrupt long-running stream calls.
-- You need adapter-native session continuity tokens.
-- You are implementing resumable workflows outside the agent runtime.
+By default, routing stays on the configured default provider.
+Add `RoutePolicy(provider_order=(...))` when you want explicit stream fallback.
 
-## Stream Handles
+### Handle Example
 
-`chat_stream_handle()` adds control primitives without breaking `chat_stream()`:
+```python
+from afk.llms import LLMBuilder, LLMRequest, Message
 
-- `events: AsyncIterator[LLMStreamEvent]`
-- `cancel()`
-- `interrupt()`
-- `await_result() -> LLMResponse | None`
+llm = LLMBuilder().provider("anthropic_agent").for_agent_runtime().build()
+req = LLMRequest(
+    model="claude-3-7-sonnet",
+    messages=[Message(role="user", content="stream this")],
+)
 
-Behavior:
+handle = await llm.chat_stream_handle(req)
+async for event in handle.events:
+    ...
+result = await handle.await_result()
+```
 
-- Stream contract guarantees exactly one terminal completion event for successful streams.
-- `cancel()` ends local stream consumption and surfaces `LLMCancelledError` to the event iterator.
-- `interrupt()` calls provider interrupt when supported, otherwise raises `LLMCapabilityError`.
-- `await_result()` returns:
-  - `LLMResponse` on normal completion
-  - `None` on cancellation/interruption
+## Sessions
 
-## Session Handles
+Use `start_session(...)` for provider-native continuity where supported.
 
-`start_session()` returns `LLMSessionHandle` when `capabilities.session_control=True`.
-
-Methods:
-
-- `chat(req, response_model=None)`
-- `stream(req, response_model=None) -> LLMStreamHandle`
-- `pause()`
-- `resume(session_token=None)`
-- `interrupt()`
-- `close()`
-- `snapshot() -> LLMSessionSnapshot`
-
-Notes:
-
-- Session handles are token-based continuity wrappers, not orchestration engines.
-- `pause()` blocks chat/stream calls with `LLMSessionPausedError`.
-- `snapshot()` returns opaque continuity tokens; persist these in agent/storage layers.
-
-## State Ownership
-
-- `afk.llms` does not persist sessions/checkpoints.
-- It only returns opaque `session_token` and `checkpoint_token`.
-- Agent/storage layers must store and re-inject tokens into future `LLMRequest`s.
-
-## Continue Reading
-
-1. [Contracts](/llms/contracts)
-2. [Adapters](/llms/adapters)
-3. [Agent Integration](/llms/agent-integration)
+- Session persistence remains owned by orchestration/storage layers.
+- `afk.llms` only transports session/checkpoint tokens.

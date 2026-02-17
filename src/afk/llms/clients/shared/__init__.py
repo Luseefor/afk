@@ -16,6 +16,13 @@ from .normalization import (
     to_jsonable,
     to_plain_dict,
 )
+from .content import (
+    json_text,
+    normalize_role,
+    tool_result_label,
+    to_input_text_part,
+)
+from .transport import collect_headers
 
 __all__ = [
     "to_plain_dict",
@@ -26,4 +33,9 @@ __all__ = [
     "finalize_stream_tool_calls",
     "get_attr",
     "get_attr_str",
+    "json_text",
+    "normalize_role",
+    "tool_result_label",
+    "to_input_text_part",
+    "collect_headers",
 ]

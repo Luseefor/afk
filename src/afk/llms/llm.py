@@ -384,20 +384,12 @@ class LLM(ABC):
         observers: list[LLMObserver] | None = None,
     ) -> "LLM":
         """
-        Build an LLM client from environment configuration.
-
-        If called on the abstract base class, this delegates to the adapter
-        factory (`AFK_LLM_ADAPTER`).
+        Legacy helper removed in v2 hard-break.
         """
         if cls is LLM:
-            from .factory import create_llm_from_env
-
-            return create_llm_from_env(
-                middlewares=middlewares,
-                thinking_effort_aliases=thinking_effort_aliases,
-                supported_thinking_efforts=supported_thinking_efforts,
-                default_thinking_effort=default_thinking_effort,
-                observers=observers,
+            raise LLMConfigurationError(
+                "LLM.from_env is removed in llms v2. "
+                "Use afk.llms.create_llm_client(...) or LLMBuilder()."
             )
 
         return cls(

@@ -8,6 +8,7 @@ import pytest
 from pydantic import BaseModel
 
 from afk.llms.config import LLMConfig
+from afk.llms import LLMBuilder, create_llm_client
 from afk.llms.errors import (
     LLMCapabilityError,
     LLMCancelledError,
@@ -16,7 +17,7 @@ from afk.llms.errors import (
     LLMInvalidResponseError,
     LLMSessionPausedError,
 )
-from afk.llms.factory import create_llm, create_llm_from_env
+from afk.llms.providers.registry import LLMProviderError
 from afk.llms.llm import LLM
 from afk.llms.middleware import MiddlewareStack
 from afk.llms.types import (
@@ -247,24 +248,31 @@ def test_chat_stream_validates_completion_payload_when_response_model():
     assert completed[0].response.structured_response == {"value": 11}
 
 
-def test_factory_resolves_adapter_from_env(monkeypatch):
-    monkeypatch.setenv("AFK_LLM_ADAPTER", "anthropic_agent")
-    llm = create_llm_from_env()
+def test_client_builder_resolves_provider_from_env(monkeypatch):
+    monkeypatch.setenv("AFK_LLM_PROVIDER", "anthropic_agent")
+    llm = LLMBuilder().build()
     assert llm.provider_id == "anthropic_agent"
 
 
-def test_factory_rejects_unknown_adapter():
-    with pytest.raises(LLMConfigurationError):
-        create_llm("not_real")
+def test_client_rejects_unknown_provider():
+    llm = create_llm_client(provider="not_real")
+    req = LLMRequest(model="demo", messages=[Message(role="user", content="hi")])
+    with pytest.raises(LLMProviderError):
+        run_async(llm.chat(req))
 
 
-def test_factory_supports_openai_adapter():
-    llm = create_llm("openai")
+def test_client_supports_openai_provider():
+    llm = create_llm_client(provider="openai")
     assert llm.provider_id == "openai"
 
 
-def test_factory_passes_thinking_overrides_to_builtin_adapters():
-    llm = create_llm("litellm", default_thinking_effort="balanced")
+def test_client_passes_thinking_overrides_to_builtin_adapters():
+    llm = (
+        LLMBuilder()
+        .provider("litellm")
+        .with_provider_settings("litellm", {"default_thinking_effort": "balanced"})
+        .build()
+    )
     req = LLMRequest(
         model="demo",
         messages=[Message(role="user", content="hi")],

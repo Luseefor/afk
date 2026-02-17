@@ -37,7 +37,7 @@ pip install afk pydantic
   <Step title="Configure environment">
 
 ```bash
-export AFK_LLM_ADAPTER=openai
+export AFK_LLM_PROVIDER=openai
 export AFK_LLM_MODEL=gpt-4.1-mini
 export AFK_LLM_API_KEY=your_key_here
 ```
@@ -202,8 +202,8 @@ Expected file: `.agents/prompt/CHAT_AGENT.md`
 <AccordionGroup>
   <Accordion title="Unknown adapter">
     <ul>
-      <li>Verify <code>AFK_LLM_ADAPTER</code>.</li>
-      <li>Check available adapters with <code>afk.llms.available_llm_adapters()</code>.</li>
+      <li>Verify <code>AFK_LLM_PROVIDER</code>.</li>
+      <li>Check providers with <code>afk.llms.list_llm_providers()</code>.</li>
     </ul>
   </Accordion>
 

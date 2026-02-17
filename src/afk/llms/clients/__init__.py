@@ -13,8 +13,10 @@ Structure:
 
 from .adapters import AnthropicAgentClient, LiteLLMClient, OpenAIClient
 from .base import ResponsesClientBase
+from .contracts import LLMClientTransport
 
 __all__ = [
+    "LLMClientTransport",
     "ResponsesClientBase",
     "LiteLLMClient",
     "AnthropicAgentClient",

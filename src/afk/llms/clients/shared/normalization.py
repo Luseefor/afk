@@ -187,7 +187,7 @@ def finalize_stream_tool_calls(
 
 
 def get_attr(obj: Any, name: str) -> Any:
-    """Safe getattr helper."""
+    """Safely fetch attribute from arbitrary object, returning `None` if absent."""
     return getattr(obj, name, None)
 
 

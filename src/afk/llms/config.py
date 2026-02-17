@@ -13,6 +13,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True, slots=True)
 class LLMConfig:
     # Models
+    """Legacy adapter configuration model retained for transport compatibility."""
     default_model: str
     embedding_model: str | None
 
@@ -32,6 +33,7 @@ class LLMConfig:
 
     @staticmethod
     def from_env() -> "LLMConfig":
+        """Load legacy adapter defaults from environment variables."""
         return LLMConfig(
             default_model=os.getenv("AFK_LLM_MODEL", "gpt-4.1-mini"),
             embedding_model=os.getenv("AFK_EMBED_MODEL"),

@@ -410,20 +410,17 @@ Reads:
 - `AFK_LLM_JSON_MAX_RETRIES`
 - `AFK_LLM_MAX_INPUT_CHARS`
 
-### Factory API
+### Provider + Builder API (V2)
 
-Source: [afk/llms/factory.py](https://github.com/socioy/afk/blob/main/src/afk/llms/factory.py)
+Primary entrypoints:
 
-- `create_llm(adapter, ...)`
-- `create_llm_from_env(...)`
-- `register_llm_adapter(name, factory, overwrite=False)`
-- `available_llm_adapters()`
+- `create_llm_client(provider=..., settings=...)`
+- `LLMBuilder().provider(...).profile(...).build()`
+- `register_llm_provider(provider, overwrite=False)`
+- `get_llm_provider(provider_id)`
+- `list_llm_providers()`
 
-Built-in adapters:
-
-- `openai`
-- `litellm`
-- `anthropic_agent`
+Legacy factory API was removed in llms v2 hard-break.
 
 ### Client Adapters
 
@@ -763,7 +760,7 @@ Key modules:
 
 ### LLM
 
-- `AFK_LLM_ADAPTER`
+- `AFK_LLM_PROVIDER`
 - `AFK_LLM_MODEL`
 - `AFK_EMBED_MODEL`
 - `AFK_LLM_API_BASE_URL`

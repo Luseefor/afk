@@ -6,17 +6,21 @@ All configuration variables use the `AFK_` prefix. None are required — sensibl
 
 | Variable                   | Default        | Description                                         |
 | -------------------------- | -------------- | --------------------------------------------------- |
-| `AFK_LLM_ADAPTER`          | `litellm`      | LLM adapter: `litellm`, `openai`, `anthropic_agent` |
+| `AFK_LLM_PROVIDER`         | `litellm`      | Default provider: `litellm`, `openai`, `anthropic_agent` |
 | `AFK_LLM_MODEL`            | `gpt-4.1-mini` | Default model identifier                            |
 | `AFK_EMBED_MODEL`          | _(none)_       | Embedding model identifier                          |
 | `AFK_LLM_API_BASE_URL`     | _(none)_       | Custom API base URL                                 |
 | `AFK_LLM_API_KEY`          | _(none)_       | API key override                                    |
 | `AFK_LLM_TIMEOUT_S`        | `30`           | Request timeout in seconds                          |
+| `AFK_LLM_STREAM_IDLE_TIMEOUT_S` | `45`      | Stream idle timeout in seconds                      |
 | `AFK_LLM_MAX_RETRIES`      | `3`            | Max retry attempts on transient failures            |
 | `AFK_LLM_BACKOFF_BASE_S`   | `0.5`          | Exponential backoff base (seconds)                  |
 | `AFK_LLM_BACKOFF_JITTER_S` | `0.15`         | Random jitter added to backoff (seconds)            |
 | `AFK_LLM_JSON_MAX_RETRIES` | `2`            | Max retries for invalid JSON structured output      |
 | `AFK_LLM_MAX_INPUT_CHARS`  | `200000`       | Max input character limit                           |
+
+`afk.llms` is config-first in v2 (`LLMSettings`, `LLMBuilder`, `create_llm_client`).
+Environment values are optional defaults only.
 
 ## Observability Configuration
 

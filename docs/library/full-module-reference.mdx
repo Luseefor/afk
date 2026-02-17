@@ -655,10 +655,10 @@ Source: [afk/llms/factory.py](https://github.com/socioy/afk/blob/main/src/afk/ll
 
 Top-level symbols:
 
-- `def register_llm_adapter(name: str, factory: AdapterFactory, *, overwrite: bool=False)` at `afk/llms/factory.py:24` - Register a custom adapter factory by name.
-- `def available_llm_adapters` at `afk/llms/factory.py:41` - Return built-in and runtime-registered adapter names.
-- `def create_llm(adapter: str, *, config: LLMConfig | None=None, middlewares: MiddlewareStack | None=None, thinking_effort_aliases: Mapping[str, str] | None=None, supported_thinking_efforts: set[str] | None=None, default_thinking_effort: str | None=None, observers: list[LLMObserver] | None=None)` at `afk/llms/factory.py:46` - Create an LLM client instance for a specific adapter key.
-- `def create_llm_from_env(*, config: LLMConfig | None=None, middlewares: MiddlewareStack | None=None, thinking_effort_aliases: Mapping[str, str] | None=None, supported_thinking_efforts: set[str] | None=None, default_thinking_effort: str | None=None, observers: list[LLMObserver] | None=None)` at `afk/llms/factory.py:90` - Create an LLM client using `AFK_LLM_ADAPTER` (defaults to `litellm`).
+- Legacy factory APIs were removed in llms v2 hard-break.
+- Use provider registry APIs: `register_llm_provider`, `get_llm_provider`, `list_llm_providers`.
+- Use `create_llm_client(provider=...)` or `LLMBuilder` to construct clients.
+- Env default provider key is now `AFK_LLM_PROVIDER`.
 - `def _builtin_factory(adapter: str, *, thinking_effort_aliases: Mapping[str, str] | None, supported_thinking_efforts: set[str] | None, default_thinking_effort: str | None, observers: list[LLMObserver] | None)` at `afk/llms/factory.py:112` - Resolve built-in adapter factories lazily to avoid hard imports.
 
 ### Module `afk/llms/llm.py`

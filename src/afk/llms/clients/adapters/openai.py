@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from ..base.responses import ResponsesClientBase
+from ..shared import collect_headers, json_text, normalize_role, to_input_text_part, tool_result_label
 from ...errors import LLMConfigurationError
 from ...types import Message
 
@@ -59,14 +60,12 @@ class OpenAIClient(ResponsesClientBase):
         self, message: Message
     ) -> list[dict[str, Any]]:
         """Convert one normalized message into OpenAI Responses input items."""
-        role = (
-            message.role if message.role in ("user", "assistant", "system") else "user"
-        )
+        role = normalize_role(message.role)
 
         if isinstance(message.content, str):
             content: str | list[dict[str, Any]] = message.content
             if message.role == "tool":
-                label = message.name or "tool"
+                label = tool_result_label(message.name)
                 content = f"[tool_result:{label}] {message.content}"
             return [
                 {
@@ -81,12 +80,7 @@ class OpenAIClient(ResponsesClientBase):
 
         for part in message.content:
             if not isinstance(part, dict):
-                message_parts.append(
-                    {
-                        "type": "input_text",
-                        "text": str(part),
-                    }
-                )
+                message_parts.append(to_input_text_part(part))
                 continue
 
             p_type = part.get("type")
@@ -125,12 +119,7 @@ class OpenAIClient(ResponsesClientBase):
                         }
                     )
                 else:
-                    message_parts.append(
-                        {
-                            "type": "input_text",
-                            "text": json.dumps(part, ensure_ascii=True, default=str),
-                        }
-                    )
+                    message_parts.append(to_input_text_part(json_text(part)))
                 continue
 
             if p_type == "tool_result":
@@ -145,20 +134,10 @@ class OpenAIClient(ResponsesClientBase):
                         }
                     )
                 else:
-                    message_parts.append(
-                        {
-                            "type": "input_text",
-                            "text": json.dumps(part, ensure_ascii=True, default=str),
-                        }
-                    )
+                    message_parts.append(to_input_text_part(json_text(part)))
                 continue
 
-            message_parts.append(
-                {
-                    "type": "input_text",
-                    "text": json.dumps(part, ensure_ascii=True, default=str),
-                }
-            )
+            message_parts.append(to_input_text_part(json_text(part)))
 
         items: list[dict[str, Any]] = []
         if message_parts:
@@ -223,23 +202,11 @@ class OpenAIClient(ResponsesClientBase):
     def _with_transport_headers(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Map AFK transport keys into OpenAI request options/headers."""
         out = dict(payload)
-        headers: dict[str, str] = {}
-
-        existing_headers = out.get("extra_headers")
-        if isinstance(existing_headers, dict):
-            for key, value in existing_headers.items():
-                if isinstance(key, str) and isinstance(value, str):
-                    headers[key] = value
-
-        idempotency_key = out.pop("idempotency_key", None)
-        if isinstance(idempotency_key, str) and idempotency_key:
-            headers.setdefault("Idempotency-Key", idempotency_key)
-
-        metadata = out.get("metadata")
-        if isinstance(metadata, dict):
-            request_id = metadata.get("afk_request_id")
-            if isinstance(request_id, str) and request_id:
-                headers.setdefault("X-Request-Id", request_id)
+        headers = collect_headers(
+            out.get("extra_headers"),
+            idempotency_key=out.pop("idempotency_key", None),
+            metadata=out.get("metadata"),
+        )
 
         if headers:
             out["extra_headers"] = headers

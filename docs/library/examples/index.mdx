@@ -48,14 +48,14 @@ Run examples in order. Each one introduces one new concept while preserving the 
 
 ```bash uv
 uv pip install afk pydantic
-export AFK_LLM_ADAPTER=openai
+export AFK_LLM_PROVIDER=openai
 export AFK_LLM_MODEL=gpt-4.1-mini
 export AFK_LLM_API_KEY=your_key_here
 ```
 
 ```bash pip
 pip install afk pydantic
-export AFK_LLM_ADAPTER=openai
+export AFK_LLM_PROVIDER=openai
 export AFK_LLM_MODEL=gpt-4.1-mini
 export AFK_LLM_API_KEY=your_key_here
 ```
@@ -235,13 +235,13 @@ flowchart TD
   <Example05Source />
 </Accordion>
 
-- Uses `afk.llms.create_llm(...)` directly.
+- Uses `afk.llms.create_llm_client(...)` directly.
 - Builds `LLMRequest` manually.
 - Validates typed response with `response_model=Plan`.
 
 ```mermaid
 flowchart TD
-    A["create_llm(adapter)"] --> B["Build LLMRequest(messages, model)"]
+    A["create_llm_client(provider=provider)"] --> B["Build LLMRequest(messages, model)"]
     B --> C["llm.chat(request, response_model=Plan)"]
     C --> D{"Structured output valid?"}
     D -- "Yes" --> E["Return LLMResponse.structured_response"]

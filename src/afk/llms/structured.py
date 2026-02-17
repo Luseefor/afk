@@ -20,6 +20,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def json_system_prompt(schema: type[T]) -> str:
+    """Build strict JSON-only system prompt for a target Pydantic schema."""
     schema_json = json.dumps(schema.model_json_schema(), indent=2, ensure_ascii=True)
     return (
         "You must respond with exactly one valid JSON value that strictly conforms to the Pydantic schema below. "
@@ -34,6 +35,7 @@ def json_system_prompt(schema: type[T]) -> str:
 
 
 def parse_and_validate_json(text: str, schema: type[T]) -> T:
+    """Extract, parse, and validate JSON object payload against schema."""
     json_str = extract_json_object(text) or text.strip()
     obj = safe_json_loads(json_str)
     if obj is None:
@@ -49,6 +51,7 @@ def parse_and_validate_json(text: str, schema: type[T]) -> T:
 
 
 def make_repair_prompt(invalid_response: str, schema: type[T]) -> str:
+    """Build follow-up prompt asking model to repair invalid JSON output."""
     schema_json = json.dumps(schema.model_json_schema(), indent=2, ensure_ascii=True)
     return (
         "The previous output was invalid and did not conform to the schema. "

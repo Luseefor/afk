@@ -1,3 +1,19 @@
+"""
+MIT License
+Copyright (c) 2026 arpan404
+See LICENSE file for full license text.
+
+Module: __init__.py.
+"""
+
+from __future__ import annotations
+
+from .builder import LLMBuilder
+from .cache.registry import (
+    create_llm_cache,
+    list_llm_cache_backends,
+    register_llm_cache_backend,
+)
 from .config import LLMConfig
 from .errors import (
     LLMCapabilityError,
@@ -11,21 +27,35 @@ from .errors import (
     LLMSessionPausedError,
     LLMTimeoutError,
 )
-from .clients import (
-    AnthropicAgentClient,
-    LiteLLMClient,
-    OpenAIClient,
-    ResponsesClientBase,
-)
-from .factory import (
-    available_llm_adapters,
-    create_llm,
-    create_llm_from_env,
-    register_llm_adapter,
-)
-from .llm import LLM
 from .middleware import MiddlewareStack
 from .observability import LLMLifecycleEvent, LLMObserver
+from .llm import LLM
+from .profiles import PROFILES
+from .providers import (
+    AnthropicAgentProvider,
+    LLMProvider,
+    LLMProviderError,
+    LLMTransport,
+    LiteLLMProvider,
+    OpenAIProvider,
+    ProviderSettingsSchema,
+    get_llm_provider,
+    list_llm_providers,
+    register_llm_provider,
+)
+from .routing.registry import create_llm_router, list_llm_routers, register_llm_router
+from .runtime import (
+    CachePolicy,
+    CircuitBreakerPolicy,
+    CoalescingPolicy,
+    HedgingPolicy,
+    LLMClient,
+    RateLimitPolicy,
+    RetryPolicy,
+    RoutePolicy,
+    TimeoutPolicy,
+)
+from .settings import LLMSettings
 from .types import (
     EmbeddingRequest,
     EmbeddingResponse,
@@ -55,14 +85,61 @@ from .tool_export import (
     to_openai_tools_from_specs,
 )
 
+
+# Built-in provider bootstrap (hard-break API surface).
+register_llm_provider(OpenAIProvider(), overwrite=True)
+register_llm_provider(LiteLLMProvider(), overwrite=True)
+register_llm_provider(AnthropicAgentProvider(), overwrite=True)
+
+
+def create_llm_client(
+    *,
+    provider: str,
+    settings: LLMSettings | None = None,
+    provider_settings: dict[str, dict] | None = None,
+    middlewares: MiddlewareStack | None = None,
+    observers: list[LLMObserver] | None = None,
+) -> LLMClient:
+    """Create enterprise runtime client with explicit provider selection."""
+    return LLMClient(
+        provider=provider,
+        settings=settings or LLMSettings.from_env(),
+        provider_settings=provider_settings,
+        middlewares=middlewares,
+        observers=observers,
+    )
+
+
 __all__ = [
     "LLM",
+    "LLMClient",
+    "LLMBuilder",
+    "LLMSettings",
+    "LLMProvider",
+    "LLMTransport",
+    "ProviderSettingsSchema",
+    "register_llm_provider",
+    "get_llm_provider",
+    "list_llm_providers",
+    "LLMProviderError",
+    "create_llm_client",
+    "register_llm_cache_backend",
+    "create_llm_cache",
+    "list_llm_cache_backends",
+    "register_llm_router",
+    "create_llm_router",
+    "list_llm_routers",
+    "RetryPolicy",
+    "TimeoutPolicy",
+    "RateLimitPolicy",
+    "CircuitBreakerPolicy",
+    "HedgingPolicy",
+    "CachePolicy",
+    "CoalescingPolicy",
+    "RoutePolicy",
+    "PROFILES",
     "LLMConfig",
     "MiddlewareStack",
-    "LiteLLMClient",
-    "AnthropicAgentClient",
-    "OpenAIClient",
-    "ResponsesClientBase",
     "LLMError",
     "LLMTimeoutError",
     "LLMRetryableError",
@@ -91,10 +168,6 @@ __all__ = [
     "StreamMessageStopEvent",
     "StreamErrorEvent",
     "StreamCompletedEvent",
-    "create_llm",
-    "create_llm_from_env",
-    "available_llm_adapters",
-    "register_llm_adapter",
     "LLMObserver",
     "LLMLifecycleEvent",
     "normalize_json_schema",

@@ -15,12 +15,14 @@ from typing import Any, Dict, Optional
 
 
 def clamp_str(s: str, max_chars: int) -> str:
+    """Clamp a string to `max_chars`, appending ellipsis when truncated."""
     if len(s) <= max_chars:
         return s
     return s[:max_chars] + "…"
 
 
 def safe_json_loads(s: str) -> Optional[Dict[str, Any]]:
+    """Safely decode JSON object text; return `None` on decode/type failure."""
     try:
         obj = json.loads(s)
         return obj if isinstance(obj, dict) else None

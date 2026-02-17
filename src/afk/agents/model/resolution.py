@@ -11,11 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from ...llms import LLM, create_llm
+from ...llms import LLMClient, create_llm_client
+from ...llms.providers import LLMTransport
 from ..errors import AgentConfigurationError
 
 
-ModelResolver = Callable[[str], LLM]
+ModelResolver = Callable[[str], LLMTransport]
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,20 +25,29 @@ class ResolvedModel:
 
     requested_model: str
     normalized_model: str
-    llm: LLM
+    llm: LLMTransport
     adapter: str
 
 
 def resolve_model_to_llm(
-    model: str | LLM,
+    model: str | LLMTransport,
     *,
     resolver: ModelResolver | None = None,
 ) -> ResolvedModel:
     """
     Resolve model input into a concrete LLM adapter + normalized model name.
     """
-    if isinstance(model, LLM):
-        normalized = model.config.default_model
+    if isinstance(model, LLMClient):
+        normalized = model.settings.default_model
+        return ResolvedModel(
+            requested_model=normalized,
+            normalized_model=normalized,
+            llm=model,
+            adapter=model.provider_id,
+        )
+
+    if hasattr(model, "provider_id") and hasattr(model, "chat"):
+        normalized = "unknown"
         return ResolvedModel(
             requested_model=normalized,
             normalized_model=normalized,
@@ -53,8 +63,10 @@ def resolve_model_to_llm(
     raw = model.strip()
     if resolver is not None:
         llm = resolver(raw)
-        if not isinstance(llm, LLM):
-            raise AgentConfigurationError("Custom model resolver must return an LLM.")
+        if not hasattr(llm, "provider_id") or not hasattr(llm, "chat"):
+            raise AgentConfigurationError(
+                "Custom model resolver must return an LLM transport."
+            )
         return ResolvedModel(
             requested_model=raw,
             normalized_model=raw,
@@ -69,7 +81,7 @@ def resolve_model_to_llm(
         return ResolvedModel(
             requested_model=raw,
             normalized_model=normalized,
-            llm=create_llm("openai"),
+            llm=create_llm_client(provider="openai"),
             adapter="openai",
         )
 
@@ -77,7 +89,7 @@ def resolve_model_to_llm(
         return ResolvedModel(
             requested_model=raw,
             normalized_model=normalized,
-            llm=create_llm("anthropic_agent"),
+            llm=create_llm_client(provider="anthropic_agent"),
             adapter="anthropic_agent",
         )
 
@@ -85,7 +97,7 @@ def resolve_model_to_llm(
         return ResolvedModel(
             requested_model=raw,
             normalized_model=raw,
-            llm=create_llm("litellm"),
+            llm=create_llm_client(provider="litellm"),
             adapter="litellm",
         )
 
@@ -93,7 +105,7 @@ def resolve_model_to_llm(
         return ResolvedModel(
             requested_model=raw,
             normalized_model=raw,
-            llm=create_llm("openai"),
+            llm=create_llm_client(provider="openai"),
             adapter="openai",
         )
 
@@ -101,14 +113,14 @@ def resolve_model_to_llm(
         return ResolvedModel(
             requested_model=raw,
             normalized_model=raw,
-            llm=create_llm("anthropic_agent"),
+            llm=create_llm_client(provider="anthropic_agent"),
             adapter="anthropic_agent",
         )
 
     return ResolvedModel(
         requested_model=raw,
         normalized_model=raw,
-        llm=create_llm("litellm"),
+        llm=create_llm_client(provider="litellm"),
         adapter="litellm",
     )
 

@@ -99,7 +99,7 @@ async def search_docs(args: SearchArgs) -> dict:
 ```python
 from afk.llms import LLMConfig, create_llm
 
-llm = create_llm(
+llm = create_llm_client(
     "openai/gpt-4o-mini",
     config=LLMConfig(
         timeout_s=30.0,

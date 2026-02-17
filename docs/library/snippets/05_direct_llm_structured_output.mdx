@@ -22,9 +22,9 @@ class Plan(BaseModel):
 
 
 async def main() -> None:
-    adapter = os.getenv("AFK_LLM_ADAPTER", "openai")
+    adapter = os.getenv("AFK_LLM_PROVIDER", "openai")
     model_name = os.getenv("AFK_LLM_MODEL", "gpt-4.1-mini")
-    llm = create_llm(adapter)
+    llm = create_llm_client(provider=provider)
 
     req = LLMRequest(
         model=model_name or llm.config.default_model,
