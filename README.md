@@ -70,6 +70,22 @@ export AFK_LLM_API_KEY=your_key_here
 export AFK_AGENT_PROMPTS_DIR=.agents/prompt
 ```
 
+## Memory backends & guarantees
+
+AFK supports multiple memory backends (`sqlite`, `redis`, `postgres`). Key guarantees:
+- Redis: supports TTL for transient state and provides an *atomic upsert* for
+  long-term memories — omitting `embedding` will preserve an existing
+  embedding under concurrent updates.
+- SQLite/Postgres: preserve embeddings on upsert (SQLite uses ON CONFLICT with
+  COALESCE; Postgres uses JSONB + vector upserts).
+
+Import behavior:
+- `afk.memory` conditionally imports Redis/Postgres adapters so base imports
+  keep working when optional backend clients are not installed.
+- In practice, this means SQLite/InMemory workflows can run without Redis/
+  Postgres dependencies, but selecting `redis` or `postgres` backends still
+  requires their client libraries (`redis`, `asyncpg`).
+
 ## System Prompt Loader
 
 AFK supports file-backed system prompts for all `BaseAgent` types.

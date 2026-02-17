@@ -15,10 +15,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..core.base import Tool
-from ..core.decorator import tool
-from ...agents.errors import SkillAccessError, SkillCommandDeniedError
-from ...agents.types import SkillRef, SkillToolPolicy
+from afk.tools.core.base import Tool
+from afk.tools.core.decorator import tool
+from afk.agents.errors import SkillAccessError, SkillCommandDeniedError
+from afk.agents.types import SkillRef, SkillToolPolicy
 
 
 class _EmptyArgs(BaseModel):

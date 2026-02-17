@@ -21,7 +21,7 @@ from afk.memory.types import (
 )
 from afk.memory.utils import json_dumps, now_ms
 from afk.memory.vector import format_pgvector
-from afk.memory.types import MemoryCapabilities, MemoryStore
+from afk.memory.store import MemoryCapabilities, MemoryStore
 
 
 class PostgresMemoryStore(MemoryStore):

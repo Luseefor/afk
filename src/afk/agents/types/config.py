@@ -9,13 +9,11 @@ Skill, routing, and configuration types.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeAlias
-
-from ...llms.types import JSONValue
-from .common import AgentState
+from typing import TYPE_CHECKING, Any, Callable, TypeAlias
+from afk.llms.types import JSONValue
 
 if TYPE_CHECKING:
-    from ...tools import Tool
+    from afk.tools.core.base import Tool
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,13 +22,14 @@ class SkillRef:
     Resolved skill metadata for a specific skill name.
 
     Attributes:
-        name: Logical skill name requested by developer.
+        name: Name of the skill, extracted from the 'SKILL.md' file.
+        description: Description of the skill, extracted from `SKILL.md`.
         root_dir: Absolute resolved skills root directory.
         skill_md_path: Absolute path to the skill's `SKILL.md`.
         checksum: Optional SHA checksum for skill content integrity tracking.
     """
-
     name: str
+    description: str
     root_dir: str
     skill_md_path: str
     checksum: str | None = None
@@ -45,7 +44,6 @@ class SkillResolutionResult:
         resolved_skills: Successfully resolved skill references.
         missing_skills: Skill names that could not be resolved.
     """
-
     resolved_skills: list[SkillRef]
     missing_skills: list[str] = field(default_factory=list)
 

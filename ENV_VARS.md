@@ -24,6 +24,11 @@ All configuration variables use the `AFK_` prefix. None are required — sensibl
 | -------------------- | -------- | ------------------------------------------------------- |
 | `AFK_MEMORY_BACKEND` | `sqlite` | Backend type: `inmemory`, `sqlite`, `redis`, `postgres` |
 
+> Import behavior: `afk.memory` uses conditional imports for Redis/Postgres
+> adapters. This keeps base imports working without optional dependencies.
+> If you choose `redis`/`postgres`, install their clients (`redis`,
+> `asyncpg`).
+
 ### SQLite
 
 | Variable          | Default              | Description               |
@@ -40,6 +45,11 @@ All configuration variables use the `AFK_` prefix. None are required — sensibl
 | `AFK_REDIS_DB`         | `0`         | Redis database number                              |
 | `AFK_REDIS_PASSWORD`   | _(empty)_   | Redis password                                     |
 | `AFK_REDIS_EVENTS_MAX` | `2000`      | Max events per thread                              |
+
+> Note: The Redis adapter implements an *atomic upsert* for long-term
+> memories — calling `upsert_long_term_memory(..., embedding=None)` will
+> preserve any existing embedding atomically (no race). Redis also
+> supports TTL for transient state entries.
 
 ### PostgreSQL
 
