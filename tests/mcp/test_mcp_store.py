@@ -18,9 +18,10 @@ def test_mcp_store_materializes_remote_tools_and_executes_call():
     store = MCPStore()
     seen_methods: list[str] = []
 
-    async def fake_jsonrpc(self, server, *, method: str, params: dict):
+    async def fake_call(self, server, *, method: str, params: dict, post=None):
         _ = self
         _ = server
+        _ = post
         seen_methods.append(method)
         if method == "tools/list":
             return {
@@ -48,7 +49,7 @@ def test_mcp_store_materializes_remote_tools_and_executes_call():
             }
         raise AssertionError(f"Unexpected method: {method}")
 
-    store._jsonrpc = types.MethodType(fake_jsonrpc, store)
+    store._client.call = types.MethodType(fake_call, store._client)
 
     tools = run_async(store.tools_from_servers(["calc=https://fake.example/mcp"]))
     assert [tool.spec.name for tool in tools] == ["calc__add"]
@@ -67,17 +68,18 @@ def test_mcp_store_list_tools_uses_cache_until_refresh():
     store = MCPStore()
     tool_list_calls = 0
 
-    async def fake_jsonrpc(self, server, *, method: str, params: dict):
+    async def fake_call(self, server, *, method: str, params: dict, post=None):
         _ = self
         _ = server
         _ = params
+        _ = post
         nonlocal tool_list_calls
         if method == "tools/list":
             tool_list_calls += 1
             return {"tools": [{"name": "echo", "inputSchema": {"type": "object"}}]}
         raise AssertionError(f"Unexpected method: {method}")
 
-    store._jsonrpc = types.MethodType(fake_jsonrpc, store)
+    store._client.call = types.MethodType(fake_call, store._client)
 
     ref = "svc=https://fake.example/mcp"
     first = run_async(store.list_tools(ref))
@@ -93,10 +95,11 @@ def test_mcp_store_list_tools_uses_cache_until_refresh():
 def test_mcp_remote_tool_error_surfaces_as_failed_tool_result():
     store = MCPStore()
 
-    async def fake_jsonrpc(self, server, *, method: str, params: dict):
+    async def fake_call(self, server, *, method: str, params: dict, post=None):
         _ = self
         _ = server
         _ = params
+        _ = post
         if method == "tools/list":
             return {
                 "tools": [
@@ -114,7 +117,7 @@ def test_mcp_remote_tool_error_surfaces_as_failed_tool_result():
             }
         raise AssertionError(f"Unexpected method: {method}")
 
-    store._jsonrpc = types.MethodType(fake_jsonrpc, store)
+    store._client.call = types.MethodType(fake_call, store._client)
 
     tools = run_async(store.tools_from_servers(["svc=https://fake.example/mcp"]))
     registry = ToolRegistry()

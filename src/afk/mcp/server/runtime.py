@@ -18,7 +18,6 @@ Supports:
 from __future__ import annotations
 
 import json
-import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterable
@@ -30,11 +29,13 @@ except Exception:  # pragma: no cover
     FastAPIRequest = Any  # type: ignore[assignment]
     FastAPIResponse = Any  # type: ignore[assignment]
 
-from ..tools import ToolRegistry, ToolContext
-
-logger = logging.getLogger("afk.mcp")
-
-MCP_PROTOCOL_VERSION = "2026-02-20"
+from afk.tools import ToolRegistry
+from afk.mcp.server.protocol import (
+    INVALID_REQUEST,
+    PARSE_ERROR,
+    MCPProtocolHandler,
+    jsonrpc_error,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -74,34 +75,6 @@ class MCPServerConfig:
     enable_sse: bool = True
     enable_health: bool = True
     allow_batch_requests: bool = True
-
-
-# ---------------------------------------------------------------------------
-# JSON-RPC helpers
-# ---------------------------------------------------------------------------
-
-
-def _jsonrpc_response(id: Any, result: Any) -> dict[str, Any]:
-    """Build a JSON-RPC 2.0 success response."""
-    return {"jsonrpc": "2.0", "id": id, "result": result}
-
-
-def _jsonrpc_error(
-    id: Any, code: int, message: str, data: Any = None
-) -> dict[str, Any]:
-    """Build a JSON-RPC 2.0 error response."""
-    error: dict[str, Any] = {"code": code, "message": message}
-    if data is not None:
-        error["data"] = data
-    return {"jsonrpc": "2.0", "id": id, "error": error}
-
-
-# Standard JSON-RPC error codes
-PARSE_ERROR = -32700
-INVALID_REQUEST = -32600
-METHOD_NOT_FOUND = -32601
-INVALID_PARAMS = -32602
-INTERNAL_ERROR = -32603
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +124,7 @@ class MCPServer:
     ) -> None:
         self._registry = registry
         self._config = config or MCPServerConfig()
+        self._protocol_handler = self._create_protocol_handler()
         self._app = app or self._create_app()
         if app is not None:
             self.mount(app)
@@ -190,6 +164,14 @@ class MCPServer:
         """Server configuration."""
         return self._config
 
+    def _create_protocol_handler(self) -> MCPProtocolHandler:
+        return MCPProtocolHandler(
+            registry=self._registry,
+            server_name=self._config.name,
+            server_version=self._config.version,
+            instructions=self._config.instructions,
+        )
+
     def _create_router(self):
         """Build an APIRouter containing MCP routes."""
         try:
@@ -221,24 +203,24 @@ class MCPServer:
                 body = await request.json()
             except Exception:
                 return JSONResponse(
-                    _jsonrpc_error(None, PARSE_ERROR, "Parse error"),
+                    jsonrpc_error(None, PARSE_ERROR, "Parse error"),
                     status_code=200,
                 )
 
             if isinstance(body, list):
                 if not self._config.allow_batch_requests:
                     return JSONResponse(
-                        _jsonrpc_error(None, INVALID_REQUEST, "Batch requests disabled"),
+                        jsonrpc_error(None, INVALID_REQUEST, "Batch requests disabled"),
                         status_code=200,
                     )
                 responses = []
                 for item in body:
-                    resp = await self._handle_jsonrpc(item)
+                    resp = await self._protocol_handler.handle_message(item)
                     if resp is not None:
                         responses.append(resp)
                 return JSONResponse(responses, status_code=200)
 
-            result = await self._handle_jsonrpc(body)
+            result = await self._protocol_handler.handle_message(body)
             if result is None:
                 return FastAPIResponse(status_code=204)
             return JSONResponse(result, status_code=200)
@@ -316,143 +298,6 @@ class MCPServer:
         """
         app.include_router(self._create_router())
         return app
-
-    async def _handle_jsonrpc(self, message: dict[str, Any]) -> dict[str, Any] | None:
-        """
-        Route a JSON-RPC 2.0 message to the appropriate handler.
-        """
-        if not isinstance(message, dict):
-            return _jsonrpc_error(None, INVALID_REQUEST, "Invalid Request")
-
-        jsonrpc = message.get("jsonrpc")
-        if jsonrpc != "2.0":
-            return _jsonrpc_error(
-                message.get("id"), INVALID_REQUEST, "Invalid JSON-RPC version"
-            )
-
-        method = message.get("method")
-        params = message.get("params", {})
-        msg_id = message.get("id")
-
-        if not method:
-            return _jsonrpc_error(msg_id, INVALID_REQUEST, "Missing method")
-
-        is_notification = msg_id is None
-
-        try:
-            if method == "initialize":
-                result = self._handle_initialize(params)
-            elif method == "tools/list":
-                result = self._handle_tools_list(params)
-            elif method == "tools/call":
-                result = await self._handle_tools_call(params)
-            elif method == "ping":
-                result = {}
-            elif method == "notifications/initialized":
-                if is_notification:
-                    return None
-                return _jsonrpc_response(msg_id, {})
-            else:
-                return _jsonrpc_error(
-                    msg_id, METHOD_NOT_FOUND, f"Method not found: {method}"
-                )
-
-            if is_notification:
-                return None
-            return _jsonrpc_response(msg_id, result)
-
-        except Exception as exc:
-            logger.exception("Error handling MCP method %s", method)
-            return _jsonrpc_error(msg_id, INTERNAL_ERROR, str(exc))
-
-    def _handle_initialize(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Handle ``initialize`` — return server capabilities."""
-        return {
-            "protocolVersion": MCP_PROTOCOL_VERSION,
-            "capabilities": {
-                "tools": {
-                    "listChanged": False,
-                },
-            },
-            "serverInfo": {
-                "name": self._config.name,
-                "version": self._config.version,
-            },
-            **(
-                {"instructions": self._config.instructions}
-                if self._config.instructions
-                else {}
-            ),
-        }
-
-    def _handle_tools_list(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Handle ``tools/list`` — return registered tools as MCP tool schemas."""
-        tools = []
-        for tool_obj in self._registry.list():
-            spec = tool_obj.spec
-            tools.append(
-                {
-                    "name": spec.name,
-                    "description": spec.description,
-                    "inputSchema": {
-                        "type": "object",
-                        **(spec.parameters_schema or {}),
-                    },
-                }
-            )
-        return {"tools": tools}
-
-    async def _handle_tools_call(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Handle ``tools/call`` — execute a tool and return result."""
-        tool_name = params.get("name")
-        if not tool_name:
-            raise ValueError("Missing 'name' in tools/call params")
-
-        arguments = params.get("arguments", {})
-        if not isinstance(arguments, dict):
-            raise ValueError("'arguments' must be an object")
-
-        # Create tool context with MCP metadata
-        ctx = ToolContext(
-            request_id=uuid.uuid4().hex,
-            metadata={"source": "mcp", "tool_name": tool_name},
-        )
-
-        # Execute via registry (includes concurrency, timeout, middleware)
-        result = await self._registry.call(
-            tool_name,
-            arguments,
-            ctx=ctx,
-        )
-
-        # Build MCP content response
-        content: list[dict[str, Any]] = []
-
-        if result.success:
-            output = result.output
-            if isinstance(output, str):
-                content.append({"type": "text", "text": output})
-            elif output is not None:
-                content.append(
-                    {
-                        "type": "text",
-                        "text": json.dumps(output, default=str),
-                    }
-                )
-            else:
-                content.append({"type": "text", "text": ""})
-        else:
-            content.append(
-                {
-                    "type": "text",
-                    "text": result.error_message or "Tool execution failed",
-                }
-            )
-
-        return {
-            "content": content,
-            "isError": not result.success,
-        }
 
     def run(self, **kwargs: Any) -> None:
         """

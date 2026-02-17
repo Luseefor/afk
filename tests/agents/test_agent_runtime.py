@@ -1404,9 +1404,10 @@ def test_runner_loads_and_executes_external_mcp_tools(monkeypatch):
 
     store = MCPStore()
 
-    async def fake_jsonrpc(self, server, *, method: str, params: dict):
+    async def fake_call(self, server, *, method: str, params: dict, post=None):
         _ = self
         _ = server
+        _ = post
         if method == "tools/list":
             return {
                 "tools": [
@@ -1434,7 +1435,7 @@ def test_runner_loads_and_executes_external_mcp_tools(monkeypatch):
 
     import types
 
-    store._jsonrpc = types.MethodType(fake_jsonrpc, store)
+    store._client.call = types.MethodType(fake_call, store._client)
     monkeypatch.setattr(runner_execution, "get_mcp_store", lambda: store)
 
     agent = Agent(
