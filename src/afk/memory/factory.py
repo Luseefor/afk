@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import os
 
-from .store.base import MemoryStore
-from .store.in_memory import InMemoryMemoryStore
-from .store.sqlite import SQLiteMemoryStore
+from afk.memory.store.base import MemoryStore
+from afk.memory.store.in_memory import InMemoryMemoryStore
+from afk.memory.store.sqlite import SQLiteMemoryStore
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -36,7 +36,7 @@ def create_memory_store_from_env() -> MemoryStore:
         return SQLiteMemoryStore(path=path)
 
     if backend in ("redis",):
-        from .store.redis import RedisMemoryStore
+        from afk.memory.store.redis import RedisMemoryStore
 
         url = os.getenv("AFK_REDIS_URL")
         if not url:
@@ -53,7 +53,7 @@ def create_memory_store_from_env() -> MemoryStore:
         return RedisMemoryStore(url=url, events_max_per_thread=max_events)
 
     if backend in ("pg", "postgres", "postgresql"):
-        from .store.postgres import PostgresMemoryStore
+        from afk.memory.store.postgres import PostgresMemoryStore
 
         dsn = os.getenv("AFK_PG_DSN")
         if not dsn:
