@@ -33,7 +33,7 @@ from afk.agents.types import (
 )
 from afk.core.runner import Runner, RunnerConfig
 from afk.observability.backends import InMemoryTelemetrySink
-from afk.evals import EvalScenario, run_scenario
+from afk.evals import EvalCase, arun_case
 from afk.llms import LLM
 from afk.llms.types import (
     EmbeddingRequest,
@@ -1247,14 +1247,14 @@ def test_runner_emits_telemetry_spans_and_metrics():
     assert any(item["name"] == "agent.llm.latency_ms" for item in histograms)
 
 
-def test_eval_harness_runs_scenario():
+def test_eval_harness_runs_case():
     agent = Agent(
         model=_StaticLLM(text="eval-ok"),
         instructions="eval run",
     )
-    scenario = EvalScenario(name="basic-eval", agent=agent, user_message="hello")
-    out = run_async(run_scenario(Runner(), scenario))
-    assert out.scenario == "basic-eval"
+    case = EvalCase(name="basic-eval", agent=agent, user_message="hello")
+    out = run_async(arun_case(Runner(), case))
+    assert out.case == "basic-eval"
     assert out.final_text == "eval-ok"
     assert out.state == "completed"
 

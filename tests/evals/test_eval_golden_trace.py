@@ -8,7 +8,7 @@ from typing import AsyncIterator
 
 from afk.agents import Agent
 from afk.core import Runner
-from afk.evals import EvalScenario, compare_event_types, run_scenario
+from afk.evals import EvalCase, arun_case, compare_event_types
 from afk.llms import LLM
 from afk.llms.types import (
     EmbeddingRequest,
@@ -53,8 +53,8 @@ class _EvalLLM(LLM):
 def test_eval_event_types_match_golden_trace():
     golden_path = Path(__file__).parent / "golden" / "basic_event_types.json"
     agent = Agent(model=_EvalLLM(), instructions="golden eval")
-    scenario = EvalScenario(name="golden-basic", agent=agent, user_message="hello")
-    observed = asyncio.run(run_scenario(Runner(), scenario)).event_types
+    case = EvalCase(name="golden-basic", agent=agent, user_message="hello")
+    observed = asyncio.run(arun_case(Runner(), case)).event_types
 
     if os.getenv("AFK_UPDATE_GOLDEN_TRACES") == "1":
         golden_path.write_text(
