@@ -42,14 +42,14 @@ Make your AFK tools available to any MCP-compatible client:
         query: str
         limit: int = 10
 
-    @tool(name="search_docs", description="Search the documentation.")
+    @tool(args_model=SearchArgs, name="search_docs", description="Search the documentation.")
     def search_docs(args: SearchArgs) -> dict:
         return {"results": ["doc1", "doc2"]}
 
     class CalcArgs(BaseModel):
         expression: str
 
-    @tool(name="calculate", description="Evaluate a math expression.")
+    @tool(args_model=CalcArgs, name="calculate", description="Evaluate a math expression.")
     def calculate(args: CalcArgs) -> dict:
         return {"result": eval(args.expression)}
     ```

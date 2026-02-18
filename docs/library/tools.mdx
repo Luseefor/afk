@@ -14,7 +14,7 @@ from afk.tools import tool
 class GreetArgs(BaseModel):
     name: str
 
-@tool(name="greet", description="Greet someone by name.")
+@tool(args_model=GreetArgs, name="greet", description="Greet someone by name.")
 def greet(args: GreetArgs) -> str:
     return f"Hello, {args.name}!"
 ```
@@ -77,7 +77,7 @@ sequenceDiagram
     class TimeArgs(BaseModel):
         timezone: str = "UTC"
 
-    @tool(name="current_time", description="Get the current time.")
+    @tool(args_model=TimeArgs, name="current_time", description="Get the current time.")
     def current_time(args: TimeArgs) -> str:
         from datetime import datetime, timezone
         return datetime.now(timezone.utc).isoformat()
@@ -92,7 +92,7 @@ sequenceDiagram
         query: str
         limit: int = 5
 
-    @tool(name="search", description="Search the knowledge base.")
+    @tool(args_model=SearchArgs, name="search", description="Search the knowledge base.")
     def search(args: SearchArgs) -> dict:
         results = db.search(args.query, limit=args.limit)
         return {
@@ -109,7 +109,7 @@ sequenceDiagram
     class FetchArgs(BaseModel):
         url: str
 
-    @tool(name="fetch_page", description="Fetch a web page.")
+    @tool(args_model=FetchArgs, name="fetch_page", description="Fetch a web page.")
     async def fetch_page(args: FetchArgs) -> dict:
         async with httpx.AsyncClient() as client:
             resp = await client.get(args.url)
@@ -118,33 +118,44 @@ sequenceDiagram
 
   </Tab>
   <Tab title="With context">
-    Access agent context in tool handlers.
+    Access `ToolContext` in tool handlers. The second parameter must be named `ctx` or annotated as `ToolContext`.
 
     ```python
+    from afk.tools import tool, ToolContext
+
     class DBArgs(BaseModel):
         query: str
 
-    @tool(name="query_db", description="Run a database query.")
-    def query_db(args: DBArgs, context: dict) -> dict:
-        db_url = context["db_url"]  # ← Set in Agent(context={"db_url": "..."})
-        return execute_query(db_url, args.query)
+    @tool(args_model=DBArgs, name="query_db", description="Run a database query.")
+    def query_db(args: DBArgs, ctx: ToolContext) -> dict:
+        user = ctx.user_id              # ← Set by the runner
+        meta = ctx.metadata             # ← Custom metadata dict
+        return execute_query(args.query)
     ```
 
   </Tab>
 </Tabs>
 
-## Read-only vs mutating tools
+## Policy-gated tools
 
-Mark tools as read-only or mutating to guide policy decisions:
+Use the [PolicyEngine](/library/security-model) to gate sensitive tool calls:
 
 ```python
-@tool(name="list_files", description="List files in a directory.", read_only=True)
-def list_files(args: ListArgs) -> list:
-    ...
+from afk.agents import Agent, PolicyEngine, PolicyRule
 
-@tool(name="delete_file", description="Delete a file.", read_only=False)
-def delete_file(args: DeleteArgs) -> dict:
-    ...
+agent = Agent(
+    name="ops",
+    model="gpt-4.1-mini",
+    tools=[list_files, delete_file],
+    policy_engine=PolicyEngine(rules=[
+        PolicyRule(
+            rule_id="gate-mutations",
+            condition=lambda e: e.tool_name in ("delete_file", "write_file"),
+            action="request_approval",
+            reason="Destructive action requires approval",
+        ),
+    ]),
+)
 ```
 
 <Tip>
@@ -154,45 +165,121 @@ def delete_file(args: DeleteArgs) -> dict:
 
 ## Hooks and middleware
 
-Add pre/post hooks to tools for logging, validation, or transformation:
-
-```python
-from afk.tools import tool, before_tool, after_tool
-
-@before_tool("*")  # ← Runs before every tool call
-def log_tool_call(event):
-    print(f"Calling {event.tool_name} with {event.args}")
-
-@after_tool("*")   # ← Runs after every tool call
-def log_tool_result(event):
-    print(f"{event.tool_name} returned in {event.latency_ms:.0f}ms")
-```
+AFK provides four extension points for tool execution: **prehooks**, **posthooks**, **tool-level middleware**, and **registry-level middleware**. Each has its own decorator.
 
 <AccordionGroup>
-  <Accordion title="Hook execution order">
-    1. **Before hooks** (global `*` hooks first, then tool-specific)
-    2. **Policy gate** (allow / deny / request_approval)
-    3. **Tool handler** (the actual function)
-    4. **After hooks** (tool-specific first, then global `*`)
-    5. **Output sanitization**
-  </Accordion>
-  <Accordion title="Tool middleware">
-    Middleware wraps the entire tool execution pipeline:
+  <Accordion title="Prehooks — transform args before execution" icon="filter" defaultOpen>
+    Prehooks run before the tool handler. They receive the tool's arguments and **must return a dict** compatible with the tool's `args_model`.
 
     ```python
-    from afk.tools import tool_middleware
+    from afk.tools import prehook
 
-    @tool_middleware
-    async def timing_middleware(call, next_handler):
-        start = time.time()
-        result = await next_handler(call)
-        elapsed = time.time() - start
-        print(f"{call.tool_name} took {elapsed:.3f}s")
+    class SearchArgs(BaseModel):
+        query: str
+        max_results: int = 10
+
+    @prehook(args_model=SearchArgs, name="normalize_query")
+    def normalize_query(args: SearchArgs) -> dict:
+        return {
+            "query": args.query.lower().strip(),
+            "max_results": min(args.max_results, 50),
+        }
+
+    # Attach to a tool via the prehooks= parameter:
+    @tool(
+        args_model=SearchArgs,
+        name="search",
+        description="Search knowledge base.",
+        prehooks=[normalize_query],
+    )
+    def search(args: SearchArgs) -> dict:
+        return {"results": [...]}  # args are already normalized
+    ```
+
+  </Accordion>
+
+  <Accordion title="Posthooks — transform output after execution" icon="wand-magic-sparkles">
+    Posthooks run after the tool handler. They receive a dict `{"output": <tool_output>, "tool_name": "<name>"}` and should return a dict with the same shape.
+
+    ```python
+    from afk.tools import posthook
+    from typing import Any
+
+    class PostArgs(BaseModel):
+        output: Any
+        tool_name: str | None = None
+
+    @posthook(args_model=PostArgs, name="redact_secrets")
+    def redact_secrets(args: PostArgs) -> dict:
+        output = args.output
+        if isinstance(output, dict):
+            output = {k: v for k, v in output.items() if k not in ("secret", "token")}
+        return {"output": output, "tool_name": args.tool_name}
+    ```
+
+  </Accordion>
+
+  <Accordion title="Tool-level middleware — wrap execution" icon="layer-group">
+    Middleware wraps the entire tool execution. It receives `call_next`, the validated args, and optionally `ctx`.
+
+    ```python
+    from afk.tools import middleware
+    import time
+
+    @middleware(name="timing")
+    async def timing(call_next, args, ctx):
+        start = time.monotonic()
+        result = await call_next(args, ctx)
+        print(f"Tool took {(time.monotonic() - start)*1000:.0f}ms")
+        return result
+
+    # Attach via middlewares= parameter:
+    @tool(
+        args_model=SearchArgs,
+        name="search",
+        description="Search.",
+        middlewares=[timing],
+    )
+    def search(args: SearchArgs) -> dict:
+        ...
+    ```
+
+  </Accordion>
+
+  <Accordion title="Registry-level middleware — wrap all tools" icon="globe">
+    Registry-level middleware applies to **every tool** in a `ToolRegistry`. Use for audit logging, rate limiting, or global policy enforcement.
+
+    ```python
+    from afk.tools import registry_middleware
+
+    @registry_middleware(name="audit_log")
+    async def audit_log(call_next, tool, raw_args, ctx):
+        print(f"AUDIT: {tool.spec.name} called")
+        result = await call_next(tool, raw_args, ctx)
+        print(f"AUDIT: {tool.spec.name} success={result.success}")
         return result
     ```
 
   </Accordion>
 </AccordionGroup>
+
+### Execution order
+
+```mermaid
+flowchart LR
+    V["Validate args"] --> Pre["Prehooks"]
+    Pre --> MW["Middleware chain"]
+    MW --> Core["Tool handler"]
+    Core --> Post["Posthooks"]
+    Post --> Out["ToolResult"]
+```
+
+| Layer           | Scope                       | Decorator                        | Returns                        |
+| --------------- | --------------------------- | -------------------------------- | ------------------------------ |
+| **Prehook**     | Single tool, before handler | `@prehook(args_model=...)`       | `dict` of transformed args     |
+| **Middleware**  | Single tool, wraps handler  | `@middleware(name=...)`          | Tool output (via `call_next`)  |
+| **Posthook**    | Single tool, after handler  | `@posthook(args_model=...)`      | `dict` with `output` key       |
+| **Registry MW** | All tools in registry       | `@registry_middleware(name=...)` | `ToolResult` (via `call_next`) |
 
 ## Common tools cookbook
 
@@ -204,7 +291,7 @@ def log_tool_result(event):
         url: str
         body: dict | None = None
 
-    @tool(name="http_request", description="Make an HTTP request.")
+    @tool(args_model=HttpArgs, name="http_request", description="Make an HTTP request.")
     async def http_request(args: HttpArgs) -> dict:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.request(args.method, args.url, json=args.body)
@@ -218,7 +305,7 @@ def log_tool_result(event):
         path: str
         max_lines: int = 100
 
-    @tool(name="read_file", description="Read a file's contents.", read_only=True)
+    @tool(args_model=ReadFileArgs, name="read_file", description="Read a file's contents.")
     def read_file(args: ReadFileArgs) -> dict:
         with open(args.path) as f:
             lines = f.readlines()[:args.max_lines]
@@ -231,7 +318,7 @@ def log_tool_result(event):
     class CalcArgs(BaseModel):
         expression: str
 
-    @tool(name="calculate", description="Evaluate a math expression.")
+    @tool(args_model=CalcArgs, name="calculate", description="Evaluate a math expression.")
     def calculate(args: CalcArgs) -> dict:
         import ast
         result = eval(compile(ast.parse(args.expression, mode='eval'), '<calc>', 'eval'))

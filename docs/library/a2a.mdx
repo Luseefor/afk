@@ -73,16 +73,25 @@ flowchart LR
 
 <Tabs>
   <Tab title="Request">
-    ```python class AgentInvocationRequest(BaseModel): target_agent: str # Which
-    agent to invoke user_message: str # The input message context: dict = {} #
-    Additional context idempotency_key: str # Deduplication key timeout_s: float
-    = 60.0 # Max wait time thread_id: str | None = None # For multi-turn ```
+    ```python
+    class AgentInvocationRequest(BaseModel):
+        target_agent: str  # Which agent to invoke
+        user_message: str  # The input message
+        context: dict = {}  # Additional context
+        idempotency_key: str  # Deduplication key
+        timeout_s: float = 60.0  # Max wait time
+        thread_id: str | None = None  # For multi-turn
+    ```
   </Tab>
   <Tab title="Response">
-    ```python class AgentInvocationResponse(BaseModel): final_text: str #
-    Agent's response state: str # completed, failed, degraded run_id: str #
-    Unique run identifier error: str | None = None # Error details (if failed)
-    usage: UsageAggregate | None # Token usage ```
+    ```python
+    class AgentInvocationResponse(BaseModel):
+        final_text: str  # Agent's response
+        state: str  # completed, failed, degraded
+        run_id: str  # Unique run identifier
+        error: str | None = None  # Error details (if failed)
+        usage: UsageAggregate | None  # Token usage
+    ```
   </Tab>
 </Tabs>
 

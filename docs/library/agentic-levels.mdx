@@ -28,7 +28,7 @@ AFK applications progress through five levels of capability. Each level adds fea
     Add typed tool functions for the agent to call.
 
     ```python
-    @tool(name="search", description="Search knowledge base.")
+    @tool(args_model=SearchArgs, name="search", description="Search knowledge base.")
     def search(args: SearchArgs) -> dict: ...
 
     agent = Agent(name="helper", model="gpt-4.1-mini", tools=[search])
@@ -48,8 +48,8 @@ AFK applications progress through five levels of capability. Each level adds fea
     ```python
     coordinator = Agent(
         name="coordinator",
+        model="gpt-4.1-mini",
         subagents=[researcher, writer, reviewer],
-        join_policy="all_required",
     )
     ```
 

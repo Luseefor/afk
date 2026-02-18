@@ -62,7 +62,7 @@ class CalcArgs(BaseModel):
     expression: str
 
 # 2. Create the tool
-@tool(name="calculate", description="Evaluate a math expression.")
+@tool(args_model=CalcArgs, name="calculate", description="Evaluate a math expression.")
 def calculate(args: CalcArgs) -> dict:
     return {"result": eval(args.expression)}  # ← simplified for demo
 
@@ -166,7 +166,7 @@ from pydantic import BaseModel
 class ReviewArgs(BaseModel):
     code: str
 
-@tool(name="lint_code", description="Check code for style issues.")
+@tool(args_model=ReviewArgs, name="lint_code", description="Check code for style issues.")
 def lint_code(args: ReviewArgs) -> dict:
     issues = []
     if "print(" in args.code:

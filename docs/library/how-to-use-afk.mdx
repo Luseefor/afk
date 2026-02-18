@@ -86,7 +86,7 @@ flowchart LR
     class TicketArgs(BaseModel):
         ticket_id: str
 
-    @tool(name="lookup_ticket", description="Fetch ticket details.")
+    @tool(args_model=TicketArgs, name="lookup_ticket", description="Fetch ticket details.")
     def lookup_ticket(args: TicketArgs) -> dict:
         return {"ticket_id": args.ticket_id, "status": "open", "priority": "high"}
 

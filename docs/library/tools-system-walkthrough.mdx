@@ -87,7 +87,7 @@ class SearchArgs(BaseModel):
     query: str
     max_results: int = 5
 
-@tool(name="search_docs", description="Search internal documentation by query.")
+@tool(args_model=SearchArgs, name="search_docs", description="Search internal documentation by query.")
 def search_docs(args: SearchArgs, ctx: ToolContext) -> dict:
     """Search handler -- ctx gives you request_id, user_id, and metadata."""
     results = [{"title": f"Doc about {args.query}", "score": 0.95}]
@@ -116,14 +116,14 @@ print(len(result.tool_executions)) # Number of tool calls made
 Every completed run exposes a `tool_executions` list on `AgentResult`. Each entry is a
 `ToolExecutionRecord`:
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `tool_name` | `str` | Name of the executed tool. |
-| `tool_call_id` | `str \| None` | Provider/LLM tool-call identifier. |
-| `success` | `bool` | Whether execution succeeded. |
-| `output` | `JSONValue \| None` | JSON-safe tool output payload. |
-| `error` | `str \| None` | Error message when execution failed. |
-| `latency_ms` | `float \| None` | Execution latency in milliseconds. |
+| Field          | Type                | Description                          |
+| -------------- | ------------------- | ------------------------------------ |
+| `tool_name`    | `str`               | Name of the executed tool.           |
+| `tool_call_id` | `str \| None`       | Provider/LLM tool-call identifier.   |
+| `success`      | `bool`              | Whether execution succeeded.         |
+| `output`       | `JSONValue \| None` | JSON-safe tool output payload.       |
+| `error`        | `str \| None`       | Error message when execution failed. |
+| `latency_ms`   | `float \| None`     | Execution latency in milliseconds.   |
 
 ```python
 for rec in result.tool_executions:
@@ -138,11 +138,11 @@ for rec in result.tool_executions:
 
 Tools support three extension points that wrap the core handler:
 
-| Extension | When it runs | Signature | Purpose |
-| --- | --- | --- | --- |
-| **PreHook** | Before core handler | `(args)` or `(args, ctx)` | Transform or validate arguments. Must return a dict compatible with the tool's args model. |
-| **Middleware** | Wraps core handler | `(call_next, args, ctx)` | Cross-cutting concerns (logging, timing, caching). Calls `call_next(args, ctx)` to proceed. |
-| **PostHook** | After core handler | `({"output": ..., "tool_name": ...})` | Transform or audit the output before it reaches the model. |
+| Extension      | When it runs        | Signature                             | Purpose                                                                                     |
+| -------------- | ------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **PreHook**    | Before core handler | `(args)` or `(args, ctx)`             | Transform or validate arguments. Must return a dict compatible with the tool's args model.  |
+| **Middleware** | Wraps core handler  | `(call_next, args, ctx)`              | Cross-cutting concerns (logging, timing, caching). Calls `call_next(args, ctx)` to proceed. |
+| **PostHook**   | After core handler  | `({"output": ..., "tool_name": ...})` | Transform or audit the output before it reaches the model.                                  |
 
 The execution order is: validate args -> run PreHooks sequentially -> run Middleware
 chain (outermost first) -> core handler -> run PostHooks sequentially -> wrap in

@@ -127,9 +127,6 @@ runner = Runner(
         sanitize_tool_output=True,        # Prevent prompt injection from tool output
         tool_output_max_chars=8000,       # Truncate oversized tool responses
         interaction_mode="headless",      # No interactive prompts (for API servers)
-
-        # Max output length
-        max_final_text_chars=50_000,      # Cap the final response length
     ),
 
     # Telemetry
@@ -188,7 +185,7 @@ resumed = await runner.resume(
 
 ```python
 # Summarize old messages to control storage growth
-await runner.compact_thread(agent, thread_id="t-123")
+await runner.compact_thread(thread_id="t-123")
 ```
 
 ## AgentResult reference

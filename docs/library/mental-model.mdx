@@ -73,7 +73,7 @@ flowchart LR
 
     ```python
     # The Execution Loop is shaped by these
-    @tool(name="query_db", description="Run a database query.")
+    @tool(args_model=QueryArgs, name="query_db", description="Run a database query.")
     def query_db(args: QueryArgs) -> dict:
         ...
 

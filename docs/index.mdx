@@ -54,12 +54,14 @@ print(result.state)        # ← "completed"
 
 ```python
 from pydantic import BaseModel
+from afk.agents import Agent
 from afk.tools import tool
+from afk.core import Runner
 
 class WeatherArgs(BaseModel):
     city: str
 
-@tool(name="get_weather", description="Get current weather for a city.")
+@tool(args_model=WeatherArgs, name="get_weather", description="Get current weather for a city.")
 def get_weather(args: WeatherArgs) -> dict:
     return {"city": args.city, "temp_f": 72, "condition": "sunny"}
 
@@ -70,6 +72,7 @@ agent = Agent(
     tools=[get_weather],           # ← Attach tools here
 )
 
+runner = Runner()
 result = runner.run_sync(agent, user_message="What's the weather in Austin?")
 print(result.final_text)           # ← "It's 72°F and sunny in Austin."
 ```

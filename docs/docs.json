@@ -4,7 +4,7 @@
   "logo": {
     "light": "/logo-light.svg",
     "dark": "/logo-dark.svg",
-    "href": "https://github.com/socioy/afk"
+    "href": "https://github.com/arpan404/afk"
   },
   "theme": "mint",
   "layout": "sidenav",
@@ -14,7 +14,7 @@
   },
   "topbarCtaButton": {
     "type": "github",
-    "url": "https://github.com/socioy/afk"
+    "url": "https://github.com/arpan404/afk"
   },
   "sidebar": {
     "items": "undecorated"
@@ -27,78 +27,90 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/socioy/afk"
+      "github": "https://github.com/arpan404/afk"
     }
   },
+  "tabs": [
+    {
+      "name": "Examples",
+      "url": "library/examples"
+    }
+  ],
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Welcome",
-        "pages": ["index", "library/overview", "library/quickstart"]
-      },
-      {
-        "group": "Learn",
-        "pages": [
-          "library/learn-in-15-minutes",
-          "library/mental-model",
-          "library/how-to-use-afk"
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Welcome",
+            "pages": ["index", "library/overview", "library/quickstart"]
+          },
+          {
+            "group": "Learn",
+            "pages": [
+              "library/learn-in-15-minutes",
+              "library/mental-model",
+              "library/how-to-use-afk"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "library/agents",
+              "library/core-runner",
+              "library/tools",
+              "library/streaming",
+              "library/memory",
+              "library/system-prompts",
+              "library/agent-skills"
+            ]
+          },
+          {
+            "group": "Scaling Up",
+            "pages": [
+              "library/agentic-behavior",
+              "library/agentic-levels",
+              "library/architecture",
+              "library/building-with-ai",
+              "library/developer-guide"
+            ]
+          },
+          {
+            "group": "Communication",
+            "pages": [
+              "library/messaging",
+              "library/a2a",
+              "library/task-queues",
+              "library/mcp-server"
+            ]
+          },
+          {
+            "group": "LLM Layer",
+            "pages": [
+              "llms/index",
+              "llms/contracts",
+              "llms/adapters",
+              "llms/control-and-session",
+              "llms/agent-integration"
+            ]
+          },
+          {
+            "group": "Reliability",
+            "pages": [
+              "library/observability",
+              "library/evals",
+              "library/security-model",
+              "library/failure-policy-matrix"
+            ]
+          }
         ]
       },
       {
-        "group": "Core Concepts",
-        "pages": [
-          "library/agents",
-          "library/core-runner",
-          "library/tools",
-          "library/streaming",
-          "library/memory",
-          "library/system-prompts",
-          "library/agent-skills"
-        ]
-      },
-      {
-        "group": "Scaling Up",
-        "pages": [
-          "library/agentic-behavior",
-          "library/agentic-levels",
-          "library/architecture",
-          "library/building-with-ai",
-          "library/developer-guide"
-        ]
-      },
-      {
-        "group": "Communication",
-        "pages": [
-          "library/messaging",
-          "library/a2a",
-          "library/task-queues",
-          "library/mcp-server"
-        ]
-      },
-      {
-        "group": "LLM Layer",
-        "pages": [
-          "llms/index",
-          "llms/contracts",
-          "llms/adapters",
-          "llms/control-and-session",
-          "llms/agent-integration"
-        ]
-      },
-      {
-        "group": "Reliability",
-        "pages": [
-          "library/observability",
-          "library/evals",
-          "library/security-model",
-          "library/failure-policy-matrix"
-        ]
-      },
-      {
-        "group": "Reference",
+        "tab": "References",
         "pages": [
           "library/api-reference",
-          "library/examples/index",
+          "library/configuration-reference",
+          "library/environment-variables",
           "library/full-module-reference",
           "library/public-imports-and-function-improvement",
           "library/run-event-contract",
@@ -107,6 +119,25 @@
           "library/tools-system-walkthrough",
           "library/tool-call-lifecycle",
           "library/checkpoint-schema"
+        ]
+      },
+      {
+        "tab": "Examples",
+        "pages": [
+          "library/examples/index",
+          "library/snippets/01_minimal_chat_agent",
+          "library/snippets/02_policy_with_hitl",
+          "library/snippets/03_subagents_with_router",
+          "library/snippets/04_resume_and_compact",
+          "library/snippets/05_direct_llm_structured_output",
+          "library/snippets/06_tool_registry_security",
+          "library/snippets/07_tool_hooks_and_middleware",
+          "library/snippets/08_prebuilt_runtime_tools",
+          "library/snippets/09_system_prompt_loader",
+          "library/snippets/10_streaming_chat_with_memory",
+          "library/snippets/11_cost_monitoring",
+          "library/snippets/12_mcp_client_integration",
+          "library/snippets/13_multi_model_fallback"
         ]
       }
     ]

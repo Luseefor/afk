@@ -46,13 +46,15 @@ Tools let agents take actions beyond text generation. Define a tool as a Python 
 
 ```python
 from pydantic import BaseModel
+from afk.agents import Agent
 from afk.tools import tool
+from afk.core import Runner
 
 class LookupArgs(BaseModel):
     topic: str
     max_results: int = 3
 
-@tool(name="search_docs", description="Search the documentation by topic.")
+@tool(args_model=LookupArgs, name="search_docs", description="Search the documentation by topic.")
 def search_docs(args: LookupArgs) -> dict:
     # In production, this would call a real search API
     return {

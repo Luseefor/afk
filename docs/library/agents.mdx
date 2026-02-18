@@ -21,17 +21,17 @@ That's it. Three fields define a working agent. Everything else is optional.
 
 ## Agent fields reference
 
-| Field              | Type                 | Default  | Purpose                                                           |
-| ------------------ | -------------------- | -------- | ----------------------------------------------------------------- |
-| `name`             | `str`                | required | Agent identity for logs, telemetry, and subagent routing          |
-| `model`            | `str` or `LLMClient` | required | LLM model name or pre-built client instance                       |
-| `instructions`     | `str`                | `""`     | System prompt — what the agent knows and how it behaves           |
-| `instruction_file` | `str`                | `None`   | Path to a `.txt` or `.md` file containing the system prompt       |
-| `tools`            | `list[tool]`         | `[]`     | Typed functions the agent can call                                |
-| `subagents`        | `list[Agent]`        | `[]`     | Specialist agents this agent can delegate to                      |
-| `fail_safe`        | `FailSafeConfig`     | defaults | Step limits, cost budgets, timeout, and failure policies          |
-| `context`          | `dict`               | `{}`     | Key-value context available in prompt templates and tool handlers |
-| `model_resolver`   | `callable`           | `None`   | Custom function to resolve model names to LLM clients             |
+| Field              | Type                 | Default  | Purpose                                                         |
+| ------------------ | -------------------- | -------- | --------------------------------------------------------------- |
+| `name`             | `str`                | required | Agent identity for logs, telemetry, and subagent routing        |
+| `model`            | `str` or `LLMClient` | required | LLM model name or pre-built client instance                     |
+| `instructions`     | `str`                | `""`     | System prompt — what the agent knows and how it behaves         |
+| `instruction_file` | `str`                | `None`   | Path to a `.txt` or `.md` file containing the system prompt     |
+| `tools`            | `list[tool]`         | `[]`     | Typed functions the agent can call                              |
+| `subagents`        | `list[Agent]`        | `[]`     | Specialist agents this agent can delegate to                    |
+| `fail_safe`        | `FailSafeConfig`     | defaults | Step limits, cost budgets, timeout, and failure policies        |
+| `context_defaults` | `dict`               | `{}`     | Default JSON context merged into each run before caller context |
+| `model_resolver`   | `callable`           | `None`   | Custom function to resolve model names to LLM clients           |
 
 ## Single agent vs multi-agent
 
@@ -131,9 +131,9 @@ agent = Agent(
         max_total_cost_usd=0.50,   # Max estimated cost
 
         # What to do when things fail
-        llm_failure_policy="degrade",        # "fail" | "degrade"
-        tool_failure_policy="continue",      # "fail" | "degrade" | "continue"
-        subagent_failure_policy="degrade",   # "fail" | "degrade" | "continue"
+        llm_failure_policy="retry_then_degrade",         # "retry_then_fail" | "retry_then_degrade" | "fail_fast"
+        tool_failure_policy="continue_with_error",       # "continue_with_error" | "retry_then_continue" | "fail_run"
+        subagent_failure_policy="continue",               # "continue" | "retry_then_fail" | "skip_action"
 
         # Fallback model chain for LLM resilience
         fallback_model_chain=["gpt-4.1-mini", "gpt-4.1-nano"],

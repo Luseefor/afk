@@ -79,11 +79,14 @@ flowchart TB
     )
     ```
 
-    **Sandbox profiles** restrict what tools can do at the OS level:
+    **Sandbox profiles** are configured at the runner level, not per-tool:
     ```python
-    @tool(name="run_code", description="Execute code.", sandbox="restricted")
+    class CodeArgs(BaseModel):
+        code: str
+
+    @tool(args_model=CodeArgs, name="run_code", description="Execute code.")
     def run_code(args: CodeArgs) -> dict:
-        # Runs in a sandboxed environment with limited filesystem/network access
+        # Execution constraints are enforced by the runner and policy engine
         ...
     ```
 
@@ -162,18 +165,21 @@ AFK defaults to **least privilege**:
 | **Monitoring** | Configure telemetry exporter (OTEL)             | ☐      |
 | **Monitoring** | Set up alerts for error rate and cost anomalies | ☐      |
 
-## Secret scope isolation
+## Secret isolation
 
-AFK supports isolating secrets per tool call, preventing tools from accessing secrets they don't need:
+AFK recommends isolating secrets at the environment level. Use separate environment scopes and the runner's `ToolContext.metadata` to control which credentials are available to each tool:
 
 ```python
-@tool(
-    name="query_db",
-    description="Query the database.",
-    secret_scope=["DB_URL", "DB_PASSWORD"],  # ← Only these env vars are visible
-)
-def query_db(args: QueryArgs) -> dict:
-    ...
+from pydantic import BaseModel
+from afk.tools import tool, ToolContext
+
+class QueryArgs(BaseModel):
+    sql: str
+
+@tool(args_model=QueryArgs, name="query_db", description="Query the database.")
+def query_db(args: QueryArgs, ctx: ToolContext) -> dict:
+    db_url = ctx.metadata.get("db_url")  # ← Injected via runner context
+    return execute_query(db_url, args.sql)
 ```
 
 ## Threat model overview

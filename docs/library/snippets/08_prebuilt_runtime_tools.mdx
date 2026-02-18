@@ -1,5 +1,5 @@
 ---
-title: "Snippet 08: Prebuilt Runtime Tools"
+title: "08: Prebuilt Runtime Tools"
 description: Use AFK's built-in filesystem tools with directory-scoped security constraints and compose them with policy checks.
 ---
 
@@ -44,10 +44,10 @@ The `build_runtime_tools()` factory produces two tools:
 
 Lists entries in a directory under the configured root. Returns entry names, paths, and type flags (file or directory).
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `path` | `str` | `"."` | Relative path to list, resolved against the root directory. |
-| `max_entries` | `int` | `200` | Maximum entries to return (1--5000). Prevents unbounded listings. |
+| Parameter     | Type  | Default | Description                                                       |
+| ------------- | ----- | ------- | ----------------------------------------------------------------- |
+| `path`        | `str` | `"."`   | Relative path to list, resolved against the root directory.       |
+| `max_entries` | `int` | `200`   | Maximum entries to return (1--5000). Prevents unbounded listings. |
 
 **Returns:** A dictionary with `root`, `path`, and `entries` (list of `{name, path, is_dir, is_file}`).
 
@@ -55,10 +55,10 @@ Lists entries in a directory under the configured root. Returns entry names, pat
 
 Reads the contents of a file under the configured root, with configurable truncation to prevent excessive token consumption.
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `path` | `str` | (required) | Relative path to the file, resolved against the root directory. |
-| `max_chars` | `int` | `20_000` | Maximum characters to read (1--500,000). Content is truncated beyond this limit. |
+| Parameter   | Type  | Default    | Description                                                                      |
+| ----------- | ----- | ---------- | -------------------------------------------------------------------------------- |
+| `path`      | `str` | (required) | Relative path to the file, resolved against the root directory.                  |
+| `max_chars` | `int` | `20_000`   | Maximum characters to read (1--500,000). Content is truncated beyond this limit. |
 
 **Returns:** A dictionary with `root`, `path`, `content`, and `truncated` (boolean indicating whether content was truncated).
 
@@ -114,7 +114,7 @@ You can combine prebuilt tools with your own custom tools in a single agent:
 
 ```python
 from pydantic import BaseModel
-from afk.tools.core.decorator import tool
+from afk.tools import tool
 
 
 class GrepArgs(BaseModel):
