@@ -1,19 +1,13 @@
 ---
-title: LLMs Overview
-description: Provider-driven llms runtime and builder workflow.
+title: LLM Layer
+description: Provider-portable LLM runtime with retry, caching, and circuit breaking.
 ---
 
-## LLM runtime map
+The LLM layer normalizes communication with language models across all supported providers. Your agent code uses provider-agnostic contracts (`LLMRequest` / `LLMResponse`) while built-in adapters handle the provider-specific details.
 
-```mermaid
-flowchart LR
-    Builder[LLMBuilder] --> Client[LLMClient]
-    Client --> ProviderRegistry[Provider registry]
-    ProviderRegistry --> Transport[Provider transport]
-    Client --> Policies[Runtime policies]
-```
+## The LLMBuilder
 
-## Start here
+Create LLM clients with the builder pattern:
 
 ```python
 from afk.llms import LLMBuilder
@@ -22,13 +16,71 @@ client = (
     LLMBuilder()
     .provider("openai")
     .model("gpt-4.1-mini")
-    .profile("production")
     .build()
 )
 ```
 
-## Mental model
+<Steps>
+  <Step title="Choose a provider">
+    ```python builder = LLMBuilder().provider("openai") # Also: "anthropic",
+    "litellm", or a custom adapter ```
+  </Step>
+  <Step title="Set the model">
+    ```python builder = builder.model("gpt-4.1-mini") ```
+  </Step>
+  <Step title="Add policies (optional)">
+    ```python builder = builder.profile("production") # retry, timeout, rate
+    limit, circuit breaker ```
+  </Step>
+  <Step title="Build">```python client = builder.build() ```</Step>
+</Steps>
 
-- provider chooses transport
-- runtime policies choose execution behavior
-- caller code consumes normalized contracts only
+## Supported providers
+
+<CardGroup cols={3}>
+  <Card title="OpenAI" icon="circle-o">
+    GPT-4.1, GPT-4.1-mini, GPT-4.1-nano, o-series
+  </Card>
+  <Card title="Anthropic" icon="circle-a">
+    Claude 4 Sonnet, Claude 4 Opus
+  </Card>
+  <Card title="LiteLLM" icon="circle-l">
+    100+ providers via the LiteLLM proxy
+  </Card>
+</CardGroup>
+
+All providers expose the same `LLMClient` interface. Your agent code never touches provider-specific types.
+
+## Which provider should I use?
+
+| Scenario                   | Recommended                                     |
+| -------------------------- | ----------------------------------------------- |
+| General purpose            | OpenAI `gpt-4.1-mini`                           |
+| Complex reasoning          | OpenAI `gpt-4.1` or Anthropic `claude-4-sonnet` |
+| Cost-sensitive             | OpenAI `gpt-4.1-nano`                           |
+| Non-OpenAI/Anthropic model | LiteLLM adapter                                 |
+| Custom or self-hosted      | Custom adapter                                  |
+
+## How agents use the LLM layer
+
+You rarely build `LLMClient` directly. Agents resolve their model automatically:
+
+```python
+# Option 1: Model name (auto-resolved)
+agent = Agent(name="demo", model="gpt-4.1-mini", ...)
+
+# Option 2: Pre-built client (full control)
+client = LLMBuilder().provider("openai").model("gpt-4.1-mini").profile("production").build()
+agent = Agent(name="demo", model=client, ...)
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Contracts" icon="file-contract" href="/llms/contracts">
+    LLMRequest / LLMResponse — what flows across the boundary.
+  </Card>
+  <Card title="Adapters" icon="plug" href="/llms/adapters">
+    Built-in providers and custom adapter registration.
+  </Card>
+</CardGroup>

@@ -33,27 +33,37 @@
   "navigation": {
     "groups": [
       {
-        "group": "Getting Started",
+        "group": "Welcome",
+        "pages": ["index", "library/overview", "library/quickstart"]
+      },
+      {
+        "group": "Learn",
         "pages": [
-          "index",
-          "library/overview",
+          "library/learn-in-15-minutes",
           "library/mental-model",
-          "library/how-to-use-afk",
-          "library/quickstart",
-          "library/architecture",
-          "library/developer-guide"
+          "library/how-to-use-afk"
         ]
       },
       {
-        "group": "Agent Platform",
+        "group": "Core Concepts",
         "pages": [
           "library/agents",
-          "library/agentic-behavior",
-          "library/agentic-levels",
           "library/core-runner",
+          "library/tools",
           "library/streaming",
+          "library/memory",
           "library/system-prompts",
           "library/agent-skills"
+        ]
+      },
+      {
+        "group": "Scaling Up",
+        "pages": [
+          "library/agentic-behavior",
+          "library/agentic-levels",
+          "library/architecture",
+          "library/building-with-ai",
+          "library/developer-guide"
         ]
       },
       {
@@ -63,21 +73,6 @@
           "library/a2a",
           "library/task-queues",
           "library/mcp-server"
-        ]
-      },
-      {
-        "group": "Tools",
-        "pages": [
-          "library/tools",
-          "library/tools-system-walkthrough",
-          "library/tool-call-lifecycle"
-        ]
-      },
-      {
-        "group": "Memory",
-        "pages": [
-          "library/memory",
-          "library/checkpoint-schema"
         ]
       },
       {
@@ -96,7 +91,7 @@
           "library/observability",
           "library/evals",
           "library/security-model",
-          "library/tested-behaviors"
+          "library/failure-policy-matrix"
         ]
       },
       {
@@ -107,9 +102,11 @@
           "library/full-module-reference",
           "library/public-imports-and-function-improvement",
           "library/run-event-contract",
-          "library/failure-policy-matrix",
           "library/llm-interaction",
-          "library/building-with-ai"
+          "library/tested-behaviors",
+          "library/tools-system-walkthrough",
+          "library/tool-call-lifecycle",
+          "library/checkpoint-schema"
         ]
       }
     ]

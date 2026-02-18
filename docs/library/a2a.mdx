@@ -1,169 +1,143 @@
 ---
-title: A2A
-description: Internal and external agent-to-agent protocol integration.
+title: Agent-to-Agent (A2A)
+description: Cross-system agent communication with authentication and delivery guarantees.
 ---
 
-Agent-to-Agent (A2A) communication lets agents invoke other agents — whether they are in the same process, on a different service, or running on a completely separate platform. This is the communication backbone for multi-agent systems that span service boundaries.
+The A2A protocol enables agent communication **across system boundaries** — between services, organizations, or deployment environments. It builds on [internal messaging](/library/messaging) by adding authentication, authorization, and external transport.
 
-AFK's A2A system is built in layers: an internal protocol for in-process communication, an external adapter for cross-service communication, and an authentication layer that sits in front of both.
-
-## A2A Integration Layers
-
-The A2A system is organized into three layers, each with a clear responsibility:
+## Architecture
 
 ```mermaid
 flowchart LR
-    Runner[AFK Runner] --> Internal[Internal Protocol]
-    Internal --> Auth[Auth Provider]
-    Internal --> External[External A2A Adapter]
-    External --> Remote[Remote A2A Agent]
-
-    style Runner fill:#0B6E4F,color:#fff
-    style Auth fill:#084C38,color:#fff
-```
-
-- **AFK Runner** — The runner initiates agent-to-agent communication when it executes a delegation plan. It does not communicate directly with remote agents — it goes through the protocol layer.
-
-- **Internal Protocol** — Handles in-process agent communication. When the target agent is in the same process (the most common case), the protocol dispatches the invocation directly to the runner without any network overhead. Every invocation is wrapped in an `InternalA2AEnvelope` that carries correlation IDs, idempotency keys, and causation chains for tracing.
-
-- **Auth Provider** — Authenticates and authorizes every A2A request, regardless of whether it is internal or external. Even internal calls go through auth to maintain a consistent security model. AFK provides three built-in providers:
-  - `AllowAllA2AAuthProvider` — Allows everything. Use only during development.
-  - `APIKeyA2AAuthProvider` — Validates API keys from request headers.
-  - `JWTA2AAuthProvider` — Validates JWT tokens with configurable claims.
-
-- **External A2A Adapter** — Handles cross-service agent communication. When the target agent is on a different service or platform, the adapter translates AFK's internal protocol into the external A2A wire format, handles network transport, and manages delivery guarantees.
-
-## Request Flow
-
-When an agent invokes another agent through A2A, here is the full lifecycle of the request:
-
-```mermaid
-sequenceDiagram
-    participant Client as Source Agent
-    participant Host as A2A Host
-    participant Auth as Auth Provider
-    participant Agent as Target Agent
-
-    Client->>Host: AgentInvocationRequest
-    Host->>Auth: Authenticate + authorize
-    alt credentials valid
-        Auth-->>Host: A2APrincipal (allowed)
-        Host->>Host: Check idempotency store
-        alt new request
-            Host->>Agent: Dispatch invocation
-            Agent-->>Host: AgentInvocationResponse
-            Host->>Host: Record in delivery store
-            Host-->>Client: Normalized response
-        else duplicate request
-            Host-->>Client: Cached response (idempotent)
-        end
-    else credentials invalid
-        Auth-->>Host: Auth error
-        Host-->>Client: A2AAuthError
+    subgraph System_A["System A"]
+        Agent_A["Agent A"]
+        A2A_Client["A2A Client"]
     end
+
+    subgraph System_B["System B"]
+        A2A_Server["A2A Server"]
+        Auth["Auth Provider"]
+        Agent_B["Agent B"]
+    end
+
+    Agent_A --> A2A_Client
+    A2A_Client -->|"HTTP/gRPC"| A2A_Server
+    A2A_Server --> Auth
+    Auth --> A2A_Server
+    A2A_Server --> Agent_B
 ```
 
-There are several important details in this flow:
+## Three integration layers
 
-**Authentication happens first.** Every request is authenticated before the host even looks at the payload. This prevents unauthorized agents from wasting compute resources.
+| Layer                 | What it does                      | When you need it                      |
+| --------------------- | --------------------------------- | ------------------------------------- |
+| **Internal Protocol** | Typed envelopes with idempotency  | Always (agents in the same system)    |
+| **Auth Provider**     | Token validation, caller identity | When agents are in different services |
+| **External Adapter**  | HTTP/gRPC transport, discovery    | When agents are in different systems  |
 
-**Idempotency is built in.** Every `AgentInvocationRequest` carries an `idempotency_key`. If the same request is sent twice (e.g., due to a network retry), the host returns the cached response from the delivery store instead of re-executing the agent. This makes retries safe by default.
+## Request flow
 
-**Responses are normalized.** Regardless of whether the target agent is internal or external, the response comes back as an `AgentInvocationResponse` with a consistent structure: `success`, `output`, `error`, and correlation metadata.
+<Steps>
+  <Step title="Client builds invocation request">
+    ```python
+    from afk.a2a import A2AClient, AgentInvocationRequest
 
-**Dead letters are captured.** If a request fails permanently (e.g., target agent does not exist, serialization error), it is recorded as an `AgentDeadLetter` in the delivery store. You can list and inspect dead letters for debugging.
+    client = A2AClient(base_url="https://agent-b.example.com", auth_token="...")
 
-## Invocation Contracts
+    request = AgentInvocationRequest(
+        target_agent="analyzer",
+        user_message="Analyze this dataset",
+        context={"source": "system-a"},
+        idempotency_key="analysis-42",
+    )
+    ```
 
-The A2A protocol is built on two core data structures:
+  </Step>
+  <Step title="Auth provider validates">
+    The server validates the auth token, extracts the caller identity, and checks authorization rules.
+  </Step>
+  <Step title="Server runs the agent">
+    The target agent executes locally with a Runner, using the invocation request as input.
+  </Step>
+  <Step title="Response returned">
+    ```python
+    response = await client.invoke(request)
+    print(response.final_text)   # Agent's response
+    print(response.state)        # "completed"
+    print(response.run_id)       # For tracing
+    ```
+  </Step>
+</Steps>
+
+## Invocation contracts
+
+<Tabs>
+  <Tab title="Request">
+    ```python class AgentInvocationRequest(BaseModel): target_agent: str # Which
+    agent to invoke user_message: str # The input message context: dict = {} #
+    Additional context idempotency_key: str # Deduplication key timeout_s: float
+    = 60.0 # Max wait time thread_id: str | None = None # For multi-turn ```
+  </Tab>
+  <Tab title="Response">
+    ```python class AgentInvocationResponse(BaseModel): final_text: str #
+    Agent's response state: str # completed, failed, degraded run_id: str #
+    Unique run identifier error: str | None = None # Error details (if failed)
+    usage: UsageAggregate | None # Token usage ```
+  </Tab>
+</Tabs>
+
+## Hosting an A2A service
+
+Expose your agents as an A2A-accessible service:
 
 ```python
-from afk.agents.a2a import AgentInvocationRequest, AgentInvocationResponse
+from afk.a2a import A2AServer, TokenAuthProvider
+from afk.agents import Agent
+from afk.core import Runner
 
-# Sending a request
-request = AgentInvocationRequest(
-    run_id="run-123",
-    thread_id="thread-456",
-    conversation_id="conv-789",
-    correlation_id="corr-abc",
-    idempotency_key="idem-unique-key",
-    source_agent="coordinator",
-    target_agent="research",
-    payload={"topic": "circuit breaker patterns"},
-    timeout_s=60.0,
+# Define the agent
+analyzer = Agent(name="analyzer", model="gpt-4.1-mini", instructions="Analyze data.")
+
+# Create auth provider
+auth = TokenAuthProvider(
+    valid_tokens={"system-a": "token-abc", "system-c": "token-xyz"},
+    allowed_agents={"system-a": ["analyzer"], "system-c": ["analyzer"]},
 )
 
-# Receiving a response
-response = AgentInvocationResponse(
-    run_id="run-123",
-    thread_id="thread-456",
-    conversation_id="conv-789",
-    correlation_id="corr-abc",
-    idempotency_key="idem-unique-key",
-    source_agent="coordinator",
-    target_agent="research",
-    success=True,
-    output={"findings": "Circuit breakers prevent cascading failures..."},
-)
-```
-
-Every field in these structures serves a tracing or reliability purpose:
-
-| Field | Purpose |
-|---|---|
-| `run_id` | Ties the invocation to a specific agent run for telemetry |
-| `correlation_id` | Connects request and response across async boundaries |
-| `idempotency_key` | Ensures duplicate requests return cached results |
-| `causation_id` | Links this invocation to the event that caused it (for causal tracing) |
-| `timeout_s` | Prevents the calling agent from waiting indefinitely |
-
-## Hosting an A2A Service
-
-To expose your agents to external callers, set up an `A2AServiceHost`:
-
-```python
-from afk.agents.a2a import A2AServiceHost, APIKeyA2AAuthProvider
-
-auth = APIKeyA2AAuthProvider(
-    valid_keys={"service-key-1", "service-key-2"},
-    key_header="X-API-Key",
-)
-
-host = A2AServiceHost(
+# Start the server
+server = A2AServer(
+    agents={"analyzer": analyzer},
+    runner_factory=lambda: Runner(),
     auth_provider=auth,
-    production_mode=True,
+    host="0.0.0.0",
+    port=8080,
 )
-host.start()
+await server.start()
 ```
 
-The host handles request routing, authentication, idempotency, and dead-letter recording. You register agents with the host, and it dispatches incoming requests to the correct agent based on the `target_agent` field.
+## Security considerations
 
-In `production_mode=True`, the host enforces strict authentication and rejects requests with missing or invalid credentials. In development mode, you can use `AllowAllA2AAuthProvider` to skip authentication.
+| Concern              | Mechanism                                                        |
+| -------------------- | ---------------------------------------------------------------- |
+| **Authentication**   | Token-based (API keys, JWT, OAuth)                               |
+| **Authorization**    | Per-agent access control (which callers can invoke which agents) |
+| **Idempotency**      | `idempotency_key` prevents duplicate processing on retries       |
+| **Rate limiting**    | Configure per-caller request limits                              |
+| **Input validation** | All requests validated against `AgentInvocationRequest` schema   |
+| **Cost isolation**   | Each invocation has its own `FailSafeConfig` budget              |
 
-## Delivery Guarantees
+<Warning>
+  **Always authenticate A2A endpoints.** An unauthenticated A2A server allows
+  anyone to invoke your agents, consuming your LLM API credits.
+</Warning>
 
-AFK provides delivery stores that track request outcomes for idempotency and dead-letter handling:
+## Next steps
 
-- **`InMemoryA2ADeliveryStore`** — For development and testing. State is lost on restart.
-- **`RedisA2ADeliveryStore`** — For production. State is durable across restarts.
-
-The delivery store records:
-- Successful responses (keyed by idempotency key) for deduplication
-- Dead letters for permanently failed requests
-
-```python
-# List dead letters for debugging
-dead_letters = await delivery_store.list_dead_letters()
-for dl in dead_letters:
-    print(f"Failed: {dl.target_agent} - {dl.error}")
-```
-
-## Design Guidance
-
-When building A2A-enabled systems:
-
-- **Use internal protocol for in-process agents.** There is no need to use external adapters when all agents are in the same process. The internal protocol is faster and simpler.
-- **Always set timeouts.** A2A calls without timeouts can hang indefinitely if the target agent is slow or unresponsive. Set `timeout_s` on every `DelegationNode`.
-- **Generate unique idempotency keys.** Use UUIDs or deterministic keys derived from the request content. Reusing idempotency keys across different logical requests will cause incorrect cached responses.
-- **Monitor dead letters.** Dead letters indicate systemic problems — misconfigured routing, schema mismatches, or persistent auth failures. Set up alerts on dead-letter counts.
-- **Start with `AllowAllA2AAuthProvider` in development**, but switch to `APIKeyA2AAuthProvider` or `JWTA2AAuthProvider` before deploying. Never use `AllowAll` in production.
+<CardGroup cols={2}>
+  <Card title="Task Queues" icon="list-check" href="/library/task-queues">
+    Async job processing for long-running work.
+  </Card>
+  <Card title="MCP Server" icon="plug" href="/library/mcp-server">
+    Expose tools via the Model Context Protocol.
+  </Card>
+</CardGroup>

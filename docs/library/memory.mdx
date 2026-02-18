@@ -1,134 +1,152 @@
 ---
 title: Memory
-description: Memory module design for durable state, replay, and resume.
+description: Persist conversation state, resume runs, and compact threads.
 ---
 
-Memory in AFK handles the persistence layer — storing the state needed to resume interrupted runs, maintaining conversation history across interactions, and providing the audit trail that makes agent behavior traceable.
+AFK's memory system persists conversation state across runs. Use it for multi-turn conversations, run resumption after interrupts, and long-running agent sessions.
 
-Without memory, every agent run is stateless: it starts from scratch, loses context from previous interactions, and cannot recover from interruptions. The memory module solves all three of these problems.
-
-## Memory Architecture
-
-The memory system has three main roles: recording state, recording events, and providing retrieval for resume and compaction.
-
-```mermaid
-flowchart TB
-    Runner[Runner] --> State[State records]
-    Runner --> Events[Event records]
-    State --> Backend[(Backend adapter)]
-    Events --> Backend
-    Backend --> Resume[Resume loader]
-    Backend --> Compact[Compaction engine]
-
-    style Runner fill:#0B6E4F,color:#fff
-    style Backend fill:#2FB67E,color:#fff
-```
-
-Here is how these components work together:
-
-- **State records** capture the current state of a run — the agent's conversation history, the last step number, any pending tool results, and the run's current status. This is what the resume loader reads to pick up where a run left off.
-
-- **Event records** capture everything that happened during a run — LLM calls, tool executions, policy decisions, subagent delegations, and error details. Events are append-only and immutable. They form the audit trail you use for debugging and compliance.
-
-- **Backend adapter** is the storage implementation. AFK defines a backend contract (what needs to be stored and retrieved) and provides adapters for different storage backends. The rest of the system does not know or care which backend is in use.
-
-- **Resume loader** reads state records from the backend and reconstructs the run's context so the runner can continue from the last checkpoint. This enables crash recovery, human-in-the-loop pauses, and multi-session workflows.
-
-- **Compaction engine** reduces the size of the conversation history by summarizing older messages. This prevents long-running threads from exceeding the LLM's context window while preserving the information the agent needs to continue meaningfully.
-
-## What Memory Should Store
-
-Designing what goes into memory is a critical decision. Store too little and you cannot resume reliably. Store too much and your checkpoints become slow and bloated.
-
-Here is the recommended breakdown:
-
-| Category | What to store | Why |
-|---|---|---|
-| **State** | Conversation messages, step counter, pending tool results, run status | Required for deterministic resume — the runner needs exactly this information to continue a run |
-| **Events** | LLM call details, tool executions, policy decisions, errors | Required for audit trail, debugging, and telemetry replay |
-| **Metadata** | Run ID, thread ID, agent name, timestamps, correlation IDs | Required for querying, filtering, and correlating events across distributed systems |
-
-**What you should *not* store in memory:**
-
-- Raw LLM provider responses (store the normalized version instead — this keeps your memory portable across providers)
-- Large binary blobs (store a reference/URL instead)
-- Cached or derived data that can be recomputed
-
-## State Lifecycle
-
-A run's state flows through a predictable lifecycle:
-
-```mermaid
-sequenceDiagram
-    participant Runner
-    participant Memory
-    participant LLM
-
-    Runner->>Memory: Initialize state (or load checkpoint)
-    loop Each step
-        Runner->>LLM: Request next action
-        LLM-->>Runner: Response
-        Runner->>Runner: Execute tools / delegate
-        Runner->>Memory: Checkpoint state + events
-    end
-    Runner->>Memory: Final state (completed/failed)
-```
-
-The runner checkpoints after each step, not after each individual operation within a step. This means if the runner crashes in the middle of a step (e.g., between two tool calls in a batch), it will replay the entire step on resume. This is why tool idempotency matters — see the [Tools](/library/tools) page.
-
-## Resume from Checkpoint
-
-When you call `runner.resume()`, the runner loads the last checkpoint and continues:
+## Quick start: multi-turn conversation
 
 ```python
-# Original run gets interrupted (e.g., waiting for human approval)
-result = await runner.run(agent, user_message="Deploy to production")
-# result.state == "paused"
+import asyncio
+from afk.agents import Agent
+from afk.core import Runner
 
-# Later, after approval is granted:
-result = await runner.resume(
-    agent,
-    run_id=result.run_id,
-    thread_id=result.thread_id,
-)
-# result.state == "completed"
+agent = Agent(name="tutor", model="gpt-4.1-mini", instructions="You are a Python tutor.")
+
+async def main():
+    runner = Runner()
+    thread = "session-42"
+
+    r1 = await runner.run(agent, user_message="What are generators?", thread_id=thread)
+    print(r1.final_text)
+
+    # Turn 2 — the agent remembers Turn 1
+    r2 = await runner.run(agent, user_message="Show me an example", thread_id=thread)
+    print(r2.final_text)
+
+asyncio.run(main())
 ```
 
-Resume works across process restarts — as long as the memory backend is durable (e.g., Redis, database), the run can be resumed from a different process or machine.
+The `thread_id` links runs into a conversation. AFK automatically persists messages between runs.
 
-## Compaction
+## What gets stored
 
-Long-running conversation threads accumulate messages over time. Eventually, the conversation history will exceed the LLM's context window. Compaction solves this by summarizing older messages.
+| Record type    | What it contains                                           | When it's written                       |
+| -------------- | ---------------------------------------------------------- | --------------------------------------- |
+| **Message**    | User messages, assistant responses, tool calls and results | After each run step                     |
+| **Checkpoint** | Full run state at a point in time                          | At step boundaries (pre-LLM, post-tool) |
+| **Event**      | Run lifecycle events (started, completed, failed)          | During and after runs                   |
+
+<Note>
+  **What's NOT stored:** Raw LLM responses, internal framework state, or
+  intermediate computation. Only the conversation-visible records are persisted.
+</Note>
+
+## State lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty: new thread_id
+    Empty --> Active: first run starts
+    Active --> Active: more messages added
+    Active --> Checkpointed: checkpoint written
+    Checkpointed --> Active: run continues
+    Checkpointed --> Resumed: resume from checkpoint
+    Resumed --> Active: run continues
+    Active --> Compacted: compact_thread called
+    Compacted --> Active: new messages added
+```
+
+## Resume interrupted runs
+
+If a run is interrupted (crash, timeout, pause for approval), resume from the last checkpoint:
 
 ```python
-compaction_result = await runner.compact_thread(
-    thread_id="thread-123",
-    event_policy=retention_policy,
-    state_policy=state_retention_policy,
-)
+# Start a run that might be long
+result = await runner.run(agent, user_message="Analyze this dataset...")
+
+# If interrupted, resume later
+if result.state == "interrupted":
+    resumed = await runner.resume(
+        agent,
+        run_id=result.run_id,
+        thread_id=result.thread_id,
+    )
+    print(resumed.final_text)
 ```
 
-Compaction is a controlled operation — you choose when to compact and what retention policies to apply. The retention policies determine which events and state records to keep, summarize, or discard.
+<Tip>
+  **Checkpoints are written at key boundaries:** before each LLM call, after
+  each tool batch, and after each step completes. On resume, completed tool
+  calls are replayed from cache — no duplicate side effects.
+</Tip>
 
-**When to compact:**
+## Compact long threads
 
-- Before the conversation history approaches the LLM's context window limit
-- After a logical milestone in a multi-step workflow (e.g., after completing one phase)
-- On a regular schedule for long-lived threads (e.g., customer support threads that span days)
+Over time, conversation threads grow and consume tokens. Use compaction to summarize old messages:
 
-## Implementation Guidance
+```python
+# Summarize old turns into a condensed summary
+await runner.compact_thread(agent, thread_id="session-42")
 
-When working with the memory module:
+# Next run uses the compacted history — fewer tokens, same context
+result = await runner.run(agent, user_message="Continue where we left off", thread_id="session-42")
+```
 
-- **Keep checkpoint schemas stable and versioned.** If you change what gets stored in a checkpoint, old checkpoints may become unloadable. Version your schema and handle migration explicitly.
-- **Prefer additive fields over destructive changes.** Adding a new optional field to a checkpoint is safe. Removing or renaming a field breaks existing checkpoints.
-- **Implement compaction policies early.** Do not wait until your threads are hitting context window limits. Define a compaction strategy during development so it is tested before you need it.
-- **Test resume from partially completed runs.** The most common memory bug is a resume that starts from the wrong state. Write tests that interrupt a run mid-step and verify that resume produces the correct result.
+Compaction replaces older messages with a generated summary, preserving key context while reducing token usage. The agent sees the summary as context, not individual old messages.
 
-## For Coding Agents
+## Memory backends
 
-When adding or modifying memory code:
+<Tabs>
+  <Tab title="In-memory (default)">
+    State lives in process memory. Fast, no setup, but lost on restart.
 
-1. **Preserve schema compatibility.** Never remove or rename fields in checkpoint schemas. Add new optional fields instead.
-2. **Prefer additive fields over destructive changes.** This ensures that existing checkpoints remain loadable after code updates.
-3. **Test resume from partially completed runs.** Create test scenarios that interrupt a run after specific steps and verify that resuming produces correct behavior.
+    ```python
+    runner = Runner()  # ← Uses in-memory backend by default
+    ```
+
+    **Use for:** Development, testing, short-lived scripts.
+
+  </Tab>
+  <Tab title="Persistent backend">
+    Implement the `MemoryBackend` protocol to persist state to any storage:
+
+    ```python
+    from afk.memory import MemoryBackend
+
+    class PostgresMemory(MemoryBackend):
+        async def load_thread(self, thread_id: str) -> list[Message]:
+            ...
+        async def save_messages(self, thread_id: str, messages: list[Message]):
+            ...
+        async def load_checkpoint(self, run_id: str) -> Checkpoint | None:
+            ...
+        async def save_checkpoint(self, run_id: str, checkpoint: Checkpoint):
+            ...
+
+    runner = Runner(memory=PostgresMemory(conn_string="..."))
+    ```
+
+    **Use for:** Production deployments, multi-turn chat applications.
+
+  </Tab>
+</Tabs>
+
+## Design guidelines
+
+- **Always use `thread_id` for conversations.** Without it, each run starts fresh.
+- **Compact threads proactively.** Don't wait until you hit token limits. A good rule: compact when the thread exceeds ~50 messages.
+- **Use checkpoints for long-running agents.** If a run might take minutes, checkpoints let you resume on failure.
+- **Don't store secrets in memory.** Thread messages are persisted and may be readable.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Core Runner" icon="play" href="/library/core-runner">
+    Resume and compact APIs on the Runner.
+  </Card>
+  <Card title="System Prompts" icon="file-lines" href="/library/system-prompts">
+    Template prompts with context from memory.
+  </Card>
+</CardGroup>

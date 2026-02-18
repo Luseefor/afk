@@ -1,157 +1,228 @@
 ---
 title: How to Use AFK
-description: Practical implementation workflow from prototype to production.
+description: A phased adoption guide — from first agent to production deployment.
 ---
 
-This guide walks you through the recommended way to build with AFK. Instead of trying to wire up every feature at once, AFK is designed for incremental adoption — start with the simplest thing that works, then layer on capabilities as your requirements grow.
+AFK is designed for incremental adoption. Start with the simplest possible agent, add capabilities as you understand the problem space, and layer in production controls before you ship. This guide walks through four phases, each building on the last.
 
-Each phase below builds on the previous one. You can ship at the end of any phase and come back to add the next layer when you need it.
+<Tip>
+  **You don't need to read this page front-to-back.** Find your current phase
+  and start there. Each phase tells you what to build, what to add, and when to
+  move on.
+</Tip>
 
-## Phase 1: Build a Narrow Vertical Slice
+## Adoption path
 
-Start with one agent, one workflow, one measurable output. The goal of this phase is to prove that your core use case works end-to-end — not to build the full system.
+```mermaid
+flowchart LR
+    P1["Phase 1\nNarrow Slice"] --> P2["Phase 2\nAdd Controls"]
+    P2 --> P3["Phase 3\nProduction"]
+    P3 --> P4["Phase 4\nRelease Discipline"]
 
-Pick the single most important workflow for your application, define an agent for it, and run it synchronously. Do not add tools, subagents, or queues yet.
-
-```python
-from afk.agents import Agent
-from afk.core import Runner
-
-agent = Agent(
-    name="support",
-    model="gpt-4.1-mini",
-    instructions="Classify support tickets by severity (P0-P3) and suggest next steps.",
-)
-
-runner = Runner()
-result = runner.run_sync(agent, user_message="Ticket: API returns 503 for EU users")
-print(result.final_text)
+    style P1 fill:#d4edda,stroke:#28a745
+    style P2 fill:#fff3cd,stroke:#ffc107
+    style P3 fill:#cce5ff,stroke:#007bff
+    style P4 fill:#f8d7da,stroke:#dc3545
 ```
 
-At this point you have a working agent that takes input and produces output. You can evaluate the quality of its responses manually and iterate on the instructions until the output is consistently useful.
-
-**What you should have after Phase 1:**
-- A single `Agent` with well-tuned instructions
-- A `Runner.run_sync()` call that produces useful output
-- Manual confidence that the output quality is acceptable
-
-## Phase 2: Add Controlled Capabilities
-
-Once your core agent works, you will likely need it to interact with the outside world — calling APIs, querying databases, or delegating sub-problems to specialist agents. This is where tools and subagents come in.
-
-**Add tools when the agent needs to take external actions.** Every tool in AFK is a typed function with a Pydantic args model. This means the agent cannot call a tool with invalid arguments — the schema is validated before execution.
-
-```python
-from pydantic import BaseModel
-from afk.tools import tool
-
-class LookupTicketArgs(BaseModel):
-    ticket_id: str
-
-@tool(args_model=LookupTicketArgs, name="lookup_ticket")
-def lookup_ticket(args: LookupTicketArgs) -> dict:
-    """Fetch ticket details from the support system."""
-    return {"ticket_id": args.ticket_id, "status": "open", "severity": "P1"}
-
-agent = Agent(
-    name="support",
-    model="gpt-4.1-mini",
-    instructions="Classify tickets and suggest next steps. Use lookup_ticket to fetch details.",
-    tools=[lookup_ticket],
-)
-```
-
-**Add subagents when the problem naturally decomposes into specialist tasks.** Instead of one agent doing everything, define specialist agents and a coordinator that delegates to them.
-
-```python
-triage = Agent(name="triage", model="gpt-4.1-mini", instructions="Classify incident severity.")
-diagnosis = Agent(name="diagnosis", model="gpt-4.1-mini", instructions="Identify root cause.")
-coordinator = Agent(
-    name="coordinator",
-    model="gpt-4.1-mini",
-    instructions="Delegate triage and diagnosis, then synthesize a response.",
-    subagents=[triage, diagnosis],
-)
-```
-
-**What you should have after Phase 2:**
-- Tools with typed args models for every external action
-- Subagents for specialist decomposition (if your use case needs it)
-- Clear separation between what the agent reasons about and what it executes
-
-## Phase 3: Add Production Controls
-
-Your agent now works and can take actions. Before you put it in front of real traffic, add the controls that make it safe and resilient.
-
-**Timeout and retry policies** prevent your system from hanging or failing permanently on transient errors. These are configured at the LLM runtime level.
-
-**Queue execution contracts** let you process work asynchronously with durable retry semantics. Instead of running agents inline with your API requests, you can enqueue tasks and let workers process them at their own pace.
-
-```python
-from afk.queues import InMemoryTaskQueue
-from afk.queues.contracts import RunnerChatExecutionContract
-
-queue = InMemoryTaskQueue()
-contract = RunnerChatExecutionContract(runner=runner, agent=agent)
-
-# Enqueue work
-task = await queue.enqueue(TaskItem(
-    id="task-1",
-    payload={"user_message": "Ticket: API returns 503 for EU users"},
-))
-```
-
-**Memory and resume** let your agents pick up where they left off after interruptions. If a long-running agent is paused or crashes, it can resume from its last checkpoint instead of starting over.
-
-```python
-# Resume a previously interrupted run
-result = await runner.resume(agent, run_id="run-456", thread_id="thread-123")
-```
-
-**What you should have after Phase 3:**
-- Timeout and retry policies on LLM calls
-- Queue-based execution for async workloads (if applicable)
-- Checkpoint and resume support for long-running workflows
-
-## Phase 4: Add Release Discipline
-
-The final layer is what separates a prototype from a production system. This is the assurance loop from the [mental model](/library/mental-model).
-
-**Telemetry** gives you visibility into what your agents are doing in production. AFK emits structured events for every run, LLM call, tool execution, and subagent delegation. Connect a telemetry sink to capture these.
-
-**Eval suites** let you validate agent quality systematically. Instead of manually checking outputs, define expected behaviors and assert on them programmatically.
-
-**CI gates** use eval results to block regressions. If a code change causes eval quality to drop below a threshold, the deployment is blocked.
-
-**What you should have after Phase 4:**
-- A telemetry backend capturing run metrics, latencies, and errors
-- An eval suite with assertions covering your core use cases
-- CI pipeline that runs evals and blocks on quality regressions
-
-## Builder Checklist
+---
 
 <Steps>
-  <Step title="Define contracts first">
-    Start with typed interfaces for your agents, tools, and communication boundaries. Avoid hidden behavior buried in prompts or ad-hoc wrapper functions. If it changes runtime behavior, it should be a contract.
+  <Step title="Phase 1: Narrow vertical slice" icon="seedling">
+    Build one focused agent that does one thing well.
+
+    **What to build:**
+    - Single agent with specific instructions
+    - 0–2 tools for the core capability
+    - Synchronous execution (`run_sync`)
+
+    **Code example:**
+
+    ```python
+    from afk.agents import Agent
+    from afk.core import Runner
+
+    agent = Agent(
+        name="ticket-classifier",
+        model="gpt-4.1-mini",
+        instructions="""
+        Read the support ticket and classify it as exactly one of:
+        billing, technical, account, or other.
+        Output only the category name.
+        """,
+    )
+
+    runner = Runner()
+    result = runner.run_sync(agent, user_message="I can't log into my account")
+    print(result.final_text)  # "account"
+    ```
+
+    **Focus on:**
+    - Getting the prompt right — iterate until the agent reliably produces correct output
+    - Testing with 10–20 real examples before adding any complexity
+    - Keeping everything in a single file
+
+    **Move to Phase 2 when:** Your agent works correctly for the core use case and you need it to take actions or handle edge cases.
+
   </Step>
-  <Step title="Validate edge cases">
-    Test what happens on unknown contracts, timeouts, cancellations, and malformed payloads. AFK classifies failures as retryable or terminal — make sure your system handles both.
+
+  <Step title="Phase 2: Add controls" icon="shield">
+    Give the agent capabilities and constrain them with safety controls.
+
+    **What to add:**
+    - Tools with Pydantic argument models
+    - `FailSafeConfig` with step, cost, and time limits
+    - Policy rules for dangerous operations
+    - Basic error handling
+
+    **Code example:**
+
+    ```python
+    from pydantic import BaseModel
+    from afk.agents import Agent, FailSafeConfig, PolicyEngine, PolicyRule
+    from afk.tools import tool
+    from afk.core import Runner, RunnerConfig
+
+    class TicketArgs(BaseModel):
+        ticket_id: str
+
+    @tool(name="lookup_ticket", description="Fetch ticket details.")
+    def lookup_ticket(args: TicketArgs) -> dict:
+        return {"ticket_id": args.ticket_id, "status": "open", "priority": "high"}
+
+    policy = PolicyEngine(rules=[
+        PolicyRule(
+            rule_id="gate-updates",
+            condition=lambda e: e.tool_name and "update" in e.tool_name,
+            action="request_approval",
+            reason="Ticket updates need human approval",
+        ),
+    ])
+
+    agent = Agent(
+        name="ticket-agent",
+        model="gpt-4.1-mini",
+        instructions="Look up tickets and classify priority. Never modify without approval.",
+        tools=[lookup_ticket],
+        fail_safe=FailSafeConfig(
+            max_steps=10,
+            max_tool_calls=5,
+            max_total_cost_usd=0.10,
+        ),
+    )
+
+    runner = Runner(
+        policy_engine=policy,
+        config=RunnerConfig(sanitize_tool_output=True),
+    )
+    ```
+
+    **Focus on:**
+    - Every tool has a Pydantic model — no untyped arguments
+    - Cost limits are always set (`max_total_cost_usd`)
+    - Dangerous operations require approval
+
+    **Move to Phase 3 when:** Your agent works reliably with tools and policies, and you're ready to deploy.
+
   </Step>
-  <Step title="Instrument early">
-    Add telemetry and capture run metrics before scaling traffic. It is much harder to add observability to a system that is already in production than to one that is still in development.
+
+  <Step title="Phase 3: Production controls" icon="server">
+    Add the infrastructure for monitoring, testing, and safe deployment.
+
+    **What to add:**
+    - Telemetry (console for dev, OTEL for prod)
+    - Eval suite with at least 5 test cases
+    - Memory persistence for multi-turn conversations
+    - Streaming for user-facing UIs
+
+    **Code example:**
+
+    ```python
+    from afk.core import Runner, RunnerConfig
+    from afk.evals import run_suite, EvalBudget
+    from afk.evals.models import EvalCase, EvalSuiteConfig
+
+    # Production runner
+    runner = Runner(
+        telemetry="otel",
+        telemetry_config={"service_name": "ticket-agent"},
+        config=RunnerConfig(interaction_mode="headless"),
+    )
+
+    # Eval suite for CI
+    suite = run_suite(
+        runner_factory=lambda: Runner(),
+        cases=[
+            EvalCase(
+                name="basic-lookup",
+                agent=agent,
+                user_message="Check ticket TK-1234",
+                budget=EvalBudget(max_total_cost_usd=0.05),
+            ),
+            EvalCase(
+                name="unknown-ticket",
+                agent=agent,
+                user_message="Check ticket TK-9999",
+            ),
+        ],
+        config=EvalSuiteConfig(fail_fast=True),
+    )
+    assert suite.failed == 0, f"Eval failures: {suite.failed}/{suite.total}"
+    ```
+
+    **Focus on:**
+    - Evals run in CI on every pull request
+    - Alerting on error rate and latency
+    - Memory compaction for long-running threads
+
+    **Move to Phase 4 when:** Your agent is in production and you need structured release management.
+
   </Step>
-  <Step title="Gate releases on evals">
-    Write eval cases that cover your critical paths. Run them in CI. Block deployments that cause regressions. This is the single most impactful practice for maintaining agent quality over time.
+
+  <Step title="Phase 4: Release discipline" icon="rocket">
+    Establish processes for safe agent evolution.
+
+    **What to add:**
+    - Golden trace comparison for regression detection
+    - Budget-gated CI (releases blocked if evals fail)
+    - Canary deployments with cost monitoring
+    - Documentation for on-call and incident response
+
+    **Practices:**
+    - Run the full eval suite before every release
+    - Compare golden traces to catch behavioral drift
+    - Monitor cost-per-run trends for budget anomalies
+    - Keep system prompts in version-controlled files (not inline strings)
+
+    **This phase never ends** — it's the ongoing discipline of running agents in production.
+
   </Step>
 </Steps>
 
-## For Coding Agents and Automation
+---
 
-When generating AFK code (whether by hand or with an AI coding agent), enforce this order:
+## Phase checklist
 
-1. **Define types and contracts** — Pydantic models, tool args schemas, agent configurations
-2. **Implement runtime behavior** — Tool handlers, agent instructions, delegation plans
-3. **Add tests for success and failure paths** — Including timeout, cancellation, and invalid input scenarios
-4. **Wire observability and docs examples** — Telemetry sinks, eval cases, usage examples
+Use this to track your progress:
 
-This order ensures that generated code is always aligned with AFK's contract-first architecture. Skipping step 1 and jumping straight to implementation is the most common source of fragile agent code.
+| Phase | Milestone                                           | Status |
+| ----- | --------------------------------------------------- | ------ |
+| 1     | Agent produces correct output for 20+ test cases    | ☐      |
+| 2     | Tools have Pydantic models, FailSafe limits are set | ☐      |
+| 2     | Policy rules gate all mutating operations           | ☐      |
+| 3     | Telemetry is configured and exporting               | ☐      |
+| 3     | Eval suite runs in CI with ≥ 5 cases                | ☐      |
+| 3     | Memory persistence is configured                    | ☐      |
+| 4     | Golden traces are captured and compared             | ☐      |
+| 4     | Releases are gated by eval pass rate                | ☐      |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Building with AI" icon="hammer" href="/library/building-with-ai">
+    Production patterns, common architectures, and anti-patterns.
+  </Card>
+  <Card title="Agentic Levels" icon="stairs" href="/library/agentic-levels">
+    Capability maturity model — know when to add complexity.
+  </Card>
+</CardGroup>

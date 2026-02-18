@@ -1,138 +1,253 @@
 ---
 title: Tools
-description: Tool system design, execution safety, and practical implementation patterns.
+description: Give agents typed capabilities through Python functions.
 ---
 
-Tools are how agents interact with the outside world. Every time an agent needs to do something beyond generating text — calling an API, querying a database, running a computation, sending a notification — it does it through a tool.
+Tools let agents take actions — query databases, call APIs, run calculations, write files, or anything you can express in Python. AFK handles schema generation, argument validation, policy gates, execution, and output sanitization.
 
-AFK treats tools as the **side-effect surface** of your agent system. Because tools are where real-world consequences happen, the tool system is designed with safety, validation, and auditability as first-class concerns.
-
-## How Tool Calls Work
-
-When an agent calls a tool, the call goes through a multi-step pipeline before your handler function runs. Each step in the pipeline adds a layer of safety.
-
-```mermaid
-flowchart LR
-    Proposed[Model proposes call] --> Validate[Schema validate]
-    Validate --> Policy[Policy gate]
-    Policy --> Exec[Execute handler]
-    Exec --> Sanitize[Sanitize output]
-    Sanitize --> Emit[Emit lifecycle events]
-```
-
-Here is what happens at each step:
-
-1. **Model proposes call** — The LLM sees the tool's JSON schema in its context and decides to call it, providing arguments as JSON.
-
-2. **Schema validate** — AFK validates the LLM's arguments against your tool's Pydantic `args_model`. If the arguments are malformed (wrong types, missing required fields, extra fields), the call is rejected before your handler runs. You never need to validate input inside your tool function.
-
-3. **Policy gate** — The runner's policy engine evaluates whether this tool call should be allowed. The policy can `allow` the call, `deny` it (with a reason), or `request_approval` from a human operator. This is how you enforce guardrails like "never allow database writes in staging" or "require human approval for financial transactions."
-
-4. **Execute handler** — Your tool function runs with the validated, typed arguments. If the tool raises an exception, it is caught and recorded as a failed tool execution.
-
-5. **Sanitize output** — The tool's return value is sanitized before being sent back to the LLM. This includes truncating overly large outputs (configurable via `tool_output_max_chars` in `RunnerConfig`) and ensuring the output is JSON-serializable.
-
-6. **Emit lifecycle events** — AFK emits telemetry events for every tool call, recording the tool name, arguments, output, success/failure status, and latency. These events are captured by your telemetry sink for observability.
-
-## Defining Tools
-
-Every tool in AFK follows the same pattern: a Pydantic model for arguments and a handler function that takes those arguments and returns a result.
+## Your first tool
 
 ```python
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from afk.tools import tool
 
-class RestartArgs(BaseModel):
-    service: str = Field(description="Name of the service to restart")
-    force: bool = Field(default=False, description="Force restart without graceful shutdown")
+class GreetArgs(BaseModel):
+    name: str
 
-@tool(args_model=RestartArgs, name="restart_service")
-def restart_service(args: RestartArgs) -> dict[str, str]:
-    """Restart a service by name."""
-    if args.force:
-        return {"status": "force_restarted", "service": args.service}
-    return {"status": "restarted", "service": args.service}
+@tool(name="greet", description="Greet someone by name.")
+def greet(args: GreetArgs) -> str:
+    return f"Hello, {args.name}!"
 ```
 
-The `@tool` decorator does several things:
+That's a complete tool. The `@tool` decorator generates the JSON schema from the Pydantic model, which the LLM uses to understand what arguments to pass.
 
-- Generates a JSON schema from your `RestartArgs` model, which is included in the LLM's context so it knows how to call the tool
-- Wraps your function with validation, error handling, and lifecycle event emission
-- Makes the tool compatible with AFK's tool registry and middleware system
+## How tool calling works
 
-The Pydantic model's `Field` descriptions are included in the generated JSON schema, which helps the LLM understand what each argument does. Good field descriptions lead to more accurate tool calls.
+```mermaid
+sequenceDiagram
+    participant LLM
+    participant Runner
+    participant Tool
 
-## Tool Results
+    LLM->>Runner: tool_call("greet", {"name": "Alex"})
+    Runner->>Runner: Validate args via Pydantic
+    Runner->>Runner: Check policy gate
+    Runner->>Tool: Execute handler
+    Tool-->>Runner: Return result
+    Runner->>Runner: Sanitize output
+    Runner-->>LLM: tool_result("Hello, Alex!")
+    LLM-->>Runner: Final text response
+```
 
-Every tool execution produces a `ToolResult` that captures the outcome:
+<Steps>
+  <Step title="LLM decides to call a tool">
+    Based on the user's message and the tool schemas, the LLM emits a
+    `tool_call` with the function name and arguments.
+  </Step>
+  <Step title="Validate arguments">
+    AFK parses the arguments through the Pydantic model. Invalid arguments
+    generate a validation error that's sent back to the LLM for self-correction.
+  </Step>
+  <Step title="Check policy gate">
+    If a [PolicyEngine](/library/security-model) is attached, the tool call is
+    checked against policy rules (`allow`, `deny`, or `request_approval`).
+  </Step>
+  <Step title="Execute the handler">
+    The tool function runs with validated arguments. Pre/post hooks and
+    middleware execute around the handler.
+  </Step>
+  <Step title="Sanitize output">
+    The output is truncated to `tool_output_max_chars`, stripped of potential
+    prompt injection vectors (if `sanitize_tool_output=True`), and formatted for
+    the LLM.
+  </Step>
+  <Step title="Return to LLM">
+    The sanitized result is appended to the conversation and the LLM generates
+    its next response.
+  </Step>
+</Steps>
+
+## Tool patterns
+
+<Tabs>
+  <Tab title="Simple return">
+    Return a string or dict directly.
+
+    ```python
+    class TimeArgs(BaseModel):
+        timezone: str = "UTC"
+
+    @tool(name="current_time", description="Get the current time.")
+    def current_time(args: TimeArgs) -> str:
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc).isoformat()
+    ```
+
+  </Tab>
+  <Tab title="Structured output">
+    Return a dict for structured data.
+
+    ```python
+    class SearchArgs(BaseModel):
+        query: str
+        limit: int = 5
+
+    @tool(name="search", description="Search the knowledge base.")
+    def search(args: SearchArgs) -> dict:
+        results = db.search(args.query, limit=args.limit)
+        return {
+            "count": len(results),
+            "results": [{"title": r.title, "score": r.score} for r in results],
+        }
+    ```
+
+  </Tab>
+  <Tab title="Async tool">
+    Use `async def` for I/O-heavy tools.
+
+    ```python
+    class FetchArgs(BaseModel):
+        url: str
+
+    @tool(name="fetch_page", description="Fetch a web page.")
+    async def fetch_page(args: FetchArgs) -> dict:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(args.url)
+            return {"status": resp.status_code, "body": resp.text[:2000]}
+    ```
+
+  </Tab>
+  <Tab title="With context">
+    Access agent context in tool handlers.
+
+    ```python
+    class DBArgs(BaseModel):
+        query: str
+
+    @tool(name="query_db", description="Run a database query.")
+    def query_db(args: DBArgs, context: dict) -> dict:
+        db_url = context["db_url"]  # ← Set in Agent(context={"db_url": "..."})
+        return execute_query(db_url, args.query)
+    ```
+
+  </Tab>
+</Tabs>
+
+## Read-only vs mutating tools
+
+Mark tools as read-only or mutating to guide policy decisions:
 
 ```python
-from afk.tools.core.base import ToolResult
+@tool(name="list_files", description="List files in a directory.", read_only=True)
+def list_files(args: ListArgs) -> list:
+    ...
 
-# On success:
-ToolResult(output={"status": "restarted", "service": "api"}, success=True, tool_name="restart_service")
-
-# On failure:
-ToolResult(output=None, success=False, error_message="Service not found", tool_name="restart_service")
+@tool(name="delete_file", description="Delete a file.", read_only=False)
+def delete_file(args: DeleteArgs) -> dict:
+    ...
 ```
 
-The `ToolResult` is sent back to the LLM as the tool's response, and it is also recorded in `AgentResult.tool_executions` as a `ToolExecutionRecord` with additional metadata like latency and tool call ID.
+<Tip>
+  **Policy best practice:** Gate all mutating tools with `request_approval` or
+  `deny` by default. Only allow read-only tools without gates.
+</Tip>
 
-## Hooks and Middleware
+## Hooks and middleware
 
-For cross-cutting concerns — logging, rate limiting, access control, argument transformation — AFK supports **pre-hooks**, **post-hooks**, and **middleware** on tools.
-
-**Pre-hooks** run before the tool handler. They can inspect or transform the arguments, or reject the call entirely.
-
-**Post-hooks** run after the tool handler. They can inspect or transform the output.
-
-**Middleware** wraps the entire tool execution, giving you full control over the call chain (similar to middleware in web frameworks).
+Add pre/post hooks to tools for logging, validation, or transformation:
 
 ```python
-from afk.tools.core.base import PreHook, PostHook, Middleware
+from afk.tools import tool, before_tool, after_tool
 
-class AuditLogHook(PreHook):
-    """Log every tool call to an audit trail."""
-    async def call(self, raw_args, *, ctx=None, **kwargs):
-        print(f"[AUDIT] Tool called with args: {raw_args}")
-        return ToolResult(output=raw_args, success=True)
+@before_tool("*")  # ← Runs before every tool call
+def log_tool_call(event):
+    print(f"Calling {event.tool_name} with {event.args}")
 
-class SensitiveFieldRedactor(PostHook):
-    """Redact sensitive fields from tool output before sending to LLM."""
-    async def call(self, raw_args, *, ctx=None, **kwargs):
-        output = raw_args  # post-hooks receive the tool's output
-        if isinstance(output, dict) and "password" in output:
-            output["password"] = "***REDACTED***"
-        return ToolResult(output=output, success=True)
+@after_tool("*")   # ← Runs after every tool call
+def log_tool_result(event):
+    print(f"{event.tool_name} returned in {event.latency_ms:.0f}ms")
 ```
 
-Use hooks and middleware sparingly — they add complexity. The most common use cases are audit logging, field redaction, and rate limiting.
+<AccordionGroup>
+  <Accordion title="Hook execution order">
+    1. **Before hooks** (global `*` hooks first, then tool-specific)
+    2. **Policy gate** (allow / deny / request_approval)
+    3. **Tool handler** (the actual function)
+    4. **After hooks** (tool-specific first, then global `*`)
+    5. **Output sanitization**
+  </Accordion>
+  <Accordion title="Tool middleware">
+    Middleware wraps the entire tool execution pipeline:
 
-## Read-Only vs. Mutating Tools
+    ```python
+    from afk.tools import tool_middleware
 
-A useful design pattern is to separate your tools into read-only (safe to call without approval) and mutating (may need policy gates or human approval).
+    @tool_middleware
+    async def timing_middleware(call, next_handler):
+        start = time.time()
+        result = await next_handler(call)
+        elapsed = time.time() - start
+        print(f"{call.tool_name} took {elapsed:.3f}s")
+        return result
+    ```
 
-| Type | Examples | Typical policy |
-|---|---|---|
-| **Read-only** | `lookup_ticket`, `search_docs`, `get_metrics` | Allow without approval |
-| **Mutating** | `restart_service`, `delete_record`, `deploy_release` | Require approval or restrict by environment |
+  </Accordion>
+</AccordionGroup>
 
-This separation makes it easier to write policy rules: allow all read-only tools, require approval for mutating tools, deny mutating tools in production unless the operator has admin role.
+## Common tools cookbook
 
-## Builder Checklist
+<AccordionGroup>
+  <Accordion title="HTTP request tool">
+    ```python
+    class HttpArgs(BaseModel):
+        method: str = "GET"
+        url: str
+        body: dict | None = None
 
-When designing tools for your AFK system:
+    @tool(name="http_request", description="Make an HTTP request.")
+    async def http_request(args: HttpArgs) -> dict:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.request(args.method, args.url, json=args.body)
+            return {"status": resp.status_code, "body": resp.text[:4000]}
+    ```
 
-- **Keep tool schemas minimal and explicit.** Only include fields the tool actually needs. Do not pass entire request contexts or large payloads as tool arguments.
-- **Return JSON-safe results.** Dicts, lists, strings, numbers, booleans, and `None`. Avoid returning complex objects that cannot be serialized.
-- **Separate read-only tools from mutating tools.** This makes policy rules cleaner and reduces the approval burden on operators.
-- **Add policy checks for privileged operations.** Any tool that modifies state, costs money, or has irreversible effects should go through a policy gate.
-- **Design for idempotency.** If a tool call might be retried (due to checkpointing and resume), its handler should produce the same result when called twice with the same arguments.
+  </Accordion>
+  <Accordion title="File read tool">
+    ```python
+    class ReadFileArgs(BaseModel):
+        path: str
+        max_lines: int = 100
 
-## For Coding Agents
+    @tool(name="read_file", description="Read a file's contents.", read_only=True)
+    def read_file(args: ReadFileArgs) -> dict:
+        with open(args.path) as f:
+            lines = f.readlines()[:args.max_lines]
+        return {"content": "".join(lines), "total_lines": len(lines)}
+    ```
 
-When creating tools automatically (e.g., with an AI coding agent):
+  </Accordion>
+  <Accordion title="Calculator tool">
+    ```python
+    class CalcArgs(BaseModel):
+        expression: str
 
-1. **Always generate a strict args model.** Every tool must have a Pydantic `BaseModel` with explicit field types and descriptions.
-2. **Avoid dynamic `Any` payloads.** If you use `Any` in your args model, the LLM has no schema guidance and will guess at the structure.
-3. **Include a failure-return shape.** Make sure your tool function handles errors gracefully and returns a structured error result, rather than raising unhandled exceptions.
+    @tool(name="calculate", description="Evaluate a math expression.")
+    def calculate(args: CalcArgs) -> dict:
+        import ast
+        result = eval(compile(ast.parse(args.expression, mode='eval'), '<calc>', 'eval'))
+        return {"expression": args.expression, "result": result}
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Streaming" icon="signal" href="/library/streaming">
+    Watch tool calls happen in real time.
+  </Card>
+  <Card title="Security Model" icon="shield" href="/library/security-model">
+    Policy gates, sandbox profiles, and tool allowlists.
+  </Card>
+</CardGroup>

@@ -1,93 +1,174 @@
 ---
 title: Mental Model
-description: How to think about AFK when designing and shipping agent systems.
+description: Three coordinated loops that drive every AFK agent.
 ---
 
-Before writing any code with AFK, it helps to understand the mental model behind the library. This page explains how AFK structures agent systems and why it makes the design choices it does. Once you internalize this model, every API decision in AFK will feel intuitive.
+AFK agents execute through three coordinated loops — **Decision**, **Execution**, and **Assurance**. Understanding these loops helps you reason about agent behavior, debug issues, and design systems that scale predictably.
 
-## The Core Mental Model
-
-Every production agent system needs three things working together: something that decides what to do, something that does it safely, and something that tells you whether it worked. AFK organizes these into three coordinated loops:
+## The three loops
 
 ```mermaid
 flowchart LR
-    D[Decision Loop] --> E[Execution Loop]
-    E --> A[Assurance Loop]
-    A -->|feedback| D
+    subgraph Decision["🧠 Decision Loop"]
+        direction TB
+        D1["Receive input"]
+        D2["Select action"]
+        D3["Emit tool calls or text"]
+        D1 --> D2 --> D3
+    end
 
-    style D fill:#0B6E4F,color:#fff
-    style E fill:#2FB67E,color:#fff
-    style A fill:#084C38,color:#fff
+    subgraph Execution["⚡ Execution Loop"]
+        direction TB
+        E1["Validate arguments"]
+        E2["Check policy gate"]
+        E3["Run tool handler"]
+        E4["Sanitize output"]
+        E1 --> E2 --> E3 --> E4
+    end
+
+    subgraph Assurance["🛡️ Assurance Loop"]
+        direction TB
+        A1["Check step limits"]
+        A2["Check cost budget"]
+        A3["Check wall time"]
+        A4["Classify failures"]
+        A1 --> A2 --> A3 --> A4
+    end
+
+    Decision -->|"tool calls"| Execution
+    Execution -->|"results"| Decision
+    Assurance -->|"enforce limits"| Decision
+    Assurance -->|"enforce limits"| Execution
 ```
 
-1. **Decision loop** — The agent and LLM work together to choose the next action. This is where your instructions, model selection, and routing logic live. The agent defines *what* the system should do; the LLM provides the reasoning to get there.
+<AccordionGroup>
+  <Accordion title="🧠 Decision Loop — what the LLM does" icon="brain">
+    The Decision Loop is the model's turn. On each step:
+    1. The runner sends the conversation history + tool schemas to the LLM
+    2. The LLM decides whether to respond with text (done) or request tool calls (continue)
+    3. If tool calls are requested, they flow to the Execution Loop
 
-2. **Execution loop** — The runner takes the decision and executes it safely. Tool calls go through schema validation, policy gates, and optional human approval before anything actually happens. Subagent delegation follows the same pattern. The runner owns all state transitions and ensures every action is auditable.
+    **You control this with:** agent instructions, model choice, tool availability
 
-3. **Assurance loop** — Observability and evals close the feedback loop. Telemetry captures what happened during execution, and eval suites validate that the system is behaving correctly over time. This loop is what turns a prototype into a production system.
+    ```python
+    # The Decision Loop is shaped by these fields
+    agent = Agent(
+        instructions="...",    # ← What the model knows
+        model="gpt-4.1-mini", # ← How the model thinks
+        tools=[...],           # ← What the model can do
+    )
+    ```
 
-**If any loop is missing, production quality drops:**
+  </Accordion>
 
-| Missing loop | What goes wrong |
-|---|---|
-| No decision controls | The agent behaves unpredictably — no instruction boundaries, no routing logic, no model constraints. |
-| No execution controls | Side effects happen without validation — no policy gates, no approval flows, no safe failure modes. |
-| No assurance loop | Regressions happen silently — no telemetry to debug incidents, no evals to catch quality drift. |
+  <Accordion title="⚡ Execution Loop — what happens when a tool is called" icon="bolt">
+    The Execution Loop handles every tool call:
+    1. **Validate** arguments against the Pydantic schema
+    2. **Policy gate** — allow, deny, or defer for human approval
+    3. **Execute** the handler (with hooks and middleware)
+    4. **Sanitize** the output (truncate, strip injection vectors)
+    5. **Return** the result to the Decision Loop
 
-The key insight is that these loops are not optional add-ons. A system with great decision logic but no execution safety will eventually cause real-world damage. A system with perfect execution but no observability will silently degrade. AFK gives you all three from day one.
+    **You control this with:** tool definitions, policy rules, sandbox profiles
 
-## Design AFK Systems as Contracts
+    ```python
+    # The Execution Loop is shaped by these
+    @tool(name="query_db", description="Run a database query.")
+    def query_db(args: QueryArgs) -> dict:
+        ...
 
-AFK is built on a contract-first philosophy. Instead of relying on implicit conventions buried in prompts or ad-hoc wrappers, every meaningful boundary in the system is defined by an explicit contract — a typed interface that both sides agree to.
+    policy = PolicyEngine(rules=[
+        PolicyRule(
+            condition=lambda e: e.tool_name == "query_db",
+            action="request_approval",
+        ),
+    ])
+    ```
 
-This matters for four reasons:
+  </Accordion>
 
-- **Agents declare their capabilities** through typed contracts (`Agent` with `name`, `model`, `instructions`, `tools`, `subagents`). Other parts of the system can introspect what an agent can do without running it.
-- **LLM contracts normalize provider behavior** so you can swap between OpenAI, Anthropic, LiteLLM, or any future provider without changing orchestration logic.
-- **Queue contracts define async execution semantics** — enqueue, dequeue, complete, fail, retry — so your task processing works the same whether backed by in-memory queues or Redis.
-- **Communication contracts define delivery and correlation** for agent-to-agent messaging, including idempotency keys and dead-letter handling.
+  <Accordion title="🛡️ Assurance Loop — what keeps things safe" icon="shield">
+    The Assurance Loop runs continuously, enforcing limits on both other loops:
+    - **Step count** — stops the agent after N iterations
+    - **Tool call count** — prevents excessive tool usage
+    - **Cost budget** — stops if estimated cost exceeds the limit
+    - **Wall time** — hard timeout on the entire run
+    - **Failure classification** — retryable, terminal, or non-fatal
 
-This contract-first approach is what allows AFK to scale across different backends without rewriting application logic. When you add a new provider or swap a queue backend, the contracts stay the same — only the adapter implementation changes.
+    **You control this with:** `FailSafeConfig`
 
-## How to Make Decisions Quickly
+    ```python
+    agent = Agent(
+        ...,
+        fail_safe=FailSafeConfig(
+            max_steps=10,
+            max_tool_calls=5,
+            max_total_cost_usd=0.25,
+            max_wall_time_s=30.0,
+        ),
+    )
+    ```
 
-When you are starting a new feature or system with AFK, use this decision tree to determine the right level of complexity. Start simple and add layers only when you hit a concrete need.
+  </Accordion>
+</AccordionGroup>
+
+## Think in contracts
+
+AFK is built on a contract-first design. Every interaction between components is defined by typed data structures:
+
+| Boundary           | Contract                                             | What flows                              |
+| ------------------ | ---------------------------------------------------- | --------------------------------------- |
+| Runner → LLM       | `LLMRequest` / `LLMResponse`                         | Messages, tool schemas, model responses |
+| Runner → Tool      | `ToolCall` / `ToolResult`                            | Validated arguments, execution output   |
+| Runner → Subagent  | `AgentInvocationRequest` / `AgentInvocationResponse` | Delegate task and receive result        |
+| Runner → Memory    | Checkpoint records                                   | Conversation state for resume/replay    |
+| Runner → Telemetry | `AgentRunEvent`, `RunMetrics`                        | Spans, metrics, audit trail             |
+
+<Tip>
+  **Contracts are Pydantic models.** This means every boundary is validated at
+  runtime — malformed data causes clear errors, not silent bugs. When you see a
+  validation error, it's AFK telling you exactly where the contract was
+  violated.
+</Tip>
+
+## Decision tree: how complex should my system be?
+
+Not sure what to build? Start at the top and follow the path that matches your use case.
 
 ```mermaid
 flowchart TD
-    Start[New requirement] --> Q1{Needs side effects?}
-    Q1 -->|No| Single[Single agent + LLM only]
-    Q1 -->|Yes| Q2{Requires external action?}
-    Q2 -->|Yes| Tools[Add typed tools + policy gates]
-    Q2 -->|No| Q3{Needs specialist decomposition?}
-    Q3 -->|Yes| Delegation[Add subagents + DAG orchestration]
-    Q3 -->|No| Single
-    Tools --> Q4{Needs async throughput?}
-    Delegation --> Q4
-    Q4 -->|Yes| Queue[Add queue contracts + workers]
-    Q4 -->|No| Observe[Add observability + evals]
-    Queue --> Observe
+    Start["What does your agent need to do?"]
+    Start -->|"Just answer questions"| L1["Level 1: Single Agent"]
+    Start -->|"Take actions"| Tools{"Does it need tools?"}
+    Tools -->|"Yes"| L2["Level 2: Agent + Tools"]
+    Tools -->|"No"| L1
+    L2 --> Multi{"Multiple specialties?"}
+    Multi -->|"Yes"| L3["Level 3: Multi-Agent"]
+    Multi -->|"No"| L2
+    L3 --> Async{"Long-running or async tasks?"}
+    Async -->|"Yes"| L4["Level 4: Queue-Backed"]
+    Async -->|"No"| L3
+    L4 --> External{"Cross-system interop?"}
+    External -->|"Yes"| L5["Level 5: A2A Protocol"]
+    External -->|"No"| L4
+
+    style L1 fill:#d4edda,stroke:#28a745
+    style L2 fill:#d4edda,stroke:#28a745
+    style L3 fill:#fff3cd,stroke:#ffc107
+    style L4 fill:#fff3cd,stroke:#ffc107
+    style L5 fill:#f8d7da,stroke:#dc3545
 ```
 
-Here is how to read this tree:
+> [!TIP]
+> **Start at Level 1.** Only move up when you have clear evidence that your current level isn't enough. Each level adds complexity that you need to manage and test.
 
-- **Start with a single agent and an LLM.** If your requirement is purely conversational — answering questions, summarizing text, classifying inputs — you do not need tools, subagents, or queues. A single `Agent` with clear `instructions` and a `Runner.run_sync()` call is enough.
+## What success looks like
 
-- **Add tools when you need side effects.** If the agent needs to call an API, query a database, or trigger an external action, wrap that action in a typed `Tool` with a Pydantic args model. This gives you schema validation, policy gates, and audit trails automatically.
+A mature AFK implementation exhibits these properties:
 
-- **Add subagents when you need specialist decomposition.** If the problem naturally breaks into sub-tasks that benefit from different instructions or models (e.g., one agent triages, another diagnoses, another writes), model them as subagents with a `DelegationPlan`.
-
-- **Add queues when you need async throughput.** If tasks arrive faster than you can process them, or you need durable retry semantics, add a `TaskQueue` with an `ExecutionContract` and workers.
-
-- **Always add observability and evals.** No matter how simple the system, instrument it with telemetry and validate it with evals before shipping. This is the assurance loop, and it is never optional for production.
-
-## What Success Looks Like
-
-A mature AFK implementation has these characteristics:
-
-- **Explicit action boundaries** — Every side effect goes through a typed tool or delegation contract. Nothing happens implicitly.
-- **Deterministic failure behavior** — Every failure mode is classified (retryable vs. terminal) and handled explicitly. No silent swallowing of errors.
-- **Release gates driven by evals** — You do not ship changes without running your eval suite. Quality thresholds in CI block regressions before they reach production.
-- **Telemetry rich enough for incident debugging** — When something goes wrong at 3 AM, you can trace exactly what happened: which agent ran, what tools were called, what the LLM returned, and where it failed.
-
-If your system has all four of these properties, you have a production-grade agent system. If any are missing, that is the next thing to work on.
+- **Every tool has a Pydantic model** — no untyped arguments
+- **Every run has cost limits** — `max_total_cost_usd` is always set
+- **Policy gates protect mutations** — dangerous actions require approval
+- **Evals cover core behaviors** — regression tests catch prompt drift
+- **Observability is on from day one** — even if it's just the console exporter
+- **Failures are classified** — the system knows what to retry and what to abort

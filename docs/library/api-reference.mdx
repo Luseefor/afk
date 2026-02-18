@@ -1,20 +1,94 @@
 ---
 title: API Reference
-description: Public AFK Python SDK APIs by module.
+description: Quick import reference for the AFK Python SDK.
 ---
 
-## Top-level imports
+This page provides a quick reference for commonly used AFK imports, organized by task. For full module documentation, see the [Module Reference](/library/full-module-reference).
+
+## Quick import map
+
+| Task                    | Import                                              | From               |
+| ----------------------- | --------------------------------------------------- | ------------------ |
+| Define an agent         | `from afk.agents import Agent`                      | `afk.agents`       |
+| Configure safety limits | `from afk.agents import FailSafeConfig`             | `afk.agents`       |
+| Set up policy engine    | `from afk.agents import PolicyEngine, PolicyRule`   | `afk.agents`       |
+| Run an agent            | `from afk.core import Runner`                       | `afk.core`         |
+| Configure the runner    | `from afk.core import RunnerConfig`                 | `afk.core`         |
+| Define a tool           | `from afk.tools import tool`                        | `afk.tools`        |
+| Build an LLM client     | `from afk.llms import LLMBuilder`                   | `afk.llms`         |
+| Run evals               | `from afk.evals import run_suite`                   | `afk.evals`        |
+| Define eval cases       | `from afk.evals.models import EvalCase, EvalBudget` | `afk.evals.models` |
+| A2A client              | `from afk.a2a import A2AClient`                     | `afk.a2a`          |
+| MCP server              | `from afk.mcp import MCPServer`                     | `afk.mcp`          |
+| Task queue              | `from afk.queues import TaskQueue, TaskItem`        | `afk.queues`       |
+
+## Most common pattern
 
 ```python
-import afk
-from afk import agents, core, llms, queues, evals, observability
+from afk.agents import Agent, FailSafeConfig
+from afk.tools import tool
+from afk.core import Runner, RunnerConfig
+from pydantic import BaseModel
 ```
 
-## Module quick links
+## Agents module
 
 <CardGroup cols={2}>
-  <Card title="Agents API" href="/library/agents" icon="bot">Definitions, delegation, A2A contracts.</Card>
-  <Card title="Runner API" href="/library/core-runner" icon="play">Run lifecycle and control handle methods.</Card>
-  <Card title="LLMs API" href="/llms/index" icon="sparkles">Builder/client, providers, routing/cache registries.</Card>
-  <Card title="Queues API" href="/library/task-queues" icon="list-todo">Task queue contracts and worker behavior.</Card>
+  <Card title="Agent" href="/library/agents">
+    Core agent configuration — model, instructions, tools, subagents.
+  </Card>
+  <Card title="FailSafeConfig" href="/library/agents#adding-safety-limits">
+    Step limits, cost budgets, timeout, failure policies.
+  </Card>
+  <Card title="PolicyEngine" href="/library/security-model">
+    Policy rules for gating tool calls and actions.
+  </Card>
+  <Card
+    title="PolicyRule"
+    href="/library/security-model#boundary-1-policy-engine"
+  >
+    Individual policy rule definition.
+  </Card>
 </CardGroup>
+
+## Core module
+
+<CardGroup cols={2}>
+  <Card title="Runner" href="/library/core-runner">
+    Agent execution engine — sync, async, stream.
+  </Card>
+  <Card title="RunnerConfig" href="/library/core-runner#runner-configuration">
+    Safety defaults, sanitization, interaction mode.
+  </Card>
+  <Card title="AgentResult" href="/library/core-runner#agentresult-reference">
+    Run output — final_text, state, tool/subagent executions, usage.
+  </Card>
+</CardGroup>
+
+## Tools module
+
+<CardGroup cols={2}>
+  <Card title="@tool decorator" href="/library/tools">
+    Define typed tool functions with Pydantic models.
+  </Card>
+  <Card title="Hooks" href="/library/tools#hooks-and-middleware">
+    Pre/post hooks and middleware for tool execution.
+  </Card>
+</CardGroup>
+
+## LLM module
+
+<CardGroup cols={2}>
+  <Card title="LLMBuilder" href="/llms/index">
+    Builder pattern for LLM client configuration.
+  </Card>
+  <Card title="LLMRequest / LLMResponse" href="/llms/contracts">
+    Normalized contracts for LLM interaction.
+  </Card>
+</CardGroup>
+
+## API stability
+
+AFK follows semantic versioning. Public exports from `afk.agents`, `afk.core`, `afk.tools`, `afk.llms`, and `afk.evals` are considered stable and will not change without a major version bump.
+
+Internal modules (prefixed with `_` or under `afk.core.runner._internal`) are not part of the public API and may change at any time.
