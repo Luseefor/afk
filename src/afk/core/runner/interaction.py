@@ -8,13 +8,20 @@ Subagent and interaction/policy orchestration mixin.
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
 import time
 from typing import Any
 
+from ...agents.a2a import InternalA2AProtocol
+from ...agents.contracts import AgentInvocationRequest, AgentInvocationResponse
 from ...agents.core.base import BaseAgent
+from ...agents.delegation import (
+    DelegationEdge,
+    DelegationNode,
+    DelegationPlan,
+    RetryPolicy,
+)
 from ...agents.errors import (
     AgentExecutionError,
     SubagentExecutionError,
@@ -36,9 +43,10 @@ from ...agents.types import (
     UserInputRequest,
     json_value_from_tool_result,
 )
-from ...llms.types import Message
+from ...llms.types import JSONValue, Message
 from ...memory import MemoryStore
 from ...observability import contracts as obs_contracts
+from ..runtime import DelegationEngine
 from .types import _RunHandle
 
 
@@ -51,6 +59,7 @@ class RunnerInteractionMixin:
         agent: BaseAgent,
         targets: list[str],
         parallel: bool,
+        router_metadata: dict[str, JSONValue] | None,
         context: dict[str, Any],
         thread_id: str,
         depth: int,
@@ -62,12 +71,14 @@ class RunnerInteractionMixin:
         user_id: str | None,
     ) -> tuple[list[SubagentExecutionRecord], str]:
         """
-        Execute selected subagents and return records plus bridge text.
+        Execute selected subagents through DAG orchestration and A2A protocol.
 
         Args:
             agent: Parent agent declaring available subagents.
             targets: Subagent names selected by router/policy.
             parallel: Whether selected subagents run in parallel.
+            router_metadata: Optional router metadata carrying a full
+                `delegation_plan` payload.
             context: Parent run context snapshot.
             thread_id: Thread id used for child run continuity.
             depth: Current nesting depth.
@@ -83,17 +94,52 @@ class RunnerInteractionMixin:
             transcript.
         """
         index = {sa.name: sa for sa in agent.subagents}
-        selected: list[BaseAgent] = []
+        selected_names: list[str] = []
         for name in targets:
-            sa = index.get(name)
-            if sa is None:
+            normalized = name.strip()
+            if not normalized:
+                continue
+            if normalized not in index:
                 raise SubagentRoutingError(f"Unknown subagent target '{name}'")
-            selected.append(sa)
-        if not parallel and selected:
-            selected = selected[:1]
+            selected_names.append(normalized)
 
-        async def _one(sub: BaseAgent) -> tuple[SubagentExecutionRecord, str]:
-            """Execute one subagent and return execution record plus bridge text."""
+        if not parallel and selected_names:
+            selected_names = selected_names[:1]
+        if not selected_names:
+            return [], ""
+
+        engine = DelegationEngine(
+            max_parallel_subagents_global=self.config.max_parallel_subagents_global,
+            max_parallel_subagents_per_parent=self.config.max_parallel_subagents_per_parent,
+            max_parallel_subagents_per_target_agent=self.config.max_parallel_subagents_per_target_agent,
+            subagent_queue_backpressure_limit=self.config.subagent_queue_backpressure_limit,
+        )
+
+        maybe_plan = self._delegation_plan_from_metadata(router_metadata)
+        plan = maybe_plan or engine.planner.create_plan(
+            targets=selected_names,
+            parallel=parallel,
+            max_parallelism=(
+                self.config.max_parallel_subagents_per_parent if parallel else 1
+            ),
+        )
+
+        async def _dispatch(request: AgentInvocationRequest) -> AgentInvocationResponse:
+            sub = index.get(request.target_agent)
+            if sub is None:
+                return AgentInvocationResponse(
+                    run_id=request.run_id,
+                    thread_id=request.thread_id,
+                    conversation_id=request.conversation_id,
+                    correlation_id=request.correlation_id,
+                    idempotency_key=request.idempotency_key,
+                    source_agent=request.target_agent,
+                    target_agent=request.source_agent,
+                    success=False,
+                    error=f"Unknown subagent target '{request.target_agent}'",
+                    metadata={"retryable": False},
+                )
+
             started = time.time()
             await self._emit(
                 handle,
@@ -104,7 +150,10 @@ class RunnerInteractionMixin:
                     thread_id=thread_id,
                     state="running",
                     step=step,
-                    data={"subagent_name": sub.name},
+                    data={
+                        "subagent_name": sub.name,
+                        "correlation_id": request.correlation_id,
+                    },
                 ),
                 user_id=user_id,
             )
@@ -121,6 +170,7 @@ class RunnerInteractionMixin:
                             for k, v in context.items()
                         },
                         subagent_name=sub.name,
+                        metadata=request.metadata,
                     ),
                     handle=handle,
                     memory=memory,
@@ -128,14 +178,46 @@ class RunnerInteractionMixin:
                     state="running",
                 )
                 if decision.action == "deny":
-                    raise SubagentExecutionError(
+                    reason = (
                         decision.reason or f"Subagent '{sub.name}' denied by policy"
+                    )
+                    await self._emit(
+                        handle,
+                        memory,
+                        AgentRunEvent(
+                            type="subagent_completed",
+                            run_id=run_id,
+                            thread_id=thread_id,
+                            state="running",
+                            step=step,
+                            data={
+                                "subagent_name": sub.name,
+                                "success": False,
+                                "error": reason,
+                            },
+                        ),
+                        user_id=user_id,
+                    )
+                    return AgentInvocationResponse(
+                        run_id=request.run_id,
+                        thread_id=request.thread_id,
+                        conversation_id=request.conversation_id,
+                        correlation_id=request.correlation_id,
+                        idempotency_key=request.idempotency_key,
+                        source_agent=sub.name,
+                        target_agent=request.source_agent,
+                        success=False,
+                        error=reason,
+                        metadata={"retryable": False},
                     )
 
                 inherited = self._build_subagent_context(
                     context=context,
                     inherit_keys=sub.inherit_context_keys,
                 )
+                for key, value in request.payload.items():
+                    inherited[str(key)] = value
+
                 sub_handle = await self.run_handle(
                     sub,
                     context=inherited,
@@ -146,14 +228,8 @@ class RunnerInteractionMixin:
                 out = await sub_handle.await_result()
                 if out is None:
                     raise SubagentExecutionError(f"Subagent '{sub.name}' cancelled")
+
                 latency_ms = (time.time() - started) * 1000.0
-                rec = SubagentExecutionRecord(
-                    subagent_name=sub.name,
-                    success=True,
-                    output_text=out.final_text,
-                    latency_ms=latency_ms,
-                )
-                bridge = f"Subagent '{sub.name}' result:\n{out.final_text}"
                 await self._emit(
                     handle,
                     memory,
@@ -163,20 +239,33 @@ class RunnerInteractionMixin:
                         thread_id=thread_id,
                         state="running",
                         step=step,
-                        data={"subagent_name": sub.name, "success": True},
+                        data={
+                            "subagent_name": sub.name,
+                            "success": True,
+                            "latency_ms": latency_ms,
+                        },
                     ),
                     user_id=user_id,
                 )
-                return rec, bridge
-            except Exception as e:
-                latency_ms = (time.time() - started) * 1000.0
-                rec = SubagentExecutionRecord(
-                    subagent_name=sub.name,
-                    success=False,
-                    error=str(e),
-                    latency_ms=latency_ms,
+                return AgentInvocationResponse(
+                    run_id=request.run_id,
+                    thread_id=request.thread_id,
+                    conversation_id=request.conversation_id,
+                    correlation_id=request.correlation_id,
+                    idempotency_key=request.idempotency_key,
+                    source_agent=sub.name,
+                    target_agent=request.source_agent,
+                    success=True,
+                    output={
+                        "final_text": out.final_text,
+                        "state": out.state,
+                        "run_id": out.run_id,
+                    },
+                    metadata={"latency_ms": latency_ms},
                 )
-                bridge = f"Subagent '{sub.name}' failed: {e}"
+            except Exception as exc:
+                latency_ms = (time.time() - started) * 1000.0
+                error_text = str(exc)
                 await self._emit(
                     handle,
                     memory,
@@ -189,21 +278,260 @@ class RunnerInteractionMixin:
                         data={
                             "subagent_name": sub.name,
                             "success": False,
-                            "error": str(e),
+                            "error": error_text,
+                            "latency_ms": latency_ms,
                         },
                     ),
                     user_id=user_id,
                 )
-                return rec, bridge
+                return AgentInvocationResponse(
+                    run_id=request.run_id,
+                    thread_id=request.thread_id,
+                    conversation_id=request.conversation_id,
+                    correlation_id=request.correlation_id,
+                    idempotency_key=request.idempotency_key,
+                    source_agent=sub.name,
+                    target_agent=request.source_agent,
+                    success=False,
+                    error=error_text,
+                    metadata={"retryable": True, "latency_ms": latency_ms},
+                )
 
-        if parallel:
-            rows = await asyncio.gather(*[_one(sa) for sa in selected])
-        else:
-            rows = [await _one(sa) for sa in selected]
+        protocol = InternalA2AProtocol(dispatch=_dispatch)
 
-        records = [row[0] for row in rows]
-        bridges = [row[1] for row in rows]
-        return records, "\n\n".join(bridges)
+        def _request_factory(
+            node: DelegationNode,
+            payload: dict[str, JSONValue],
+            attempt: int,
+        ) -> AgentInvocationRequest:
+            node_correlation = f"{run_id}:{step}:{node.node_id}"
+            return AgentInvocationRequest(
+                run_id=run_id,
+                thread_id=thread_id,
+                conversation_id=f"{run_id}:{thread_id}",
+                correlation_id=node_correlation,
+                idempotency_key=f"{run_id}:{step}:{node.node_id}",
+                causation_id=f"{run_id}:{step}",
+                source_agent=agent.name,
+                target_agent=node.target_agent,
+                payload=payload,
+                metadata={
+                    "step": step,
+                    "node_id": node.node_id,
+                    "attempt": attempt,
+                    "parallel": parallel,
+                },
+                timeout_s=node.timeout_s,
+            )
+
+        result, audit_rows = await engine.execute(
+            plan=plan,
+            available_targets=set(index.keys()),
+            protocol=protocol,
+            request_factory=_request_factory,
+            cancel_requested=handle.is_cancel_requested,
+            interrupt_requested=handle.is_interrupt_requested,
+        )
+        self._telemetry_counter(
+            obs_contracts.METRIC_AGENT_SUBAGENT_NODES_TOTAL,
+            value=max(0, len(result.ordered_outputs)),
+            attributes={
+                "result": result.final_status,
+            },
+        )
+
+        for row in audit_rows:
+            await self._emit(
+                handle,
+                memory,
+                AgentRunEvent(
+                    type="warning",
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    state="running",
+                    step=step,
+                    data=row,
+                    message="Ignored late subagent response after cancellation",
+                ),
+                user_id=user_id,
+            )
+
+        for dead_letter in protocol.dead_letters():
+            self._telemetry_counter(
+                obs_contracts.METRIC_AGENT_SUBAGENT_DEAD_LETTERS_TOTAL,
+                value=1,
+                attributes={
+                    "target_agent": dead_letter.request.target_agent,
+                },
+            )
+            await self._emit(
+                handle,
+                memory,
+                AgentRunEvent(
+                    type="warning",
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    state="running",
+                    step=step,
+                    message="Subagent delivery exhausted retry budget",
+                    data={
+                        "node_correlation_id": dead_letter.request.correlation_id,
+                        "target_agent": dead_letter.request.target_agent,
+                        "attempts": dead_letter.attempts,
+                        "error": dead_letter.error,
+                    },
+                ),
+                user_id=user_id,
+            )
+
+        records: list[SubagentExecutionRecord] = []
+        bridge_parts: list[str] = []
+        for node_output in result.ordered_outputs:
+            latency_ms = float(node_output.finished_at_ms - node_output.started_at_ms)
+            self._telemetry_histogram(
+                obs_contracts.METRIC_AGENT_SUBAGENT_NODE_LATENCY_MS,
+                value=latency_ms,
+                attributes={
+                    "target_agent": node_output.target_agent,
+                    "status": node_output.status,
+                },
+            )
+            text_output: str | None = None
+            if isinstance(node_output.output, dict):
+                final_text = node_output.output.get("final_text")
+                if isinstance(final_text, str):
+                    text_output = final_text
+            elif isinstance(node_output.output, str):
+                text_output = node_output.output
+
+            records.append(
+                SubagentExecutionRecord(
+                    subagent_name=node_output.target_agent,
+                    success=node_output.success,
+                    output_text=text_output,
+                    error=node_output.error,
+                    latency_ms=latency_ms,
+                )
+            )
+            if node_output.success and text_output:
+                bridge_parts.append(
+                    f"Subagent '{node_output.target_agent}' result:\n{text_output}"
+                )
+            elif node_output.error:
+                bridge_parts.append(
+                    f"Subagent '{node_output.target_agent}' failed: {node_output.error}"
+                )
+
+        return records, "\n\n".join(bridge_parts)
+
+    def _delegation_plan_from_metadata(
+        self,
+        metadata: dict[str, JSONValue] | None,
+    ) -> DelegationPlan | None:
+        """Parse an optional router-provided delegation plan payload."""
+        if not isinstance(metadata, dict):
+            return None
+        raw_plan = metadata.get("delegation_plan")
+        if not isinstance(raw_plan, dict):
+            return None
+
+        raw_nodes = raw_plan.get("nodes")
+        if not isinstance(raw_nodes, list):
+            return None
+
+        parsed_nodes: list[DelegationNode] = []
+        for row in raw_nodes:
+            if not isinstance(row, dict):
+                continue
+            node_id = row.get("node_id")
+            target = row.get("target_agent")
+            if not isinstance(node_id, str) or not node_id.strip():
+                continue
+            if not isinstance(target, str) or not target.strip():
+                continue
+
+            input_binding: dict[str, JSONValue] = {}
+            raw_binding = row.get("input_binding")
+            if isinstance(raw_binding, dict):
+                input_binding = {
+                    str(key): json_value_from_tool_result(value)
+                    for key, value in raw_binding.items()
+                }
+
+            retry = row.get("retry_policy")
+            retry_policy = RetryPolicy()
+            if isinstance(retry, dict):
+                retry_policy = RetryPolicy(
+                    max_attempts=max(1, int(retry.get("max_attempts", 1))),
+                    backoff_base_s=max(0.0, float(retry.get("backoff_base_s", 0.25))),
+                    max_backoff_s=max(0.0, float(retry.get("max_backoff_s", 5.0))),
+                    jitter_s=max(0.0, float(retry.get("jitter_s", 0.0))),
+                )
+
+            timeout_s = row.get("timeout_s")
+            parsed_nodes.append(
+                DelegationNode(
+                    node_id=node_id.strip(),
+                    target_agent=target.strip(),
+                    input_binding=input_binding,
+                    timeout_s=float(timeout_s)
+                    if isinstance(timeout_s, (int, float))
+                    else 120.0,
+                    retry_policy=retry_policy,
+                    required=bool(row.get("required", True)),
+                )
+            )
+
+        if not parsed_nodes:
+            return None
+
+        parsed_edges: list[DelegationEdge] = []
+        raw_edges = raw_plan.get("edges")
+        if isinstance(raw_edges, list):
+            for row in raw_edges:
+                if not isinstance(row, dict):
+                    continue
+                source = row.get("from_node")
+                target = row.get("to_node")
+                if not isinstance(source, str) or not isinstance(target, str):
+                    continue
+                raw_map = row.get("output_key_map")
+                key_map: dict[str, str] = {}
+                if isinstance(raw_map, dict):
+                    key_map = {str(key): str(value) for key, value in raw_map.items()}
+                parsed_edges.append(
+                    DelegationEdge(
+                        from_node=source,
+                        to_node=target,
+                        output_key_map=key_map,
+                    )
+                )
+
+        join_policy = raw_plan.get("join_policy")
+        max_parallelism = raw_plan.get("max_parallelism")
+        quorum = raw_plan.get("quorum")
+        return DelegationPlan(
+            nodes=parsed_nodes,
+            edges=parsed_edges,
+            join_policy=(
+                join_policy
+                if isinstance(join_policy, str)
+                and join_policy
+                in {
+                    "all_required",
+                    "allow_optional_failures",
+                    "first_success",
+                    "quorum",
+                }
+                else "all_required"
+            ),
+            max_parallelism=(
+                max(1, int(max_parallelism))
+                if isinstance(max_parallelism, (int, float))
+                else 1
+            ),
+            quorum=int(quorum) if isinstance(quorum, (int, float)) else None,
+        )
 
     async def _call_router(
         self,

@@ -3,40 +3,77 @@ MIT License
 Copyright (c) 2026 arpan404
 See LICENSE file for full license text.
 
-Agent-to-agent messaging package.
+Protocol-first messaging exports.
 
-Provides a ``MessageBus`` abstraction for peer-to-peer communication
-between agents, with in-memory and Redis backends.
-
-Quick start::
-
-    from afk.messaging import InMemoryMessageBus
-
-    bus = InMemoryMessageBus()
-    mailbox_a = await bus.register("agent_a")
-    mailbox_b = await bus.register("agent_b")
-
-    await mailbox_a.send("agent_b", "Hello from A!")
-    msg = await mailbox_b.receive()
-    print(msg.content)  # "Hello from A!"
+Hard break:
+Legacy mailbox/bus APIs were removed. Use A2A protocol contracts.
 """
 
-from .bus import InMemoryMessageBus
-from .types import AgentMailbox, AgentMessage, MessageBus, MessagePriority
+from ..agents.a2a import (
+    A2AAuthorizationDecision,
+    A2AAuthorizationError,
+    A2AAuthContext,
+    A2AAuthError,
+    A2AAuthProvider,
+    A2APrincipal,
+    A2AServiceHost,
+    A2AServiceHostError,
+    APIKeyA2AAuthProvider,
+    AllowAllA2AAuthProvider,
+    GoogleA2AAdapterError,
+    GoogleA2AProtocolAdapter,
+    InMemoryA2ADeliveryStore,
+    InternalA2AEnvelope,
+    InternalA2AProtocol,
+    JWTA2AAuthProvider,
+    RedisA2ADeliveryStore,
+)
+from ..agents.contracts import (
+    AgentCommunicationProtocol,
+    AgentDeadLetter,
+    AgentInvocationRequest,
+    AgentInvocationResponse,
+    AgentProtocolEvent,
+)
 
 __all__ = [
-    "AgentMessage",
-    "AgentMailbox",
-    "MessageBus",
-    "MessagePriority",
-    "InMemoryMessageBus",
+    "AgentCommunicationProtocol",
+    "AgentInvocationRequest",
+    "AgentInvocationResponse",
+    "AgentProtocolEvent",
+    "AgentDeadLetter",
+    "InternalA2AEnvelope",
+    "InternalA2AProtocol",
+    "GoogleA2AProtocolAdapter",
+    "GoogleA2AAdapterError",
+    "A2AServiceHost",
+    "A2AServiceHostError",
+    "A2AAuthContext",
+    "A2APrincipal",
+    "A2AAuthorizationDecision",
+    "A2AAuthProvider",
+    "A2AAuthError",
+    "A2AAuthorizationError",
+    "AllowAllA2AAuthProvider",
+    "APIKeyA2AAuthProvider",
+    "JWTA2AAuthProvider",
+    "InMemoryA2ADeliveryStore",
+    "RedisA2ADeliveryStore",
 ]
 
 
-# Lazy import for Redis bus to avoid hard dependency
 def __getattr__(name: str):
-    if name == "RedisMessageBus":
-        from .redis_bus import RedisMessageBus
-
-        return RedisMessageBus
+    legacy = {
+        "AgentMessage",
+        "AgentMailbox",
+        "MessageBus",
+        "MessagePriority",
+        "InMemoryMessageBus",
+        "RedisMessageBus",
+    }
+    if name in legacy:
+        raise AttributeError(
+            f"{name} was removed from afk.messaging. "
+            "Use protocol-first A2A APIs from afk.messaging / afk.agents."
+        )
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

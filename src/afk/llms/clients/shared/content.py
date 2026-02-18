@@ -30,4 +30,3 @@ def tool_result_label(name: str | None) -> str:
 def to_input_text_part(text: Any) -> dict[str, Any]:
     """Convert arbitrary text-ish content into one Responses input_text part."""
     return {"type": "input_text", "text": str(text)}
-

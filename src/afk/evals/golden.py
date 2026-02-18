@@ -27,7 +27,9 @@ def write_golden_trace(path: str | Path, events: list[AgentRunEvent]) -> None:
         }
         for event in events
     ]
-    Path(path).write_text(json.dumps(rows, ensure_ascii=True, indent=2), encoding="utf-8")
+    Path(path).write_text(
+        json.dumps(rows, ensure_ascii=True, indent=2), encoding="utf-8"
+    )
 
 
 def compare_event_types(

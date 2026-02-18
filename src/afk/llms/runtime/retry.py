@@ -30,7 +30,17 @@ def classify_error(error: Exception) -> LLMError:
         return LLMRetryableError(str(error))
 
     msg = str(error).lower()
-    retry_phrases = ("rate limit", "timeout", "temporarily", "overloaded", "service unavailable", "429", "502", "503", "504")
+    retry_phrases = (
+        "rate limit",
+        "timeout",
+        "temporarily",
+        "overloaded",
+        "service unavailable",
+        "429",
+        "502",
+        "503",
+        "504",
+    )
     if any(token in msg for token in retry_phrases):
         return LLMRetryableError(str(error))
     return LLMError(str(error))
@@ -62,4 +72,3 @@ async def call_with_retry(
                 continue
             raise classified from error
     raise LLMError("Retry loop exhausted") from last
-

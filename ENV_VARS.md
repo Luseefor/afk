@@ -1,114 +1,50 @@
-# AFK SDK — Environment Variables Reference
+# AFK Python SDK Environment Variables (v1.0.0)
 
-All configuration variables use the `AFK_` prefix. None are required — sensible defaults are used throughout.
+This reference documents environment defaults. Runtime configuration APIs remain primary.
 
-## LLM Configuration
+## LLM Defaults
 
-| Variable                   | Default        | Description                                         |
-| -------------------------- | -------------- | --------------------------------------------------- |
-| `AFK_LLM_PROVIDER`         | `litellm`      | Default provider: `litellm`, `openai`, `anthropic_agent` |
-| `AFK_LLM_MODEL`            | `gpt-4.1-mini` | Default model identifier                            |
-| `AFK_EMBED_MODEL`          | _(none)_       | Embedding model identifier                          |
-| `AFK_LLM_API_BASE_URL`     | _(none)_       | Custom API base URL                                 |
-| `AFK_LLM_API_KEY`          | _(none)_       | API key override                                    |
-| `AFK_LLM_TIMEOUT_S`        | `30`           | Request timeout in seconds                          |
-| `AFK_LLM_STREAM_IDLE_TIMEOUT_S` | `45`      | Stream idle timeout in seconds                      |
-| `AFK_LLM_MAX_RETRIES`      | `3`            | Max retry attempts on transient failures            |
-| `AFK_LLM_BACKOFF_BASE_S`   | `0.5`          | Exponential backoff base (seconds)                  |
-| `AFK_LLM_BACKOFF_JITTER_S` | `0.15`         | Random jitter added to backoff (seconds)            |
-| `AFK_LLM_JSON_MAX_RETRIES` | `2`            | Max retries for invalid JSON structured output      |
-| `AFK_LLM_MAX_INPUT_CHARS`  | `200000`       | Max input character limit                           |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AFK_LLM_PROVIDER` | `litellm` | Default provider id (`openai`, `litellm`, `anthropic_agent`) |
+| `AFK_LLM_MODEL` | `gpt-4.1-mini` | Default model |
+| `AFK_EMBED_MODEL` | _(none)_ | Embedding model |
+| `AFK_LLM_API_BASE_URL` | _(none)_ | Provider API base |
+| `AFK_LLM_API_KEY` | _(none)_ | Provider API key |
+| `AFK_LLM_TIMEOUT_S` | `30` | Request timeout seconds |
+| `AFK_LLM_STREAM_IDLE_TIMEOUT_S` | `45` | Stream idle timeout seconds |
+| `AFK_LLM_MAX_RETRIES` | `3` | Retry attempts |
+| `AFK_LLM_BACKOFF_BASE_S` | `0.5` | Retry backoff base |
+| `AFK_LLM_BACKOFF_JITTER_S` | `0.15` | Retry jitter |
+| `AFK_LLM_JSON_MAX_RETRIES` | `2` | Structured output repair attempts |
+| `AFK_LLM_MAX_INPUT_CHARS` | `200000` | Input truncation ceiling |
 
-`afk.llms` is config-first in v2 (`LLMSettings`, `LLMBuilder`, `create_llm_client`).
-Environment values are optional defaults only.
+## Memory
 
-## Observability Configuration
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AFK_MEMORY_BACKEND` | `sqlite` | `inmemory`, `sqlite`, `redis`, `postgres` |
+| `AFK_SQLITE_PATH` | `afk_memory.sqlite3` | SQLite file path |
+| `AFK_REDIS_URL` | _(none)_ | Redis URL |
+| `AFK_PG_DSN` | _(none)_ | PostgreSQL DSN |
 
-No environment variables are required for observability backend selection.
+## Queue
 
-Telemetry is configured at runner construction time:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AFK_QUEUE_BACKEND` | `inmemory` | `inmemory`, `redis` |
+| `AFK_QUEUE_RETRY_BACKOFF_BASE_S` | `0.5` | Retry base delay |
+| `AFK_QUEUE_RETRY_BACKOFF_MAX_S` | `30` | Retry max delay |
+| `AFK_QUEUE_RETRY_BACKOFF_JITTER_S` | `0.2` | Retry jitter |
 
-- `Runner(telemetry=\"null\" | \"inmemory\" | \"otel\")`
-- `Runner(telemetry=<TelemetrySink instance>)`
-- `Runner(..., telemetry_config={...})` for backend-specific options
+Execution contracts are configured in code via `TaskWorker(..., execution_contracts=...)`.
 
-You can register custom telemetry providers with:
-- `afk.observability.backends.register_telemetry_backend(...)`
+## Prompts
 
-## Memory Backend
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AFK_AGENT_PROMPTS_DIR` | `.agents/prompt` | Prompt root directory |
 
-| Variable             | Default  | Description                                             |
-| -------------------- | -------- | ------------------------------------------------------- |
-| `AFK_MEMORY_BACKEND` | `sqlite` | Backend type: `inmemory`, `sqlite`, `redis`, `postgres` |
+## A2A
 
-> Import behavior: `afk.memory` uses conditional imports for Redis/Postgres
-> adapters. This keeps base imports working without optional dependencies.
-> If you choose `redis`/`postgres`, install their clients (`redis`,
-> `asyncpg`).
-
-### SQLite
-
-| Variable          | Default              | Description               |
-| ----------------- | -------------------- | ------------------------- |
-| `AFK_SQLITE_PATH` | `afk_memory.sqlite3` | SQLite database file path |
-
-### Redis
-
-| Variable               | Default     | Description                                        |
-| ---------------------- | ----------- | -------------------------------------------------- |
-| `AFK_REDIS_URL`        | _(none)_    | Full Redis connection URL (overrides host/port/db) |
-| `AFK_REDIS_HOST`       | `localhost` | Redis host                                         |
-| `AFK_REDIS_PORT`       | `6379`      | Redis port                                         |
-| `AFK_REDIS_DB`         | `0`         | Redis database number                              |
-| `AFK_REDIS_PASSWORD`   | _(empty)_   | Redis password                                     |
-| `AFK_REDIS_EVENTS_MAX` | `2000`      | Max events per thread                              |
-
-> Note: The Redis adapter implements an *atomic upsert* for long-term
-> memories — calling `upsert_long_term_memory(..., embedding=None)` will
-> preserve any existing embedding atomically (no race). Redis also
-> supports TTL for transient state entries.
-
-### PostgreSQL
-
-| Variable          | Default      | Description                                    |
-| ----------------- | ------------ | ---------------------------------------------- |
-| `AFK_PG_DSN`      | _(none)_     | Full PostgreSQL DSN (overrides host/port/user) |
-| `AFK_PG_HOST`     | `localhost`  | PostgreSQL host                                |
-| `AFK_PG_PORT`     | `5432`       | PostgreSQL port                                |
-| `AFK_PG_USER`     | `postgres`   | PostgreSQL user                                |
-| `AFK_PG_PASSWORD` | _(empty)_    | PostgreSQL password                            |
-| `AFK_PG_DB`       | `afk`        | PostgreSQL database name                       |
-| `AFK_PG_SSL`      | `false`      | Enable SSL connections                         |
-| `AFK_PG_POOL_MIN` | `1`          | Minimum connection pool size                   |
-| `AFK_PG_POOL_MAX` | `10`         | Maximum connection pool size                   |
-| `AFK_VECTOR_DIM`  | _(required)_ | Embedding vector dimension (e.g. `1536`)       |
-
-## Task Queue Backend
-
-| Variable            | Default    | Description                             |
-| ------------------- | ---------- | --------------------------------------- |
-| `AFK_QUEUE_BACKEND` | `inmemory` | Backend type: `inmemory`, `redis`       |
-| `AFK_QUEUE_RETRY_BACKOFF_BASE_S` | `0.5` | Retry backoff base delay in seconds     |
-| `AFK_QUEUE_RETRY_BACKOFF_MAX_S` | `30` | Retry backoff maximum delay cap in seconds |
-| `AFK_QUEUE_RETRY_BACKOFF_JITTER_S` | `0.2` | Random retry jitter window in seconds   |
-
-> Execution contracts are configured at worker construction time
-> (`TaskWorker(..., execution_contracts=..., job_handlers=...)`), not by
-> environment variables in this release.
-
-### Queue Redis
-
-| Variable                   | Default     | Description                                              |
-| -------------------------- | ----------- | -------------------------------------------------------- |
-| `AFK_QUEUE_REDIS_URL`      | _(none)_    | Full Redis URL (falls back to `AFK_REDIS_URL`)          |
-| `AFK_QUEUE_REDIS_HOST`     | `localhost` | Redis host (fallback to `AFK_REDIS_HOST`)               |
-| `AFK_QUEUE_REDIS_PORT`     | `6379`      | Redis port (fallback to `AFK_REDIS_PORT`)               |
-| `AFK_QUEUE_REDIS_DB`       | `0`         | Redis DB number (fallback to `AFK_REDIS_DB`)            |
-| `AFK_QUEUE_REDIS_PASSWORD` | _(empty)_   | Redis password (fallback to `AFK_REDIS_PASSWORD`)       |
-| `AFK_QUEUE_REDIS_PREFIX`   | `afk:queue` | Key prefix for queue list/hash (`<prefix>:pending/tasks`) |
-
-## Agent Prompts
-
-| Variable                | Default          | Description                            |
-| ----------------------- | ---------------- | -------------------------------------- |
-| `AFK_AGENT_PROMPTS_DIR` | `.agents/prompt` | Root directory for system prompt files |
+No default environment variables are required. Configure A2A host/auth in code for explicit security posture.

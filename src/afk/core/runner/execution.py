@@ -488,6 +488,7 @@ class RunnerExecutionMixin:
                             agent=agent,
                             targets=r_decision.targets,
                             parallel=parallel_mode,
+                            router_metadata=r_decision.metadata,
                             context=ctx,
                             thread_id=t_id,
                             depth=depth + 1,
@@ -1307,7 +1308,9 @@ class RunnerExecutionMixin:
                             *[_exec_one(idx) for idx in execution_indices],
                             return_exceptions=False,
                         )
-                        for mapped_idx, row in zip(execution_indices, execution_results):
+                        for mapped_idx, row in zip(
+                            execution_indices, execution_results
+                        ):
                             result, latency_ms = row
                             resolved_results[mapped_idx] = result
                             call_latency_ms[mapped_idx] = latency_ms

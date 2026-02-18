@@ -33,7 +33,9 @@ class ConsoleRunMetricsExporter:
         out.write(self._c("  AFK Run Metrics\n", "1;36"))
         out.write(f"{header}\n\n")
 
-        status = self._c("SUCCESS", "32") if metrics.success else self._c("FAILED", "31")
+        status = (
+            self._c("SUCCESS", "32") if metrics.success else self._c("FAILED", "31")
+        )
         out.write(f"  Status:    {status}\n")
         if metrics.agent_name:
             out.write(f"  Agent:     {metrics.agent_name}\n")
@@ -45,7 +47,9 @@ class ConsoleRunMetricsExporter:
         out.write(f"  Tool calls:{metrics.tool_calls}\n")
 
         if metrics.estimated_cost_usd is not None:
-            out.write(f"  Cost:      {self._c(f'${metrics.estimated_cost_usd:.4f}', '33')}\n")
+            out.write(
+                f"  Cost:      {self._c(f'${metrics.estimated_cost_usd:.4f}', '33')}\n"
+            )
 
         if metrics.errors:
             out.write(self._c(f"  Errors ({len(metrics.errors)}):\n", "31"))

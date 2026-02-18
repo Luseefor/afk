@@ -18,6 +18,7 @@ from ..types import LLMResponse
 @dataclass(slots=True)
 class InMemoryLLMCache(LLMCacheBackend):
     """Process-local cache backend suitable for development/test workloads."""
+
     backend_id: str = "inmemory"
 
     def __post_init__(self) -> None:

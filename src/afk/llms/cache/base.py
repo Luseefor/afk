@@ -17,6 +17,7 @@ from ..types import JSONValue, LLMResponse
 @dataclass(frozen=True, slots=True)
 class CacheEntry:
     """One cached LLM response row with expiration metadata."""
+
     value: LLMResponse
     expires_at_s: float
     metadata: dict[str, JSONValue] = field(default_factory=dict)
@@ -24,6 +25,7 @@ class CacheEntry:
 
 class LLMCacheBackend(Protocol):
     """Protocol implemented by cache backends used in runtime client."""
+
     backend_id: str
 
     async def get(self, key: str) -> LLMResponse | None: ...

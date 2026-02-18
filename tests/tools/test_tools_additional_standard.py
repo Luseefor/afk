@@ -87,6 +87,7 @@ def test_registry_recent_calls_limit_and_error_recording():
     # Unknown-tool failures happen before execution and are not recorded.
     assert all(record.ok is True for record in limited)
 
+
 def test_tool_middleware_timeout_is_enforced():
     async def slow_mw(call_next, args, ctx):
         await asyncio.sleep(0.05)

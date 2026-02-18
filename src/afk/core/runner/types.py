@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import AsyncIterator
 
 from ...agents.types import (
     AgentResult,
@@ -50,6 +50,14 @@ class RunnerConfig:
         secret_scope_provider: Optional secret-scope resolver per tool call.
         default_allowlisted_commands: Default allowlisted shell commands for
             runtime/skill command tools.
+        max_parallel_subagents_global: Global cap across all runs for
+            concurrently executing subagent tasks.
+        max_parallel_subagents_per_parent: Per-parent-run cap for concurrent
+            subagent fanout.
+        max_parallel_subagents_per_target_agent: Per-target-agent cap to avoid
+            overloading one specialist under broad fanout.
+        subagent_queue_backpressure_limit: Maximum pending subagent nodes per
+            parent run before backpressure is raised.
     """
 
     interaction_mode: InteractionMode = "headless"
@@ -73,6 +81,10 @@ class RunnerConfig:
         "pwd",
         "echo",
     )
+    max_parallel_subagents_global: int = 64
+    max_parallel_subagents_per_parent: int = 8
+    max_parallel_subagents_per_target_agent: int = 4
+    subagent_queue_backpressure_limit: int = 512
 
 
 class _RunHandle(AgentRunHandle):

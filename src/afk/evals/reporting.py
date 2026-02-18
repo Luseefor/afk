@@ -58,4 +58,6 @@ def write_suite_report_json(path: str | Path, suite: EvalSuiteResult) -> None:
     payload = suite_report_payload(suite)
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8"
+    )

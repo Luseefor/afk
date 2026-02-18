@@ -18,6 +18,7 @@ from ..types import LLMResponse, ToolCall, Usage
 @dataclass(slots=True)
 class RedisLLMCache(LLMCacheBackend):
     """Redis-backed cache backend for multi-process deployments."""
+
     backend_id: str = "redis"
 
     def __init__(self, redis_client) -> None:
@@ -81,7 +82,9 @@ class RedisLLMCache(LLMCacheBackend):
             "raw": value.raw,
             "model": value.model,
         }
-        await self._redis.setex(key, int(max(1, ttl_s)), json.dumps(payload, ensure_ascii=True))
+        await self._redis.setex(
+            key, int(max(1, ttl_s)), json.dumps(payload, ensure_ascii=True)
+        )
 
     async def delete(self, key: str) -> None:
         await self._redis.delete(key)

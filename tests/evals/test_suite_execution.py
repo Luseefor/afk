@@ -54,7 +54,11 @@ class _StaticLLM(LLM):
 
 def _cases(count: int) -> list[EvalCase]:
     return [
-        EvalCase(name=f"case-{i}", agent=Agent(model=_StaticLLM(), instructions="suite"), user_message="hello")
+        EvalCase(
+            name=f"case-{i}",
+            agent=Agent(model=_StaticLLM(), instructions="suite"),
+            user_message="hello",
+        )
         for i in range(count)
     ]
 

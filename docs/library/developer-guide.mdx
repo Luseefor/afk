@@ -1,250 +1,38 @@
 ---
 title: Developer Guide
-description: Fastest path to build your first AFK agent and harden it for production.
+description: How humans and coding agents should implement AFK features.
 ---
 
-This guide is designed for teams shipping AFK agents in real environments, not toy demos.
-
-## TL;DR
-
-- Follow this page to go from zero to production-safe AFK baseline quickly.
-- Implement capabilities in maturity order to reduce risk.
-- Use public `afk.*` imports only for long-term API stability.
-
-## When to Use
-
-- You are onboarding to AFK for the first time.
-- You need a practical path from prototype to production.
-- You want copy-ready patterns for tools, policy, prompts, and runtime controls.
-
-## First 20 Minutes
+## Implementation order
 
 <Steps>
-  <Step title="Install dependencies">
-    <CodeGroup>
-
-```bash uv
-uv pip install afk pydantic
-```
-
-```bash pip
-pip install afk pydantic
-```
-
-    </CodeGroup>
+  <Step title="Define contracts">
+    Add/update models and protocols first.
   </Step>
-
-  <Step title="Configure environment">
-
-```bash
-export AFK_LLM_PROVIDER=openai
-export AFK_LLM_MODEL=gpt-4.1-mini
-export AFK_LLM_API_KEY=your_key_here
-```
-
+  <Step title="Implement behavior">
+    Keep orchestration and adapters separated.
   </Step>
-
-  <Step title="Set prompt root (recommended)">
-
-```bash
-export AFK_AGENT_PROMPTS_DIR=.agents/prompt
-mkdir -p .agents/prompt
-```
-
+  <Step title="Test failure semantics">
+    Validate retry/terminal/cancel behavior explicitly.
   </Step>
-
-  <Step title="Run first example script">
-
-```bash
-python 01_minimal_chat_agent.py
-```
-
+  <Step title="Document usage">
+    Add runnable examples and operational notes.
   </Step>
-
-  <Step title="Add safety before side effects">Move to `02_policy_with_hitl.py` before enabling write/delete/action tools.</Step>
 </Steps>
 
-<Tip>
-Create local script files using the embedded examples in <a href="/library/examples/index">Examples</a>, then run them with the filenames shown in each accordion.
-</Tip>
+## For Coding Agents
 
-## AI Coding Assist (Optional)
+Use this checklist before finalizing changes:
 
-If your team uses coding agents, install AFK skills from GitHub:
+- did I preserve module boundaries?
+- did I classify failures clearly?
+- did I add examples that show real usage?
+- did I add tests for edge cases?
+
+## Quality commands
 
 ```bash
-npx skills add socioy/afk
+uvx ruff format .
+uvx ruff check .
+PYTHONPATH=src pytest -q
 ```
-
-Then use [Building with AI](/library/building-with-ai) for prompt patterns and recommended skill usage.
-
-## Recommended Build Order
-
-<CardGroup cols={2}>
-  <Card title="Level 1) Prompted Agent" href="/library/examples/index#01-minimal-chat-agent" icon="play-circle">
-    Start with one agent, one prompt strategy, and one request path.
-  </Card>
-  <Card title="Level 2) Tool Agent" href="/library/examples/index#08-prebuilt-runtime-tools" icon="folder">
-    Add bounded runtime tools and typed arguments.
-  </Card>
-  <Card title="Level 3) Governed Agent" href="/library/examples/index#02-policy-with-hitl" icon="shield">
-    Add approval gates and safety policy before side effects.
-  </Card>
-  <Card title="Level 4) Durable Agent" href="/library/examples/index#04-resume-and-compact" icon="database">
-    Persist state and verify restart behavior.
-  </Card>
-  <Card title="Level 5) Multi-Agent" href="/library/examples/index#03-subagents-with-router" icon="file-code">
-    Route work to specialist subagents with explicit boundaries.
-  </Card>
-  <Card title="Level 6) Production Hardening" href="/library/examples/index#06-tool-registry-security" icon="lock">
-    Enforce sandbox, limits, and production safety controls.
-  </Card>
-</CardGroup>
-
-Use the full level requirements page: [Agentic System Levels](/library/agentic-levels)
-
-## Required Features by Level
-
-| Level | Required Features |
-| --- | --- |
-| 1 | `Agent`, prompt strategy (`instructions` or `instruction_file`) |
-| 2 | typed tools, tool descriptions, bounded arguments |
-| 3 | policy + HITL + sandbox/output controls |
-| 4 | checkpoint + resume + compaction strategy |
-| 5 | subagents + router + explicit context inheritance |
-| 6 | fail-safe budgets, fallback, telemetry, tests/evals |
-
-## Public Import Patterns
-
-```python
-from afk.agents import Agent
-from afk.core import Runner, RunnerConfig
-from afk.llms import create_llm
-from afk.tools import tool
-from afk.memory import create_memory_store_from_env
-```
-
-<Warning>
-Do not import from `src/...` in app code. Use public imports (`afk.*`) only.
-</Warning>
-
-## Core Workflow
-
-1. Define a minimal `Agent` and validate end-to-end response flow.
-2. Add typed tools with strict argument schemas.
-3. Add policy decisions for risky tool calls.
-4. Add sandbox and output limits for tool safety.
-5. Add memory persistence and resume verification.
-6. Add tests/evals for regressions (`afk.evals.EvalCase`, `run_suite`, assertions, budgets).
-
-## Common Implementation Patterns
-
-<Tabs>
-  <Tab title="Agent + Typed Tool">
-
-```python
-from pydantic import BaseModel, Field
-from afk.agents import Agent
-from afk.tools import tool
-
-class LookupArgs(BaseModel):
-    query: str = Field(min_length=1)
-
-@tool(
-    args_model=LookupArgs,
-    name="lookup",
-    description="Look up canonical product/internal documentation content by query.",
-)
-def lookup(args: LookupArgs) -> dict[str, str]:
-    return {"query": args.query}
-
-agent = Agent(
-    model="gpt-4.1-mini",
-    instructions="Use lookup when external data is needed.",
-    tools=[lookup],
-)
-```
-
-  </Tab>
-  <Tab title="Runner Controls">
-
-```python
-from afk.core import Runner, RunnerConfig
-
-runner = Runner(
-    config=RunnerConfig(
-        interaction_mode="headless",
-        sanitize_tool_output=True,
-    )
-)
-```
-
-  </Tab>
-  <Tab title="Prompt Loader">
-
-```python
-from afk.agents import Agent
-
-agent = Agent(
-    name="ChatAgent",
-    model="gpt-4.1-mini",
-    prompts_dir=".agents/prompt",  # or AFK_AGENT_PROMPTS_DIR
-)
-```
-
-Expected file: `.agents/prompt/CHAT_AGENT.md`
-
-  </Tab>
-</Tabs>
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title="Unknown adapter">
-    <ul>
-      <li>Verify <code>AFK_LLM_PROVIDER</code>.</li>
-      <li>Check providers with <code>afk.llms.list_llm_providers()</code>.</li>
-    </ul>
-  </Accordion>
-
-  <Accordion title="Model routes to wrong provider">
-    <p>Use explicit prefixes when needed:</p>
-    <ul>
-      <li><code>openai/gpt-4.1-mini</code></li>
-      <li><code>anthropic/claude-sonnet-4</code></li>
-    </ul>
-  </Accordion>
-
-  <Accordion title="Run pauses waiting for approval/input">
-    <ul>
-      <li>Check <code>RunnerConfig.interaction_mode</code>.</li>
-      <li>For non-headless mode, ensure <code>interaction_provider</code> is configured.</li>
-      <li>Set timeout/fallback behavior in <code>RunnerConfig</code>.</li>
-    </ul>
-  </Accordion>
-
-  <Accordion title="Tool call denied">
-    <ul>
-      <li>Inspect policy decision (<code>PolicyEngine</code> rules).</li>
-      <li>Verify sandbox profile allowlists.</li>
-    </ul>
-  </Accordion>
-
-  <Accordion title="Prompt file not found">
-    <ul>
-      <li>Confirm prompt root precedence: <code>prompts_dir</code>, then <code>AFK_AGENT_PROMPTS_DIR</code>, then <code>.agents/prompt</code>.</li>
-      <li>For auto mode, verify filename format (<code>UPPER_SNAKE.md</code>).</li>
-      <li>For explicit mode, verify <code>instruction_file</code> path remains inside the prompt root.</li>
-    </ul>
-  </Accordion>
-</AccordionGroup>
-
-## Continue Reading
-
-- [Agentic System Levels](/library/agentic-levels)
-- [Building with AI](/library/building-with-ai)
-- [Architecture](/library/architecture)
-- [Tool Call Lifecycle](/library/tool-call-lifecycle)
-- [System Prompts](/library/system-prompts)
-- [Security Model](/library/security-model)
-- [API Reference](/library/api-reference)

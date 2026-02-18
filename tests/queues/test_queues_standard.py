@@ -315,7 +315,9 @@ def test_dead_letter_redrive_and_purge_operations():
 def test_per_task_retry_policy_override_is_persisted_and_used():
     async def scenario() -> None:
         queue = InMemoryTaskQueue()
-        policy = RetryPolicy(backoff_base_s=0.3, backoff_max_s=1.0, backoff_jitter_s=0.0)
+        policy = RetryPolicy(
+            backoff_base_s=0.3, backoff_max_s=1.0, backoff_jitter_s=0.0
+        )
         task = await queue.enqueue_contract(
             RUNNER_CHAT_CONTRACT,
             payload={"user_message": "hello", "context": {}},

@@ -30,6 +30,9 @@ METRIC_AGENT_TOOL_CALL_LATENCY_MS = "agent.tool.call.latency_ms"
 
 METRIC_AGENT_SUBAGENT_BATCHES_TOTAL = "agent.subagent.batches.total"
 METRIC_AGENT_SUBAGENT_BATCH_LATENCY_MS = "agent.subagent.batch.latency_ms"
+METRIC_AGENT_SUBAGENT_NODES_TOTAL = "agent.subagent.nodes.total"
+METRIC_AGENT_SUBAGENT_NODE_LATENCY_MS = "agent.subagent.node.latency_ms"
+METRIC_AGENT_SUBAGENT_DEAD_LETTERS_TOTAL = "agent.subagent.dead_letters.total"
 
 METRIC_AGENT_INTERACTION_WAIT_TOTAL = "agent.interaction.wait.total"
 METRIC_AGENT_INTERACTION_WAIT_MS = "agent.interaction.wait_ms"

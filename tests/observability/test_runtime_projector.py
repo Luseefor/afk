@@ -13,7 +13,10 @@ from afk.llms.types import (
     LLMRequest,
     LLMResponse,
 )
-from afk.observability import RuntimeTelemetryCollector, project_run_metrics_from_collector
+from afk.observability import (
+    RuntimeTelemetryCollector,
+    project_run_metrics_from_collector,
+)
 
 
 class _StaticLLM(LLM):

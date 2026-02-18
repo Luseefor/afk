@@ -131,7 +131,9 @@ class MCPStore:
             )
 
         if bool(response.get("isError")):
-            message = _extract_mcp_text(response.get("content")) or "Remote MCP tool error"
+            message = (
+                _extract_mcp_text(response.get("content")) or "Remote MCP tool error"
+            )
             raise MCPRemoteCallError(f"{server.name}:{tool_name}: {message}")
 
         return response
@@ -181,6 +183,7 @@ class MCPStore:
             return result
 
         return _invoke
+
 
 _MCP_STORE: MCPStore | None = None
 _MCP_STORE_LOCK = threading.Lock()

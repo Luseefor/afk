@@ -1,58 +1,28 @@
 ---
-title: Providers
-description: Built-in providers and provider registry usage.
+title: Adapters and Providers
+description: Built-in providers, custom provider registration, and capability contracts.
 ---
 
-## Built-in Providers
+## Built-in providers
 
-- `openai`
-- `litellm`
-- `anthropic_agent`
+- OpenAI
+- LiteLLM
+- Anthropic Agent
 
-## Provider Registry
-
-```python
-from afk.llms import list_llm_providers, get_llm_provider
-
-print(list_llm_providers())
-provider = get_llm_provider("openai")
-```
-
-## Creating Clients
+## Provider registration example
 
 ```python
-from afk.llms import create_llm_client
-
-llm = create_llm_client(provider="litellm")
-```
-
-## Custom Provider
-
-Implement `LLMProvider` and register:
-
-```python
-from afk.llms import register_llm_provider
+from afk.llms import register_llm_provider, list_llm_providers
 
 register_llm_provider(my_provider)
+print(list_llm_providers())
 ```
 
-## Provider Implementation Contract
+## Adapter capability map
 
-Your provider should:
-
-- validate provider-specific settings via `ProviderSettingsSchema`
-- build one transport implementing chat/stream/embed/session methods
-- only expose normalized AFK request/response types
-- raise explicit capability errors for unsupported features
-
-`afk.llms.clients` is the adapter layer:
-
-- `clients/contracts.py` defines transport protocol boundaries
-- `clients/base/responses.py` provides shared Responses-style adapter logic
-- `clients/shared/*` contains reusable content/normalization/transport helpers
-
-This separation keeps adapter behavior modular:
-
-- provider-specific transport code stays in `clients/adapters/*`
-- shared wire-format conversion lives in `clients/shared/*`
-- runtime policies stay in `llms/runtime/*` (not inside adapters)
+| Capability | Meaning |
+| --- | --- |
+| streaming | supports stream events |
+| structured_output | supports schema-based outputs |
+| tools | supports tool-calling contract |
+| idempotency | supports idempotency semantics |

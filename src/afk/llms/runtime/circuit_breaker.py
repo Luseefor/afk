@@ -19,6 +19,7 @@ from .contracts import CircuitBreakerPolicy
 @dataclass(slots=True)
 class _State:
     """Data type for state."""
+
     failures: int = 0
     opened_at_s: float | None = None
     half_open_calls: int = 0
@@ -54,4 +55,3 @@ class CircuitBreaker:
             if state.failures >= policy.failure_threshold:
                 state.opened_at_s = time.monotonic()
                 state.half_open_calls = 0
-

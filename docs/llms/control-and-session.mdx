@@ -1,41 +1,41 @@
 ---
-title: Streaming & Sessions
-description: Stream control, idle timeout handling, and session continuity.
+title: Control and Session
+description: Runtime policy ordering and practical tuning guidance.
 ---
 
-## Streaming
+## Policy order
 
-Use `chat_stream(...)` for event iteration and `chat_stream_handle(...)` for control.
-
-- Idle-timeout enforcement is supported via `LLMRequest.stream_idle_timeout_s`
-  or `TimeoutPolicy.stream_idle_timeout_s`.
-- Streaming provider fallback is supported through `RoutePolicy(provider_order=...)`.
-- `cancel()` and `interrupt()` are available on stream handles.
-- Stream lifecycle enforces exactly one terminal completion event.
-
-By default, routing stays on the configured default provider.
-Add `RoutePolicy(provider_order=(...))` when you want explicit stream fallback.
-
-### Handle Example
-
-```python
-from afk.llms import LLMBuilder, LLMRequest, Message
-
-llm = LLMBuilder().provider("anthropic_agent").for_agent_runtime().build()
-req = LLMRequest(
-    model="claude-3-7-sonnet",
-    messages=[Message(role="user", content="stream this")],
-)
-
-handle = await llm.chat_stream_handle(req)
-async for event in handle.events:
-    ...
-result = await handle.await_result()
+```mermaid
+flowchart LR
+    Req --> Coalesce
+    Coalesce --> CacheRead
+    CacheRead --> Route
+    Route --> RateLimit
+    RateLimit --> CircuitBreaker
+    CircuitBreaker --> Execute
+    Execute --> RetryHedge
+    RetryHedge --> CacheWrite
+    CacheWrite --> Resp
 ```
 
-## Sessions
+## Tuning playbook
 
-Use `start_session(...)` for provider-native continuity where supported.
+<Tabs>
+  <Tab title="Interactive UX">
+    lower timeout, enable hedging, short retry budget
+  </Tab>
+  <Tab title="Batch jobs">
+    higher timeout, larger retry budget, cost-aware routing
+  </Tab>
+  <Tab title="Cost-sensitive">
+    cache + coalescing + cheaper primary model with fallback
+  </Tab>
+</Tabs>
 
-- Session persistence remains owned by orchestration/storage layers.
-- `afk.llms` only transports session/checkpoint tokens.
+## For Coding Agents
+
+When generating LLM request code:
+
+- set explicit timeout/retry defaults
+- avoid provider-specific payload shapes in app layer
+- keep fallback chains explicit

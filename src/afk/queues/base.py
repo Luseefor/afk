@@ -28,6 +28,7 @@ class BaseTaskQueue(TaskQueue):
 
     Backends only implement task persistence and pending-ID queue primitives.
     """
+
     def __init__(
         self,
         *,
@@ -239,7 +240,10 @@ class BaseTaskQueue(TaskQueue):
         """Requeue failed dead-letter tasks back to pending."""
         moved = 0
         for task in await self.list_dead_letters(limit=limit):
-            if reason is not None and task.metadata.get(DEAD_LETTER_REASON_KEY) != reason:
+            if (
+                reason is not None
+                and task.metadata.get(DEAD_LETTER_REASON_KEY) != reason
+            ):
                 continue
             task.status = "pending"
             task.error = None
@@ -260,7 +264,10 @@ class BaseTaskQueue(TaskQueue):
         """Delete failed dead-letter tasks from storage."""
         removed = 0
         for task in await self.list_dead_letters(limit=limit):
-            if reason is not None and task.metadata.get(DEAD_LETTER_REASON_KEY) != reason:
+            if (
+                reason is not None
+                and task.metadata.get(DEAD_LETTER_REASON_KEY) != reason
+            ):
                 continue
             await self._delete_task(task.id)
             removed += 1

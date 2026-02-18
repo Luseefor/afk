@@ -89,7 +89,9 @@ def resolve_server_ref(ref: str | dict[str, Any] | MCPServerRef) -> MCPServerRef
     if isinstance(ref, dict):
         url = ref.get("url")
         if not isinstance(url, str) or not url.strip():
-            raise MCPServerResolutionError("MCP server dict ref requires non-empty 'url'")
+            raise MCPServerResolutionError(
+                "MCP server dict ref requires non-empty 'url'"
+            )
         normalized_url = _validate_http_url(url.strip())
 
         name_raw = ref.get("name")
@@ -155,7 +157,9 @@ def normalize_remote_tools(
                 name=name,
                 qualified_name=_qualified_tool_name(server, name),
                 description=(description if isinstance(description, str) else name),
-                input_schema=(schema if isinstance(schema, dict) else {"type": "object"}),
+                input_schema=(
+                    schema if isinstance(schema, dict) else {"type": "object"}
+                ),
             )
         )
     return normalized

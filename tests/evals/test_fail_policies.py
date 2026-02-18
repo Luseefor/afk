@@ -48,8 +48,16 @@ class _StaticLLM(LLM):
 
 def _cases() -> list[EvalCase]:
     return [
-        EvalCase(name="case-1", agent=Agent(model=_StaticLLM(), instructions="c1"), user_message="x"),
-        EvalCase(name="case-2", agent=Agent(model=_StaticLLM(), instructions="c2"), user_message="x"),
+        EvalCase(
+            name="case-1",
+            agent=Agent(model=_StaticLLM(), instructions="c1"),
+            user_message="x",
+        ),
+        EvalCase(
+            name="case-2",
+            agent=Agent(model=_StaticLLM(), instructions="c2"),
+            user_message="x",
+        ),
     ]
 
 

@@ -13,13 +13,7 @@ from afk.agents.skills import reset_skill_store
 def _write_skill(skill_root: Path, *, name: str, description: str, body: str) -> None:
     skill_root.mkdir(parents=True, exist_ok=True)
     (skill_root / "SKILL.md").write_text(
-        (
-            "---\n"
-            f"name: {name}\n"
-            f"description: {description}\n"
-            "---\n\n"
-            f"{body}\n"
-        ),
+        (f"---\nname: {name}\ndescription: {description}\n---\n\n{body}\n"),
         encoding="utf-8",
     )
 

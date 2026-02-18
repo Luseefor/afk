@@ -32,7 +32,9 @@ class PrometheusWorkerMetrics(WorkerMetrics):
         self._namespace = namespace
         self._counters: dict[str, object] = {}
 
-    def incr(self, name: str, value: int = 1, *, tags: Mapping[str, str] | None = None) -> None:
+    def incr(
+        self, name: str, value: int = 1, *, tags: Mapping[str, str] | None = None
+    ) -> None:
         label_names = tuple(sorted((tags or {}).keys()))
         key = f"{name}|{','.join(label_names)}"
         counter = self._counters.get(key)

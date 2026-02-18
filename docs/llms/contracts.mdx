@@ -1,54 +1,30 @@
 ---
-title: Contracts
-description: Public contracts for llm providers, runtime policies, and requests.
+title: LLM Contracts
+description: Request/response/streaming contracts and provider normalization rules.
 ---
 
-## Core Contracts
+## Request/response contract
 
-- Request/response: `LLMRequest`, `LLMResponse`, `EmbeddingRequest`, `EmbeddingResponse`.
-- Provider contracts: `LLMProvider`, `LLMTransport`, `ProviderSettingsSchema`.
-- Runtime policies:
-  - `RetryPolicy`
-  - `TimeoutPolicy`
-  - `RateLimitPolicy`
-  - `CircuitBreakerPolicy`
-  - `HedgingPolicy`
-  - `CachePolicy`
-  - `CoalescingPolicy`
-  - `RoutePolicy`
-
-## LLMRequest Extensions
-
-`LLMRequest` now supports enterprise runtime overrides:
-
-- `retry_policy`
-- `timeout_policy`
-- `stream_idle_timeout_s`
-- `route_policy`
-- `cache_policy`
-
-## Runtime Policy Defaults
-
-You can set policy defaults at client construction time with `LLMBuilder.profile(...)`
-or override per request through `LLMRequest`.
-
-```python
-from afk.llms import LLMBuilder, LLMRequest, Message, RetryPolicy, TimeoutPolicy
-
-llm = LLMBuilder().provider("openai").profile("production").build()
-
-resp = await llm.chat(
-    LLMRequest(
-        model="gpt-4.1-mini",
-        messages=[Message(role="user", content="hello")],
-        retry_policy=RetryPolicy(max_retries=2),
-        timeout_policy=TimeoutPolicy(request_timeout_s=15.0, stream_idle_timeout_s=20.0),
-    )
-)
+```mermaid
+flowchart LR
+    Request[LLMRequest] --> Transport[Provider transport]
+    Transport --> Raw[Provider-native response]
+    Raw --> Normalize[AFK normalization]
+    Normalize --> Response[LLMResponse]
 ```
 
-## Stability Rules
+## Better structured-output example
 
-- Public interfaces use normalized AFK types only.
-- Provider-native objects must not leak past `LLMTransport`.
-- Observer/telemetry failures are non-fatal.
+```python
+from pydantic import BaseModel
+from afk.llms.types import LLMRequest, Message
+
+class IncidentSummary(BaseModel):
+    severity: str
+    summary: str
+
+resp = await client.chat(
+    LLMRequest(messages=[Message(role="user", content="Summarize this incident")]),
+    response_model=IncidentSummary,
+)
+```

@@ -9,10 +9,10 @@ Human-in-the-loop interaction types.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Awaitable, Protocol
+from typing import AsyncIterator, Protocol
 
 from ...llms.types import JSONValue
-from .common import AgentState, DecisionKind
+from .common import DecisionKind
 from .result import AgentResult
 
 

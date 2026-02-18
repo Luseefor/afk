@@ -18,6 +18,7 @@ from .contracts import RateLimitPolicy
 @dataclass(slots=True)
 class _Bucket:
     """Data type for bucket."""
+
     tokens: float
     updated_at_s: float
 
@@ -53,4 +54,3 @@ class RateLimiter:
 
                 wait_s = (1.0 - bucket.tokens) / policy.requests_per_second
             await asyncio.sleep(max(wait_s, 0.001))
-

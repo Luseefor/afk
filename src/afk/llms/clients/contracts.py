@@ -59,4 +59,3 @@ class LLMClientTransport(Protocol):
         session_token: str | None = None,
         checkpoint_token: str | None = None,
     ) -> LLMSessionHandle: ...
-

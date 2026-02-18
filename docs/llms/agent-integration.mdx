@@ -1,31 +1,26 @@
 ---
 title: Agent Integration
-description: Integration boundary between runner/agents and llm runtime.
+description: Integrating llms runtime with runner and agent orchestration.
 ---
 
-## Ownership Boundary
+## Integration sequence
 
-Agent/Runner layers own:
+```mermaid
+sequenceDiagram
+    participant Runner
+    participant LLMClient
+    participant Provider
 
-- orchestration and tool execution policy
-- fail-safe strategy and fallback chain decisions
-- persistence and checkpoint workflows
+    Runner->>LLMClient: build + send LLMRequest
+    LLMClient->>Provider: execute with policies
+    Provider-->>LLMClient: raw result
+    LLMClient-->>Runner: normalized response
+    Runner->>Runner: choose next action (text/tool/delegation)
+```
 
-`afk.llms` owns:
+## Example
 
-- provider transport normalization
-- runtime policies (retry/timeout/rate-limit/breaker/hedging/cache/coalescing)
-- stream/session transport controls
-
-## Model Resolution
-
-Use provider-driven client creation in model resolution paths:
-
-- `create_llm_client(provider=...)`
-- `LLMBuilder(...).build()`
-
-For complex agents, prefer:
-
-- `LLMBuilder().for_agent_runtime()` for baseline production policies
-- per-request `RoutePolicy(provider_order=...)` when you need explicit fallback
-- per-request `RetryPolicy`/`TimeoutPolicy` overrides for high-risk turns
+```python
+runner = Runner(llm_client=client)
+result = runner.run_sync(agent, user_message="Create a postmortem outline")
+```

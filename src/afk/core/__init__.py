@@ -12,6 +12,12 @@ from .interaction import (
     InteractionProvider,
 )
 from .runner import Runner, RunnerConfig
+from .runtime import (
+    DelegationBackpressureError,
+    DelegationEngine,
+    DelegationGraphError,
+    DelegationPlanner,
+)
 from .streaming import AgentStreamEvent, AgentStreamHandle
 from .telemetry import (
     TelemetryEvent,
@@ -22,6 +28,10 @@ from .telemetry import (
 __all__ = [
     "Runner",
     "RunnerConfig",
+    "DelegationEngine",
+    "DelegationPlanner",
+    "DelegationGraphError",
+    "DelegationBackpressureError",
     "InteractionProvider",
     "HeadlessInteractionProvider",
     "InMemoryInteractiveProvider",

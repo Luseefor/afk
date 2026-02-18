@@ -19,3 +19,8 @@ dependencies = [
     "pytest>=9.0.2",
     "redis>=7.1.1",
 ]
+
+[project.optional-dependencies]
+a2a = [
+    "PyJWT>=2.10.1",
+]

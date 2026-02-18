@@ -291,7 +291,7 @@ def test_worker_metrics_counters_are_emitted():
     async def scenario() -> None:
         queue = InMemoryTaskQueue()
         metrics = _Metrics()
-        task = await queue.enqueue_contract("ok.v1", payload={}, agent_name=None)
+        await queue.enqueue_contract("ok.v1", payload={}, agent_name=None)
         worker = TaskWorker(
             queue,
             agents={},
@@ -304,7 +304,9 @@ def test_worker_metrics_counters_are_emitted():
 
         assert metrics.counts.get("queue_worker_completed_total", 0) == 1
 
-        failing = await queue.enqueue_contract("missing.v1", payload={}, agent_name=None)
+        failing = await queue.enqueue_contract(
+            "missing.v1", payload={}, agent_name=None
+        )
         running2 = await queue.dequeue(timeout=0.1)
         assert running2 is not None
         await worker._execute_task(running2)  # noqa: SLF001

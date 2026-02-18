@@ -1,54 +1,15 @@
-````python 08_prebuilt_runtime_tools.py
-"""
-Example 08: Prebuilt runtime filesystem tools.
+---
+title: Snippet 08: Prebuilt Runtime Tools
+description: Compose prebuilt tools with explicit constraints.
+---
 
-Run:
-    python 08_prebuilt_runtime_tools.py
-"""
+```python
+agent = Agent(
+    name="ops",
+    model="gpt-4.1-mini",
+    instructions="Use approved runtime tools only.",
+    tools=[...],
+)
+```
 
-from __future__ import annotations
-
-import asyncio
-from pathlib import Path
-
-from afk.tools import ToolRegistry, build_runtime_tools
-
-
-async def main() -> None:
-    root = (Path.cwd() / ".afk_runtime_tools_demo").resolve()
-    root.mkdir(parents=True, exist_ok=True)
-    (root / "README.txt").write_text(
-        "AFK runtime tools demo file.\nThis file is safe to read.",
-        encoding="utf-8",
-    )
-
-    runtime_tools = build_runtime_tools(root_dir=root)
-
-    registry = ToolRegistry()
-    registry.register_many(runtime_tools)
-
-    list_result = await registry.call(
-        "list_directory",
-        {
-            "path": ".",
-            "max_entries": 10,
-        },
-    )
-
-    read_result = await registry.call(
-        "read_file",
-        {
-            "path": "README.txt",
-            "max_chars": 500,
-        },
-    )
-
-    print("root:", root)
-    print("list_success:", list_result.success)
-    print("read_success:", read_result.success)
-    print("read_truncated:", (read_result.output or {}).get("truncated"))
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-````
+Pair runtime tools with policy checks and command allowlists.

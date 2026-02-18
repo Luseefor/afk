@@ -168,7 +168,9 @@ class MCPProtocolHandler:
             ctx=ctx,
         )
         return {
-            "content": self._result_content(result.output, result.success, result.error_message),
+            "content": self._result_content(
+                result.output, result.success, result.error_message
+            ),
             "isError": not result.success,
         }
 

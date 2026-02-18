@@ -47,14 +47,18 @@ TaskCallback = Callable[[TaskItem], Awaitable[None] | None]
 class WorkerMetrics(Protocol):
     """Minimal metrics interface for queue worker instrumentation."""
 
-    def incr(self, name: str, value: int = 1, *, tags: Mapping[str, str] | None = None) -> None:
+    def incr(
+        self, name: str, value: int = 1, *, tags: Mapping[str, str] | None = None
+    ) -> None:
         """Increment a counter metric."""
 
 
 class NoOpWorkerMetrics:
     """Default metrics sink when no metrics backend is provided."""
 
-    def incr(self, name: str, value: int = 1, *, tags: Mapping[str, str] | None = None) -> None:
+    def incr(
+        self, name: str, value: int = 1, *, tags: Mapping[str, str] | None = None
+    ) -> None:
         _ = name
         _ = value
         _ = tags
@@ -198,7 +202,11 @@ class TaskWorker:
             if not contract_id:
                 raise ValueError("execution contract ids must be non-empty")
             declared_id = getattr(value, "contract_id", None)
-            if isinstance(declared_id, str) and declared_id and declared_id != contract_id:
+            if (
+                isinstance(declared_id, str)
+                and declared_id
+                and declared_id != contract_id
+            ):
                 raise ValueError(
                     f"Contract id mismatch: key '{contract_id}' != handler.contract_id '{declared_id}'"
                 )
@@ -401,7 +409,10 @@ class TaskWorker:
             )
             await self._handle_completion(task_item, result=result_envelope)
 
-        except (ExecutionContractResolutionError, ExecutionContractValidationError) as exc:
+        except (
+            ExecutionContractResolutionError,
+            ExecutionContractValidationError,
+        ) as exc:
             error = str(exc)
             self._metrics.incr("queue_worker_failed_non_retryable_total")
             logger.error("Task %s failed (non-retryable): %s", task_item.id[:8], error)

@@ -1,196 +1,145 @@
 ---
 title: Tool Call Lifecycle
-description: Complete lifecycle of tool planning, approval, execution, replay, and output insertion.
+description: Detailed event-level view of one tool invocation.
 ---
 
-This document describes the exact lifecycle AFK uses when an LLM returns tool calls.
+While the [Tools System Walkthrough](/library/tools-system-walkthrough) covers the
+end-to-end pipeline, this page zooms into the event-level lifecycle of a single tool
+call. Every tool invocation produces a deterministic sequence of events that flow through
+the run handle. Understanding this sequence is critical for building observability
+dashboards, audit logs, and human-in-the-loop approval flows.
 
-## TL;DR
+A tool call begins when the runner receives a `ToolCall` from the LLM response. Before
+the handler ever runs, the runner evaluates a policy gate that can allow, deny, or defer
+the call for human approval. The outcome of that gate determines whether the tool
+executes at all, and the events emitted along the way tell you exactly what happened and
+why.
 
-- Every tool call is policy-gated before execution.
-- Optional approval/user-input gates can pause/resume runs.
-- Sandbox validation runs before tool invocation.
-- Successful effects are persisted for idempotent replay.
-
-## When to Use
-
-- You are building tools with side effects.
-- You need to debug why a tool did not execute.
-- You are implementing policy/sandbox controls for production.
-
-Primary code paths:
-
-- [afk/core/runner/execution.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/execution.py)
-- [afk/core/runner/interaction.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/interaction.py)
-- [afk/core/runner/internals.py](https://github.com/socioy/afk/blob/main/src/afk/core/runner/internals.py)
-- [afk/tools/registery.py](https://github.com/socioy/afk/blob/main/src/afk/tools/registery.py)
-- [afk/tools/security.py](https://github.com/socioy/afk/blob/main/src/afk/tools/security.py)
-
-## Required Capabilities
-
-- typed tool args and predictable tool identifiers
-- policy decisions for `tool_before_execute`
-- sandbox profile strategy (default + per-tool overrides)
-- idempotent replay keys for side-effect tools
-
-## End-to-End Flow
+## Event timeline
 
 ```mermaid
 sequenceDiagram
     participant Runner
     participant Policy
-    participant HITL as InteractionProvider
-    participant Sandbox
-    participant Memory
-    participant Registry as ToolRegistry
+    participant Tool
 
-    Runner->>Runner: receive LLMResponse.tool_calls
-    Runner->>Memory: checkpoint pre_tool_batch
-
-    loop each tool call
-        Runner->>Policy: evaluate tool_before_execute
-
-        alt policy action == deny
-            Runner->>Runner: create failed ToolExecutionRecord
-            Runner->>Runner: append tool message (error payload)
-            Runner->>Runner: apply approval_denial_policy
-        else policy requests approval/input/defer
-            Runner->>HITL: request approval or user input
-            HITL-->>Runner: allow/deny/defer
-            opt deferred
-                Runner->>Memory: checkpoint paused
-                Runner->>HITL: await_deferred
-                Runner->>Memory: checkpoint resumed
-            end
-            Runner->>Runner: apply denial policy when denied
-        end
-
-        Runner->>Sandbox: resolve + validate sandbox profile
-        alt sandbox violation
-            Runner->>Runner: create failed ToolExecutionRecord
-            Runner->>Runner: append tool message (sandbox error)
-            Runner->>Runner: apply tool_failure_policy
-        else allowed
-            Runner->>Memory: try effect replay by effect key + input hash
-            alt replay hit
-                Runner->>Runner: reuse prior successful ToolResult
-            else replay miss
-                Runner->>Registry: call(tool_name, args, ctx, timeout, tool_call_id)
-                Registry-->>Runner: ToolResult or exception
-                Runner->>Memory: persist effect row (success path with call id)
-            end
-
-            Runner->>Runner: apply output limits (profile)
-            Runner->>Runner: sanitize/render untrusted tool output
-            Runner->>Runner: append tool message to transcript
-            Runner->>Runner: emit tool_completed
-        end
+    Runner->>Policy: pre-tool decision (tool_before_execute)
+    Policy-->>Runner: allow / deny / defer / request_user_input
+    alt allow
+      Runner->>Tool: execute(args, ctx)
+      Tool-->>Runner: ToolResult(output, success, error_message)
+      Runner->>Runner: sanitize output + enforce limits
+      Runner->>Runner: emit tool_completed event
+      Runner->>Runner: record ToolExecutionRecord
+      Runner->>Runner: persist effect result for replay
+    else deny
+      Runner->>Runner: emit tool_completed(success=false)
+      Runner->>Runner: record ToolExecutionRecord(error="Denied by policy")
+      Runner->>Runner: evaluate approval_denial_policy (continue / degrade / fail)
+    else defer / request_approval
+      Runner->>Runner: emit run_paused event
+      Runner->>Runner: await human approval
+      alt approved
+        Runner->>Tool: execute(args, ctx)
+        Tool-->>Runner: ToolResult
+        Runner->>Runner: sanitize + emit tool_completed
+      else denied
+        Runner->>Runner: emit tool_completed(success=false)
+        Runner->>Runner: evaluate approval_denial_policy
+      end
+    else request_user_input
+      Runner->>Runner: await user input
+      alt input provided
+        Runner->>Tool: execute(updated_args, ctx)
+        Tool-->>Runner: ToolResult
+        Runner->>Runner: sanitize + emit tool_completed
+      else input denied
+        Runner->>Runner: emit tool_completed(success=false)
+        Runner->>Runner: evaluate approval_denial_policy
+      end
     end
-
-    Runner->>Memory: checkpoint post_tool_batch
 ```
 
-## Detailed Stages
+## Event reference table
 
-1. Tool batch starts
-- Event emitted: `tool_batch_started`
-- Checkpoint phase: `pre_tool_batch`
+Every event is an `AgentRunEvent` published on the run handle. The `type` field
+identifies the event, and the `data` dict carries event-specific fields.
 
-2. Per-tool policy evaluation
-- Policy event: `tool_before_execute`
-- Possible actions:
-  - `allow`
-  - `deny`
-  - `defer`
-  - `request_approval`
-  - `request_user_input`
-- `updated_tool_args` may rewrite raw tool args before execution.
+| Event type | When it fires | Key `data` fields | Description |
+| --- | --- | --- | --- |
+| `tool_batch_started` | After LLM response contains tool calls | `tool_call_count` | Signals the start of a batch of one or more tool calls from a single LLM turn. |
+| `policy_decision` | After policy evaluation for each tool | `tool_name`, `action`, `reason` | Records the policy engine's decision for one tool call. Emitted for allow, deny, defer, and request_user_input actions. |
+| `run_paused` | When a tool call requires human approval | `tool_name`, `reason`, `payload` | The run is suspended waiting for external input. Only emitted when policy returns `defer` or `request_approval`. |
+| `run_resumed` | After human approval or denial is received | `approved` | The run resumes after the approval decision. |
+| `tool_completed` | After each tool call resolves (success or failure) | `tool_name`, `success`, `output`, `error`, `tool_call_id` | The terminal event for one tool call. Always emitted regardless of whether the tool ran, was denied, or timed out. |
+| `warning` | When non-fatal issues occur | `message` | Advisory events such as sandbox violations handled under a continue policy. |
 
-3. Approval or user-input gate
-- Immediate decisions are handled directly.
-- Deferred decisions pause run and resume on token resolution.
-- Timeout fallback uses `RunnerConfig.approval_fallback` or `RunnerConfig.input_fallback`.
+## Policy decisions: allow, deny, defer, and request_user_input
 
-4. Sandbox/security gate
-- Effective profile resolved from:
-  - per-call `sandbox_profile_provider`
-  - fallback `default_sandbox_profile`
-- Validation checks:
-  - network access
-  - command execution and allowlisted command prefixes
-  - shell operators
-  - path allowlist/denylist
+The `PolicyEngine` evaluates a `PolicyEvent` with `event_type="tool_before_execute"` for
+every tool call. The decision drives the rest of the lifecycle:
 
-5. Effect replay and idempotency
-- Replay key: `effect:{run_id}:{step}:{tool_call_id}`
-- Replay allowed only when:
-  - `tool_call_id` exists
-  - stored `input_hash` matches current hash
-  - stored row marked `success=True`
-- Input hash mismatch raises checkpoint corruption error.
+**allow** -- The tool executes immediately. No human interaction required. This is the
+default when no policy rules match.
 
-6. Tool execution
-- Executed through `ToolRegistry.call(...)`
-- Context includes run/thread ids and optional secret scope metadata.
-- Per-call timeout may come from sandbox profile command timeout.
+**deny** -- The tool is blocked. A `ToolExecutionRecord` with `success=False` and
+`error="Denied by policy"` is recorded. The denied result is fed back to the model as a
+tool message so it can adjust its behavior. After a denial, the runner consults
+`fail_safe.approval_denial_policy` to decide the run-level outcome:
 
-7. Output handling
-- Output is truncated by profile/output-limit middleware if configured.
-- Output is rendered as untrusted payload unless sanitization is disabled.
-- Tool message is appended to transcript for next LLM turn.
+- `continue` (default) -- The run proceeds. The model sees the denial and may try a
+  different approach.
+- `degrade` -- The run transitions to a `degraded` state and terminates with a
+  degradation message.
+- `fail` -- The run raises an `AgentExecutionError` and transitions to `failed`.
 
-8. Failure policy handling
-- Tool failures are mapped through `tool_failure_policy`:
-  - fail run
-  - degrade run
-  - continue
+**defer / request_approval** -- The runner pauses the run, emits a `run_paused` event,
+and waits for the `InteractionProvider` to deliver an approval decision. If the provider
+is `HeadlessInteractionProvider`, the configured `approval_fallback` (default: `deny`)
+is used. The approval has a configurable timeout (`approval_timeout_s`, default 300s).
 
-9. Batch completion
-- Checkpoint phase: `post_tool_batch`
-- Runtime snapshot persisted afterward.
+**request_user_input** -- Similar to defer, but instead of a yes/no approval, the runner
+asks the user for a value (such as a confirmation code or corrected parameter). The
+policy's `request_payload` can specify a `target_arg` field, and the user's input is
+injected into the tool arguments before execution.
 
-## Events and Checkpoints in Tool Stage
+## Timing and latency tracking
 
-Events emitted in this stage:
+Every tool execution is timed from the moment `registry.call()` is invoked to the moment
+it returns. The latency is captured in milliseconds and recorded in two places:
 
-- `tool_batch_started`
-- `tool_completed`
-- optional `warning` and terminal events based on policy/failure
+1. **`ToolExecutionRecord.latency_ms`** -- Available on the `AgentResult.tool_executions`
+   list after the run completes.
 
-Checkpoint phases touched in this stage:
+2. **Telemetry histogram** -- The `agent.tool_call.latency_ms` metric is emitted with
+   attributes `tool_name`, `result` (success/error), and `source` (execute/replay).
 
-- `pre_tool_batch`
-- `post_tool_batch`
-- `runtime_state`
+For batch-level timing, the `agent.tool_batch.latency_ms` histogram captures the
+wall-clock duration of the entire batch (all concurrent tool calls), with attributes for
+`call_count` and `failure_count`.
 
-## Operational Notes
+Denied tool calls have no execution latency since the handler never runs.
 
-- `tool_calls` budget is enforced at runner level.
-- Circuit breaker key for tools is `tool:{tool_name}`.
-- Runtime and skill tools are registered in the same registry as user tools.
-- Tool replay does not re-run side effects when effect row is valid.
+## How denied tools affect the agent run
 
-## Failure Modes
+When a tool is denied, the model still receives feedback. The runner appends a tool
+message to the conversation with the denial reason:
 
-- policy denies can block execution or degrade/fail run by policy
-- sandbox violations produce tool failures before function execution
-- replay hash mismatch can raise checkpoint corruption errors
-- tool failure policies can unintentionally hide critical failures when too permissive
+```json
+{"success": false, "error": "Denied by policy", "tool_call_id": "call_abc123"}
+```
 
-## Implementation Checklist
+This feedback loop is important: the model sees that its proposed action was rejected and
+can adapt. In practice, models respond to denials by either rephrasing the request,
+choosing a different tool, or providing a text-only response.
 
-1. Keep tool args strongly typed (`pydantic` models).
-2. Add policy rules for sensitive tools (`request_approval` or `deny`).
-3. Enforce sandbox profile and command/path allowlists.
-4. Use deterministic `tool_call_id` flows for replay safety.
-5. Emit and monitor `tool_completed` outcomes in telemetry/event sinks.
+The run-level impact depends on `fail_safe.approval_denial_policy`:
 
-## Examples
+| Policy | Behavior after denial |
+| --- | --- |
+| `continue` | Run proceeds normally. Model sees the denial and may self-correct. |
+| `degrade` | Run transitions to `degraded` state and exits the step loop with a degradation message. |
+| `fail` | Run raises `AgentExecutionError` and transitions to `failed` state. |
 
-- [examples/02_policy_with_hitl.py](/library/examples/index#02-policy-with-hitl)
-- [examples/06_tool_registry_security.py](/library/examples/index#06-tool-registry-security)
-
-## Continue Reading
-
-1. [Security Model](/library/security-model)
-2. [Failure Policies](/library/failure-policy-matrix)
+Multiple denials in a single batch are each evaluated independently. If any denial
+triggers a `fail` or `degrade` policy, the remaining tool calls in the batch are skipped.

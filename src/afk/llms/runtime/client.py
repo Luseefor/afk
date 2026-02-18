@@ -28,7 +28,6 @@ from ..types import (
     LLMRequest,
     LLMResponse,
     LLMSessionHandle,
-    LLMStreamEvent,
     LLMStreamHandle,
 )
 from ..utils import run_sync
@@ -200,7 +199,9 @@ class LLMClient:
             return result
 
         try:
-            return await call_with_retry(_do_call, policy=retry_policy, can_retry=can_retry)
+            return await call_with_retry(
+                _do_call, policy=retry_policy, can_retry=can_retry
+            )
         except Exception:
             await self._breaker.record_failure(provider_id, self._breaker_policy)
             raise
@@ -231,15 +232,23 @@ class LLMClient:
             if self._coalescing_policy.enabled:
                 return await self._coalescer.run(
                     cache_key,
-                    lambda: self._call_one(providers[0], req, response_model=response_model),
+                    lambda: self._call_one(
+                        providers[0], req, response_model=response_model
+                    ),
                 )
-            return await self._call_one(providers[0], req, response_model=response_model)
+            return await self._call_one(
+                providers[0], req, response_model=response_model
+            )
 
         async def _call_secondary() -> LLMResponse:
             if len(providers) < 2:
                 raise LLMError("No secondary provider configured")
-            secondary_req = replace(req, route_policy=RoutePolicy(provider_order=(providers[1],)))
-            return await self._call_one(providers[1], secondary_req, response_model=response_model)
+            secondary_req = replace(
+                req, route_policy=RoutePolicy(provider_order=(providers[1],))
+            )
+            return await self._call_one(
+                providers[1], secondary_req, response_model=response_model
+            )
 
         try:
             if self._hedging_policy.enabled and len(providers) > 1:
@@ -253,7 +262,9 @@ class LLMClient:
         except Exception:
             for provider_id in providers[1:]:
                 try:
-                    result = await self._call_one(provider_id, req, response_model=response_model)
+                    result = await self._call_one(
+                        provider_id, req, response_model=response_model
+                    )
                     break
                 except Exception:
                     continue
@@ -376,7 +387,9 @@ class LLMClient:
                 f"Provider '{provider_id}' does not support capability 'embeddings'"
             )
 
-        await self._rate_limiter.acquire(f"{provider_id}:embed", self._rate_limit_policy)
+        await self._rate_limiter.acquire(
+            f"{provider_id}:embed", self._rate_limit_policy
+        )
         await self._breaker.ensure_available(provider_id, self._breaker_policy)
 
         timeout_policy = self._timeout_policy

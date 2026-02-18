@@ -67,7 +67,9 @@ def create_task_queue_from_env(*, redis_client: Any | None = None) -> TaskQueue:
     if backend in ("redis",):
         from .redis_queue import RedisTaskQueue
 
-        prefix = _env_first("AFK_QUEUE_REDIS_PREFIX", default="afk:queue") or "afk:queue"
+        prefix = (
+            _env_first("AFK_QUEUE_REDIS_PREFIX", default="afk:queue") or "afk:queue"
+        )
 
         client = redis_client
         if client is None:
@@ -80,17 +82,25 @@ def create_task_queue_from_env(*, redis_client: Any | None = None) -> TaskQueue:
 
             url = _env_first("AFK_QUEUE_REDIS_URL", "AFK_REDIS_URL")
             if not url:
-                host = _env_first(
-                    "AFK_QUEUE_REDIS_HOST", "AFK_REDIS_HOST", default="localhost"
-                ) or "localhost"
+                host = (
+                    _env_first(
+                        "AFK_QUEUE_REDIS_HOST", "AFK_REDIS_HOST", default="localhost"
+                    )
+                    or "localhost"
+                )
                 port = (
                     _env_first("AFK_QUEUE_REDIS_PORT", "AFK_REDIS_PORT", default="6379")
                     or "6379"
                 )
-                db = _env_first("AFK_QUEUE_REDIS_DB", "AFK_REDIS_DB", default="0") or "0"
-                password = _env_first(
-                    "AFK_QUEUE_REDIS_PASSWORD", "AFK_REDIS_PASSWORD", default=""
-                ) or ""
+                db = (
+                    _env_first("AFK_QUEUE_REDIS_DB", "AFK_REDIS_DB", default="0") or "0"
+                )
+                password = (
+                    _env_first(
+                        "AFK_QUEUE_REDIS_PASSWORD", "AFK_REDIS_PASSWORD", default=""
+                    )
+                    or ""
+                )
                 if password:
                     url = f"redis://:{password}@{host}:{port}/{db}"
                 else:

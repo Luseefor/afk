@@ -17,6 +17,7 @@ from ..types import LLMRequest
 @dataclass(slots=True)
 class OrderedFallbackRouter(LLMRouter):
     """Default router honoring explicit `RoutePolicy.provider_order` first."""
+
     router_id: str = "ordered_fallback"
 
     def route(

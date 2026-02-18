@@ -44,8 +44,7 @@ class JobHandler(Protocol):
         arguments: dict[str, JSONValue],
         *,
         task_item: TaskItem,
-    ) -> JSONValue | Awaitable[JSONValue]:
-        ...
+    ) -> JSONValue | Awaitable[JSONValue]: ...
 
 
 @dataclass(slots=True)
@@ -56,6 +55,7 @@ class ExecutionContractContext:
     Attributes:
         job_handlers: Named handler map used by dispatch-style contracts.
     """
+
     job_handlers: Mapping[str, JobHandler] = field(default_factory=dict)
 
 

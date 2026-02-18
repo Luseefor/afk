@@ -76,8 +76,6 @@ class RunMetrics:
                 round(self.avg_llm_latency_ms, 1) if self.avg_llm_latency_ms else None
             ),
             "avg_tool_latency_ms": (
-                round(self.avg_tool_latency_ms, 1)
-                if self.avg_tool_latency_ms
-                else None
+                round(self.avg_tool_latency_ms, 1) if self.avg_tool_latency_ms else None
             ),
         }

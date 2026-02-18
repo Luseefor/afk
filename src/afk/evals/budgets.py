@@ -29,11 +29,17 @@ def evaluate_budget(metrics: RunMetrics, budget: EvalBudget | None) -> list[str]
         return []
 
     violations: list[str] = []
-    if budget.max_duration_s is not None and metrics.total_duration_s > budget.max_duration_s:
+    if (
+        budget.max_duration_s is not None
+        and metrics.total_duration_s > budget.max_duration_s
+    ):
         violations.append(
             f"duration_s={metrics.total_duration_s:.4f} exceeded max_duration_s={budget.max_duration_s:.4f}"
         )
-    if budget.max_total_tokens is not None and metrics.total_tokens > budget.max_total_tokens:
+    if (
+        budget.max_total_tokens is not None
+        and metrics.total_tokens > budget.max_total_tokens
+    ):
         violations.append(
             f"total_tokens={metrics.total_tokens} exceeded max_total_tokens={budget.max_total_tokens}"
         )

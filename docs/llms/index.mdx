@@ -1,69 +1,34 @@
 ---
-title: LLM Overview
-description: Enterprise, provider-driven LLM runtime with builder-first DX.
+title: LLMs Overview
+description: Provider-driven llms runtime and builder workflow.
 ---
 
-`afk.llms` now uses a modular provider registry and runtime policies.
+## LLM runtime map
 
-## TL;DR
-
-- Primary API: `create_llm_client(...)` or `LLMBuilder`.
-- Hard break: legacy factory APIs are removed.
-- Built-ins: `openai`, `litellm`, `anthropic_agent`.
-
-## Quickstart
-
-```python
-from afk.llms import LLMBuilder, LLMRequest, Message
-
-llm = (
-    LLMBuilder()
-    .provider("openai")
-    .for_agent_runtime()
-    .build()
-)
-
-resp = await llm.chat(
-    LLMRequest(
-        model="gpt-4.1-mini",
-        messages=[Message(role="user", content="Plan next steps")],
-    )
-)
-print(resp.text)
+```mermaid
+flowchart LR
+    Builder[LLMBuilder] --> Client[LLMClient]
+    Client --> ProviderRegistry[Provider registry]
+    ProviderRegistry --> Transport[Provider transport]
+    Client --> Policies[Runtime policies]
 ```
 
-## New Architecture
-
-- Providers: registry-backed (`register_llm_provider`, `get_llm_provider`).
-- Runtime policies: retry, timeout, rate limit, breaker, hedging, caching, coalescing.
-- Routing: pluggable router contracts with fallback ordering.
-- Cache: pluggable backends (`inmemory`, custom, optional Redis).
-- Agent DX helper: `LLMBuilder().for_agent_runtime()` for production defaults.
-
-## Complex Agent Baseline
-
-Use this setup when building multi-step agents with strict reliability needs:
+## Start here
 
 ```python
-from afk.llms import LLMBuilder, LLMRequest, Message, RoutePolicy
+from afk.llms import LLMBuilder
 
-llm = (
+client = (
     LLMBuilder()
     .provider("openai")
-    .for_agent_runtime()
+    .model("gpt-4.1-mini")
+    .profile("production")
     .build()
 )
-
-req = LLMRequest(
-    model="gpt-4.1-mini",
-    messages=[Message(role="user", content="execute plan")],
-    route_policy=RoutePolicy(provider_order=("openai", "litellm")),
-)
-resp = await llm.chat(req)
 ```
 
-This gives deterministic provider order while retaining runtime safeguards.
+## Mental model
 
-## Removed APIs
-
-- Legacy adapter-factory APIs from llms v1 are removed in the hard-break upgrade.
+- provider chooses transport
+- runtime policies choose execution behavior
+- caller code consumes normalized contracts only

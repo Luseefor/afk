@@ -16,26 +16,6 @@
     "type": "github",
     "url": "https://github.com/socioy/afk"
   },
-  "topbarLinks": [
-    {
-      "type": "link",
-      "name": "Levels",
-      "url": "/library/agentic-levels",
-      "arrow": false
-    },
-    {
-      "type": "link",
-      "name": "Build with AI",
-      "url": "/library/building-with-ai",
-      "arrow": false
-    },
-    {
-      "type": "link",
-      "name": "API",
-      "url": "/library/api-reference",
-      "arrow": false
-    }
-  ],
   "sidebar": {
     "items": "undecorated"
   },
@@ -57,37 +37,47 @@
         "pages": [
           "index",
           "library/overview",
-          "library/agentic-levels",
-          "library/developer-guide",
-          "library/examples/index",
-          "library/building-with-ai"
-        ]
-      },
-      {
-        "group": "Runtime Concepts",
-        "pages": [
+          "library/mental-model",
+          "library/how-to-use-afk",
+          "library/quickstart",
           "library/architecture",
-          "library/llm-interaction",
-          "library/system-prompts",
-          "library/tools-system-walkthrough",
-          "library/tool-call-lifecycle",
-          "library/agentic-behavior",
-          "library/agent-skills",
-          "library/checkpoint-schema",
-          "library/run-event-contract",
-          "library/failure-policy-matrix",
-          "library/security-model"
+          "library/developer-guide"
         ]
       },
       {
-        "group": "Advanced Features",
+        "group": "Agent Platform",
         "pages": [
+          "library/agents",
+          "library/agentic-behavior",
+          "library/agentic-levels",
+          "library/core-runner",
           "library/streaming",
+          "library/system-prompts",
+          "library/agent-skills"
+        ]
+      },
+      {
+        "group": "Communication",
+        "pages": [
           "library/messaging",
+          "library/a2a",
           "library/task-queues",
-          "library/observability",
-          "library/evals",
           "library/mcp-server"
+        ]
+      },
+      {
+        "group": "Tools",
+        "pages": [
+          "library/tools",
+          "library/tools-system-walkthrough",
+          "library/tool-call-lifecycle"
+        ]
+      },
+      {
+        "group": "Memory",
+        "pages": [
+          "library/memory",
+          "library/checkpoint-schema"
         ]
       },
       {
@@ -101,12 +91,25 @@
         ]
       },
       {
+        "group": "Reliability",
+        "pages": [
+          "library/observability",
+          "library/evals",
+          "library/security-model",
+          "library/tested-behaviors"
+        ]
+      },
+      {
         "group": "Reference",
         "pages": [
           "library/api-reference",
+          "library/examples/index",
+          "library/full-module-reference",
           "library/public-imports-and-function-improvement",
-          "library/tested-behaviors",
-          "library/full-module-reference"
+          "library/run-event-contract",
+          "library/failure-policy-matrix",
+          "library/llm-interaction",
+          "library/building-with-ai"
         ]
       }
     ]

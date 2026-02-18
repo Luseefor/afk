@@ -17,6 +17,7 @@ class LLMError(Exception):
 
 class LLMTimeoutError(LLMError):
     """Raised when request or stream timeout constraints are exceeded."""
+
     pass
 
 
@@ -40,6 +41,7 @@ class LLMInvalidResponseError(LLMError):
 
 class LLMConfigurationError(LLMError):
     """Raised when llm runtime/provider configuration is invalid."""
+
     pass
 
 

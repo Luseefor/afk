@@ -20,6 +20,7 @@ from .contracts import LLMProvider, LLMTransport, ProviderSettingsSchema
 
 class AnthropicAgentProvider(LLMProvider):
     """Provider factory for `AnthropicAgentClient` transports."""
+
     provider_id = "anthropic_agent"
     settings_schema = ProviderSettingsSchema()
 
@@ -38,7 +39,13 @@ class AnthropicAgentProvider(LLMProvider):
             config=settings.to_legacy_config(),
             middlewares=middlewares,
             observers=observers,
-            thinking_effort_aliases=row.get("thinking_effort_aliases") if isinstance(row.get("thinking_effort_aliases"), dict) else None,
-            supported_thinking_efforts=set(row.get("supported_thinking_efforts")) if isinstance(row.get("supported_thinking_efforts"), list) else None,
-            default_thinking_effort=row.get("default_thinking_effort") if isinstance(row.get("default_thinking_effort"), str) else None,
+            thinking_effort_aliases=row.get("thinking_effort_aliases")
+            if isinstance(row.get("thinking_effort_aliases"), dict)
+            else None,
+            supported_thinking_efforts=set(row.get("supported_thinking_efforts"))
+            if isinstance(row.get("supported_thinking_efforts"), list)
+            else None,
+            default_thinking_effort=row.get("default_thinking_effort")
+            if isinstance(row.get("default_thinking_effort"), str)
+            else None,
         )

@@ -1,314 +1,452 @@
 ---
 title: Task Queues
-description: Persistent task queues for distributed agent execution with automatic retry.
+description: Queue execution contracts, worker behavior, dead-letter handling, and extension patterns.
 ---
 
-Distribute agent and non-agent work across workers using durable task queues. Tasks are enqueued with a contract id and payload, then consumed and executed by `TaskWorker` instances.
+AFK's task queue system provides **queue-based asynchronous execution** for agent workloads and standalone jobs. Instead of invoking agents synchronously, you enqueue tasks with an **execution contract** that tells the worker how to process them. The worker dequeues tasks, resolves the contract, executes the work, and manages the full lifecycle including retries, failure classification, and dead-letter handling.
 
-## TL;DR
+This architecture decouples task producers from consumers, letting you scale workers independently, implement backpressure, and recover gracefully from failures. Two built-in execution contracts cover the most common patterns: `runner.chat.v1` for agent-backed conversational work and `job.dispatch.v1` for non-agent job execution. You can also define custom contracts for specialized workloads.
 
-- `TaskQueue` is the queue abstraction — enqueue, dequeue, complete, fail, cancel, list.
-- `BaseTaskQueue` provides shared lifecycle behavior so new backends only implement storage primitives.
-- `TaskItem` tracks lifecycle: `pending → running → retrying/completed/failed/cancelled`.
-- Automatic retry: tasks are re-enqueued while `retry_count <= max_retries`.
-- `TaskWorker` is a concurrent consumer loop with contract-aware dispatch.
-- Built-in contracts: `runner.chat.v1` and `job.dispatch.v1`.
-- Successful results are normalized to `{ "contract": "<id>", "output": ... }`.
-- Retryable failures can be deferred with backoff (`metadata.next_attempt_at`).
-- Terminal failures include DLQ reason metadata (`metadata.dead_letter_reason`).
-- Two backends: `InMemoryTaskQueue` and `RedisTaskQueue`.
+## Queue Flow
 
-## When to Use
-
-- You need to distribute agent execution across multiple workers.
-- Tasks should survive process restarts (use Redis backend).
-- You want automatic retry for transient failures.
-- You need to track task status and results.
-
-## Architecture
+The following diagram shows the lifecycle of a task from enqueue to terminal state:
 
 ```mermaid
 flowchart LR
-    P["Producer"] -->|"enqueue()"| Q["TaskQueue"]
-    Q -->|"dequeue()"| W1["Worker 1"]
-    Q -->|"dequeue()"| W2["Worker 2"]
-    W1 -->|"complete()"| Q
-    W2 -->|"fail() → retry"| Q
+    Enqueue[enqueue_contract] --> Pending[(pending)]
+    Pending --> Worker[TaskWorker]
+    Worker --> Resolve[Resolve contract]
+    Resolve --> Execute[Execute]
+    Execute --> Terminal[(completed/failed)]
 ```
 
-## Task Lifecycle
+**Step-by-step walkthrough:**
 
-```mermaid
-stateDiagram-v2
-    [*] --> pending
-    pending --> running : dequeue()
-    pending --> cancelled : cancel()
-    running --> completed : complete()
-    running --> retrying : fail() [retries left]
-    running --> failed : fail() [no retries]
-    running --> cancelled : cancel()
-    retrying --> running : dequeue() after re-enqueue
-```
+1. **Enqueue** -- A producer calls `queue.enqueue_contract()` with an execution contract ID, payload, and optional agent name. The queue creates a `TaskItem` with status `pending` and pushes it to the pending queue.
+2. **Dequeue** -- The `TaskWorker` polls the queue via `dequeue()`. When a pending task is available, it transitions to `running` and is handed to the worker.
+3. **Resolve contract** -- The worker looks up the execution contract by ID from its contract registry. If the contract is unknown or the task metadata is missing the contract key, the task fails immediately without retry.
+4. **Execute** -- The resolved contract's `execute()` method runs the task. For `runner.chat.v1`, this spins up a `Runner` and calls `runner.run()` with the agent. For `job.dispatch.v1`, this looks up a registered job handler and calls it.
+5. **Terminal state** -- On success, the task moves to `completed` with a result payload. On failure, the task either enters `retrying` (if retryable and retry budget remains) or `failed` (terminal).
 
-## Reliability Controls
+## Execution Contracts
 
-- Retry backoff: queue retries may be deferred using `metadata["next_attempt_at"]`.
-- Dead-letter reason: terminal failures set `metadata["dead_letter_reason"]` to:
-  - `non_retryable_error`
-  - `retry_budget_exhausted`
-- DLQ inspection: use `await queue.list_dead_letters(limit=...)`.
-- DLQ operations:
-  - `await queue.redrive_dead_letters(limit=..., reason=...)`
-  - `await queue.purge_dead_letters(limit=..., reason=...)`
+Execution contracts define how a task should be processed. Each contract has a `contract_id`, a `requires_agent` flag, and an `execute()` method. The worker resolves the contract from `task.metadata["execution_contract"]` and dispatches accordingly.
 
-## Quick Start
+### runner.chat.v1
 
-### Enqueuing Tasks
+The `RunnerChatExecutionContract` is for agent-backed conversational work. It creates a `Runner`, passes it the resolved agent and the task payload, and returns the agent's response.
 
-```python
-from afk.queues import InMemoryTaskQueue, RUNNER_CHAT_CONTRACT
+**Contract ID:** `runner.chat.v1`
+**Requires agent:** Yes -- the task must have a valid `agent_name` that maps to a registered agent in the worker.
 
-queue = InMemoryTaskQueue()
+**Expected payload fields:**
 
-# Explicit contract enqueue
-task = await queue.enqueue_contract(
-    RUNNER_CHAT_CONTRACT,
-    payload={
-        "user_message": "Summarize the latest news about AI",
-        "context": {},
-    },
-    agent_name="summarizer",
-    max_retries=3,
-)
-print(f"Task {task.id} enqueued")
-```
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `user_message` | `str \| None` | No | The user message to send to the agent. When `None`, the agent runs with no new user input (useful for continuation). |
+| `context` | `dict[str, JSONValue] \| None` | No | Optional context dictionary passed to `runner.run()`. |
 
-```python
-from afk.queues import JOB_DISPATCH_CONTRACT
-
-# Explicit contract enqueue (recommended)
-task = await queue.enqueue_contract(
-    JOB_DISPATCH_CONTRACT,
-    payload={
-        "job_type": "reindex",
-        "arguments": {"tenant_id": "t_123"},
-    },
-    agent_name=None,
-)
-```
-
-### Running a Worker
-
-```python
-from afk.queues import TaskWorker, TaskWorkerConfig
-from afk.agents import Agent
-
-summarizer = Agent(name="summarizer", model="openai/gpt-4o")
-
-worker = TaskWorker(
-    queue,
-    agents={"summarizer": summarizer},
-    config=TaskWorkerConfig(
-        max_concurrent_tasks=4,
-        poll_interval_s=1.0,
-    ),
-)
-
-await worker.start()
-# Worker runs in background until shutdown
-await worker.shutdown()
-```
-
-For backends that support worker presence (for example `RedisTaskQueue`),
-`TaskWorker.start()` automatically attempts startup in-flight recovery only
-when this worker is the sole active worker.
-Set `worker_presence_refresh_s` lower than `worker_presence_ttl_s`.
-
-### Backend From Environment
+**Return value:** `{"final_text": str, "state": str}` -- the agent's final text output and terminal state.
 
 ```python
 from afk.queues import create_task_queue_from_env
 
 queue = create_task_queue_from_env()
+
+# Enqueue an agent-backed task
+task = await queue.enqueue_contract(
+    execution_contract="runner.chat.v1",
+    payload={"user_message": "Summarize the quarterly report"},
+    agent_name="summarizer",
+    max_retries=3,
+)
+
+print(f"Task {task.id} enqueued with status: {task.status}")
 ```
 
-`create_task_queue_from_env()` reads `AFK_QUEUE_BACKEND` and creates either
-`InMemoryTaskQueue` or `RedisTaskQueue`.
+### job.dispatch.v1
 
-## Execution Contracts
+The `JobDispatchExecutionContract` is for non-agent work that does not require an LLM or a `Runner`. It looks up a named handler function from the worker's `job_handlers` registry and calls it with the task arguments.
 
-Contracts are resolved from `task.metadata["execution_contract"]`.
+**Contract ID:** `job.dispatch.v1`
+**Requires agent:** No -- the `agent_name` field is ignored.
 
-- If missing, worker fails the task immediately without retry.
-- Unknown/invalid contracts fail task immediately without retry.
-- Contract registration is worker-scoped via `TaskWorker(..., execution_contracts=...)`.
+**Expected payload fields:**
 
-### Built-in Contracts
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `job_type` | `str` | Yes | The name of the registered job handler to invoke. Must be non-empty and match a key in the worker's `job_handlers` map. |
+| `arguments` | `dict[str, JSONValue]` | No | Arguments passed to the handler function. Defaults to an empty dict. |
 
-1. `runner.chat.v1`
-- Requires `agent_name`.
-- Payload shape:
-```json
-{
-  "user_message": "string | null",
-  "context": {}
-}
-```
-
-2. `job.dispatch.v1`
-- Does not require `agent_name`.
-- Payload shape:
-```json
-{
-  "job_type": "string",
-  "arguments": {}
-}
-```
-- Dispatches to `TaskWorker(..., job_handlers={"job_type": handler})`.
-
-### Result Envelope
-
-All successful task completions store results as:
-
-```json
-{
-  "contract": "runner.chat.v1",
-  "output": {}
-}
-```
-
-## TaskItem Fields
-
-| Field          | Type                | Description                                  |
-| -------------- | ------------------- | -------------------------------------------- |
-| `id`           | `str`               | Unique task ID (auto-generated)              |
-| `agent_name`   | `str \| None`       | Agent identifier (optional for non-agent contracts) |
-| `payload`      | `dict`              | Contract-specific task input                 |
-| `status`       | `TaskStatus`        | Current lifecycle state                      |
-| `result`       | `JSONValue \| None` | Contract envelope `{contract, output}`       |
-| `error`        | `str \| None`       | Error message on failure                     |
-| `retry_count`  | `int`               | Times retried so far                         |
-| `max_retries`  | `int`               | Max allowed retries (default: 3)             |
-| `created_at`   | `float`             | Enqueue timestamp                            |
-| `started_at`   | `float \| None`     | Execution start timestamp                    |
-| `completed_at` | `float \| None`     | Terminal state timestamp                     |
-
-## Worker Configuration
-
-| Option                 | Default | Description                                  |
-| ---------------------- | ------- | -------------------------------------------- |
-| `poll_interval_s`      | `1.0`   | Seconds between dequeue attempts when idle   |
-| `max_concurrent_tasks` | `4`     | Maximum tasks executed in parallel           |
-| `shutdown_timeout_s`   | `30.0`  | Grace period for in-flight tasks on shutdown |
-| `recover_inflight_on_startup` | `true` | Requeue stale in-flight tasks when queue supports startup recovery and no other workers are active |
-| `worker_presence_ttl_s` | `30.0` | Active-worker presence TTL for supported backends |
-| `worker_presence_refresh_s` | `10.0` | Presence heartbeat interval for supported backends |
-
-## Worker Callbacks
+**Handler signature:** The `JobHandler` protocol accepts `(arguments: dict, *, task_item: TaskItem) -> JSONValue`. Handlers can be synchronous or asynchronous -- the worker detects and awaits async handlers automatically.
 
 ```python
-async def on_complete(task):
-    print(f"✅ Task {task.id} completed")
+from afk.queues import create_task_queue_from_env
 
-async def on_failure(task):
-    print(f"❌ Task {task.id} failed: {task.error}")
+queue = create_task_queue_from_env()
+
+# Enqueue a standalone job
+task = await queue.enqueue_contract(
+    execution_contract="job.dispatch.v1",
+    payload={
+        "job_type": "reindex",
+        "arguments": {"tenant": "acme", "index": "products"},
+    },
+)
+
+print(f"Job {task.id} enqueued")
+```
+
+The job handler is registered when creating the `TaskWorker`:
+
+```python
+from afk.queues.worker import TaskWorker
+from afk.queues.types import TaskItem
+from afk.llms.types import JSONValue
+
+async def handle_reindex(arguments: dict[str, JSONValue], *, task_item: TaskItem) -> JSONValue:
+    tenant = arguments["tenant"]
+    index = arguments["index"]
+    # ... perform reindexing logic ...
+    return {"reindexed": True, "tenant": tenant, "index": index}
+
+worker = TaskWorker(
+    queue,
+    agents={"summarizer": summarizer_agent},
+    job_handlers={"reindex": handle_reindex},
+)
+```
+
+## TaskItem Reference
+
+The `TaskItem` is a mutable dataclass representing a unit of work in the queue. The queue and worker manage its lifecycle fields as the task progresses through states.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `id` | `str` | Auto-generated UUID | Unique task identifier. Generated at creation time via `uuid.uuid4().hex`. |
+| `agent_name` | `str \| None` | -- | Agent to execute this task. Required by contracts that set `requires_agent=True`, ignored otherwise. |
+| `payload` | `dict[str, JSONValue]` | -- | Contract-specific input data. The structure depends on which execution contract processes the task. |
+| `status` | `TaskStatus` | `"pending"` | Current lifecycle state. One of: `pending`, `running`, `completed`, `failed`, `retrying`, `cancelled`. |
+| `result` | `JSONValue \| None` | `None` | Output payload after successful completion. Set by `queue.complete()`. |
+| `error` | `str \| None` | `None` | Error message on failure. Set by `queue.fail()`. |
+| `retry_count` | `int` | `0` | Number of times this task has been retried after failure. Incremented on each call to `queue.fail()`. |
+| `max_retries` | `int` | `3` | Maximum allowed retries before the task is permanently failed. When `retry_count > max_retries`, the task transitions to terminal `failed`. |
+| `created_at` | `float` | `time.time()` | Unix timestamp when the task was created. |
+| `started_at` | `float \| None` | `None` | Unix timestamp when execution began (status transitioned to `running`). Reset on each retry. |
+| `completed_at` | `float \| None` | `None` | Unix timestamp when the task reached a terminal state (`completed`, `failed`, or `cancelled`). |
+| `metadata` | `dict[str, JSONValue]` | `{}` | Arbitrary JSON-safe metadata. The queue system uses reserved keys like `execution_contract`, `next_attempt_at`, `dead_letter_reason`, and retry backoff parameters. |
+
+**Computed properties:**
+
+- `is_terminal` -- Returns `True` when `status` is `completed`, `failed`, or `cancelled`. Terminal tasks are immutable.
+- `duration_s` -- Returns the execution duration in seconds (from `started_at` to `completed_at`), or `None` if unavailable.
+- `execution_contract` -- Reads the contract ID from `metadata["execution_contract"]`.
+
+**Task status lifecycle:**
+
+```
+pending ──> running ──> completed
+   │           │
+   │           ├──> retrying ──> pending (re-enqueued)
+   │           │
+   │           └──> failed (terminal)
+   │
+   └──> cancelled (terminal)
+```
+
+## Worker Lifecycle
+
+The `TaskWorker` is a consumer loop that continuously dequeues tasks and executes them via execution contracts. It supports concurrent task execution, graceful shutdown, worker presence tracking, and startup recovery.
+
+**Starting the worker:**
+
+```python
+from afk.queues import create_task_queue_from_env
+from afk.queues.worker import TaskWorker, TaskWorkerConfig
+
+queue = create_task_queue_from_env()
+
+worker = TaskWorker(
+    queue,
+    agents={"summarizer": summarizer_agent},
+    job_handlers={"reindex": handle_reindex},
+    config=TaskWorkerConfig(
+        poll_interval_s=1.0,        # Seconds between dequeue attempts when idle
+        max_concurrent_tasks=4,     # Maximum tasks running in parallel
+        shutdown_timeout_s=30.0,    # Grace period for in-flight tasks on shutdown
+    ),
+)
+
+await worker.start()   # Starts the background loop
+# ... later ...
+await worker.shutdown() # Graceful shutdown
+```
+
+**How the worker loop operates:**
+
+1. The worker acquires a concurrency permit from an `asyncio.Semaphore` (bounded by `max_concurrent_tasks`).
+2. It calls `queue.dequeue(timeout=poll_interval_s)` to get the next pending task.
+3. If a task is available, it spawns an `asyncio.Task` to execute it concurrently.
+4. The execution task resolves the contract, resolves the agent (if required), calls `contract.execute()`, and marks the task as completed or failed.
+5. On completion, the concurrency permit is released and the worker loops back to step 1.
+
+**Graceful shutdown** calls `worker.shutdown()`, which:
+- Stops the polling loop.
+- Waits for in-flight tasks up to `shutdown_timeout_s`.
+- Cancels any tasks that exceed the timeout.
+- Unregisters worker presence (if the queue supports it).
+
+**Worker presence** is supported by queue backends that implement `WorkerPresenceCapable`. The worker registers itself on startup, sends periodic heartbeats (every `worker_presence_refresh_s` seconds), and unregisters on shutdown. This enables distributed queue backends to detect crashed workers and recover their in-flight tasks.
+
+**Startup recovery** is supported by queue backends that implement `StartupRecoveryCapable`. When `recover_inflight_on_startup=True` (the default), the worker calls `recover_inflight_if_idle()` on startup to requeue tasks that were in-flight when a previous worker crashed.
+
+**Callbacks:**
+
+```python
+async def on_task_complete(task: TaskItem) -> None:
+    print(f"Task {task.id} completed with result: {task.result}")
+
+async def on_task_failure(task: TaskItem) -> None:
+    print(f"Task {task.id} failed with error: {task.error}")
 
 worker = TaskWorker(
     queue,
     agents=agents,
-    on_complete=on_complete,
-    on_failure=on_failure,
+    on_complete=on_task_complete,
+    on_failure=on_task_failure,
 )
 ```
 
-## Worker Metrics
+## Dead Letter Handling
+
+When a task exhausts its retry budget or encounters a non-retryable error, it moves to terminal `failed` status and is tagged with a `dead_letter_reason` in its metadata. These failed tasks constitute the **dead letter queue (DLQ)**.
+
+**Dead letter reasons:**
+
+| Reason | When Applied |
+|---|---|
+| `retry_budget_exhausted` | The task was retryable but `retry_count` exceeded `max_retries`. |
+| `non_retryable_error` | The task failed with `retryable=False` (e.g., unknown contract, invalid payload). |
+
+**Inspecting dead letters:**
 
 ```python
-from afk.queues import PrometheusWorkerMetrics, TaskWorker
-
-metrics = PrometheusWorkerMetrics(namespace="afk")
-worker = TaskWorker(queue, agents=agents, metrics=metrics)
+# List all dead-lettered tasks (returns tasks with status="failed")
+dead_letters = await queue.list_dead_letters(limit=100)
+for task in dead_letters:
+    reason = task.metadata.get("dead_letter_reason", "unknown")
+    print(f"Task {task.id}: {task.error} (reason: {reason})")
 ```
 
-Counters emitted:
-- `queue_worker_dequeued_total`
-- `queue_worker_completed_total`
-- `queue_worker_failed_retryable_total`
-- `queue_worker_failed_non_retryable_total`
-- `queue_worker_recovered_inflight_total`
-
-## Backends
-
-### InMemoryTaskQueue
-
-- Uses `asyncio.Queue` + dict for tracking
-- Suitable for single-process systems and testing
-- Tasks are lost on process exit
-
-### RedisTaskQueue
-
-- Uses Redis `pending` + `inflight` lists for crash-safe dequeue tracking, plus hash for task state
-- Tasks persist across restarts
-- Uses `BRPOPLPUSH` to atomically move dequeued IDs into in-flight tracking
-- Worker startup can auto-recover stale in-flight IDs only when it is the sole active worker (presence + lock guarded)
-- Requires `pip install redis`
+**Redriving dead letters** moves failed tasks back to `pending` so they can be retried:
 
 ```python
-import redis.asyncio as redis
-from afk.queues import RUNNER_CHAT_CONTRACT, RedisTaskQueue
+# Redrive all dead letters back to the pending queue
+moved = await queue.redrive_dead_letters(limit=50)
+print(f"Redrived {moved} tasks")
 
-r = redis.Redis(host="localhost", port=6379)
-queue = RedisTaskQueue(r)
+# Redrive only tasks that failed due to exhausted retries
+moved = await queue.redrive_dead_letters(
+    limit=50,
+    reason="retry_budget_exhausted",
+)
+```
 
-await queue.enqueue_contract(
-    RUNNER_CHAT_CONTRACT,
-    payload={"user_message": "Analyze sales data", "context": {}},
-    agent_name="analyzer",
+When a task is redriven, its status is reset to `pending`, its error and completion timestamps are cleared, the `dead_letter_reason` metadata key is removed, and it is pushed back into the pending queue for the worker to pick up.
+
+**Purging dead letters** permanently removes them from storage:
+
+```python
+# Purge all dead letters
+removed = await queue.purge_dead_letters(limit=100)
+
+# Purge only non-retryable failures
+removed = await queue.purge_dead_letters(
+    limit=100,
+    reason="non_retryable_error",
+)
+```
+
+## Custom Contracts
+
+You can define custom execution contracts to handle specialized workloads beyond the two built-in contracts. A custom contract implements the `ExecutionContract` protocol:
+
+```python
+from afk.queues.contracts import (
+    ExecutionContract,
+    ExecutionContractContext,
+    ExecutionContractValidationError,
+)
+from afk.queues.types import TaskItem
+from afk.agents import BaseAgent
+from afk.llms.types import JSONValue
+
+
+class BatchIngestionContract:
+    """Custom contract for batch data ingestion tasks."""
+
+    contract_id = "batch.ingest.v1"
+    requires_agent = False
+
+    async def execute(
+        self,
+        task_item: TaskItem,
+        *,
+        agent: BaseAgent | None,
+        worker_context: ExecutionContractContext,
+    ) -> JSONValue:
+        payload = task_item.payload
+
+        source_url = payload.get("source_url")
+        if not isinstance(source_url, str) or not source_url.strip():
+            raise ExecutionContractValidationError(
+                f"Contract '{self.contract_id}' requires non-empty payload.source_url"
+            )
+
+        batch_size = payload.get("batch_size", 100)
+        if not isinstance(batch_size, int) or batch_size <= 0:
+            raise ExecutionContractValidationError(
+                f"Contract '{self.contract_id}' expected payload.batch_size to be a positive integer"
+            )
+
+        # ... perform batch ingestion ...
+        records_processed = 42  # placeholder
+
+        return {
+            "source_url": source_url,
+            "records_processed": records_processed,
+            "batch_size": batch_size,
+        }
+```
+
+**Key design rules for custom contracts:**
+
+1. **`contract_id`** -- A unique string that identifies your contract. Use a namespaced format like `"myapp.ingest.v1"`.
+2. **Payload validation** -- Validate all required payload fields in `execute()`. Raise `ExecutionContractValidationError` for invalid payloads -- these are classified as non-retryable failures.
+3. **Retry policy classification** -- The worker automatically classifies errors:
+   - `ExecutionContractResolutionError` and `ExecutionContractValidationError` are **non-retryable** (terminal failure, no retry).
+   - All other exceptions are **retryable** (the task will be retried up to `max_retries` times).
+4. **Return value** -- Return a JSON-safe value (`JSONValue`) that will be stored as the task's result.
+
+**Registering a custom contract with the worker:**
+
+```python
+worker = TaskWorker(
+    queue,
+    agents={},
+    execution_contracts={
+        "batch.ingest.v1": BatchIngestionContract(),
+    },
+)
+```
+
+**Enqueuing tasks for a custom contract:**
+
+```python
+task = await queue.enqueue_contract(
+    execution_contract="batch.ingest.v1",
+    payload={
+        "source_url": "https://data.example.com/export.csv",
+        "batch_size": 500,
+    },
+)
+```
+
+## Error Classification Rules
+
+The worker uses a two-tier error classification system to decide whether a failed task should be retried:
+
+| Error Type | Retryable | Behavior |
+|---|---|---|
+| `ExecutionContractResolutionError` | No | Unknown or missing contract ID. Task fails immediately with `non_retryable_error`. |
+| `ExecutionContractValidationError` | No | Invalid payload or missing required agent. Task fails immediately with `non_retryable_error`. |
+| Any other `Exception` | Yes | Runtime error during execution. Task is retried up to `max_retries` times with exponential backoff. |
+
+**Exponential backoff** is computed as: `min(base * 2^(retry_count - 1), max) + random(0, jitter)`. The default parameters are:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `retry_backoff_base_s` | `0.0` | Base delay in seconds. Set to `0.5` or higher for production. |
+| `retry_backoff_max_s` | `30.0` | Maximum delay cap in seconds. |
+| `retry_backoff_jitter_s` | `0.0` | Random jitter added to each delay to avoid thundering herd. |
+
+You can set these at the queue level, per-task via metadata, or per-contract via the worker's `retry_policies` parameter:
+
+```python
+from afk.queues.types import RetryPolicy
+
+# Per-task retry policy (embedded in task metadata)
+task = await queue.enqueue_contract(
+    execution_contract="runner.chat.v1",
+    payload={"user_message": "Process this"},
+    agent_name="assistant",
+    retry_policy=RetryPolicy(
+        backoff_base_s=1.0,
+        backoff_max_s=60.0,
+        backoff_jitter_s=0.5,
+    ),
 )
 
-# Optional crash-recovery step on startup when no workers are running:
-# moved = await queue.requeue_inflight()
-# print(f"Requeued {moved} in-flight task ids")
+# Per-contract retry policy (set on the worker)
+worker = TaskWorker(
+    queue,
+    agents=agents,
+    retry_policies={
+        "runner.chat.v1": RetryPolicy(backoff_base_s=2.0, backoff_max_s=120.0),
+    },
+)
 ```
 
-## Continue Reading
+## Backpressure and Metrics
 
-1. [Agent-to-Agent Messaging](/library/messaging)
-2. [Observability](/library/observability)
-3. [Architecture](/library/architecture)
+**Backpressure** is managed by the `max_concurrent_tasks` setting on `TaskWorkerConfig`. The worker uses an `asyncio.Semaphore` to limit how many tasks execute simultaneously. When all permits are held, the worker blocks on `acquire()` until a running task completes. This prevents the worker from overwhelming downstream resources.
 
-## Ops Runbook
+**Metrics** are emitted via the `WorkerMetrics` protocol. AFK ships with a `PrometheusWorkerMetrics` adapter and a `NoOpWorkerMetrics` default.
 
-1. Startup
-- Start worker group and verify presence heartbeats.
-- For Redis, startup recovery is lock-guarded and only runs when one active worker is detected.
+| Metric Name | Tags | Description |
+|---|---|---|
+| `queue_worker_dequeued_total` | -- | Total tasks dequeued by this worker. |
+| `queue_worker_completed_total` | `contract` | Tasks completed successfully, broken down by contract ID. |
+| `queue_worker_failed_retryable_total` | -- | Tasks that failed with a retryable error. |
+| `queue_worker_failed_non_retryable_total` | -- | Tasks that failed with a non-retryable error. |
+| `queue_worker_recovered_inflight_total` | -- | In-flight tasks recovered during startup recovery. |
 
-2. Monitoring
-- Track queue depth, retrying count, failed count, dead-letter count.
-- Alert on sustained growth of non-retryable failures.
-- Alert when dead-letter count breaches threshold.
+```python
+from afk.queues.metrics import PrometheusWorkerMetrics
 
-3. Incident Response
-- Inspect dead letters with `list_dead_letters`.
-- Re-drive safe failures in batches with `redrive_dead_letters`.
-- Purge unrecoverable failures after archival with `purge_dead_letters`.
-
-4. Deploy/Restart
-- Gracefully shut down workers before restart.
-- Validate no unexpected spike in `queue_worker_recovered_inflight_total`.
-
-## Load Testing
-
-Use benchmark script:
-
-```bash
-PYTHONPATH=src python scripts/queue_benchmark.py --backend inmemory
-PYTHONPATH=src python scripts/queue_benchmark.py --backend redis --redis-url redis://localhost:6379/0
+worker = TaskWorker(
+    queue,
+    agents=agents,
+    metrics=PrometheusWorkerMetrics(namespace="myapp"),
+)
 ```
 
-Run real Redis integration tests in CI/staging:
+## Queue Backends
 
-```bash
-export AFK_TEST_REDIS_URL=redis://localhost:6379/0
-pytest -q tests/queues/test_redis_integration.py
+AFK provides two queue backends out of the box, selected via the `AFK_QUEUE_BACKEND` environment variable or by instantiating directly:
+
+| Backend | Class | Persistence | Use Case |
+|---|---|---|---|
+| In-memory | `InMemoryTaskQueue` | None (process-local) | Development, testing, single-process deployments |
+| Redis | `RedisTaskQueue` | Redis | Production, multi-process, distributed deployments |
+
+```python
+from afk.queues import create_task_queue_from_env
+
+# Automatically selects backend from AFK_QUEUE_BACKEND env var
+queue = create_task_queue_from_env()
 ```
+
+**Environment variables for Redis backend:**
+
+| Variable | Description | Default |
+|---|---|---|
+| `AFK_QUEUE_BACKEND` | Backend selection (`inmemory` or `redis`) | `inmemory` |
+| `AFK_QUEUE_REDIS_URL` / `AFK_REDIS_URL` | Redis connection URL | -- |
+| `AFK_QUEUE_REDIS_HOST` / `AFK_REDIS_HOST` | Redis host | `localhost` |
+| `AFK_QUEUE_REDIS_PORT` / `AFK_REDIS_PORT` | Redis port | `6379` |
+| `AFK_QUEUE_REDIS_DB` / `AFK_REDIS_DB` | Redis database number | `0` |
+| `AFK_QUEUE_REDIS_PREFIX` | Key prefix for Redis keys | `afk:queue` |
+| `AFK_QUEUE_RETRY_BACKOFF_BASE_S` | Default retry backoff base | `0.5` |
+| `AFK_QUEUE_RETRY_BACKOFF_MAX_S` | Default retry backoff cap | `30` |
+| `AFK_QUEUE_RETRY_BACKOFF_JITTER_S` | Default retry jitter | `0.2` |

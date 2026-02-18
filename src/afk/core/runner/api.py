@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ...agents.core.base import BaseAgent
 from ...agents.errors import (
@@ -33,6 +33,9 @@ from ...observability.backends import create_telemetry_sink
 from ..interaction import HeadlessInteractionProvider, InteractionProvider
 from ..telemetry import TelemetrySink
 from .types import RunnerConfig, _RunHandle
+
+if TYPE_CHECKING:
+    from ..streaming import AgentStreamHandle
 
 
 class RunnerAPIMixin:
@@ -351,7 +354,7 @@ class RunnerAPIMixin:
         user_message: str | None = None,
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
-    ) -> "AgentStreamHandle":
+    ) -> AgentStreamHandle:
         """
         Start an agent run and return a stream handle for real-time events.
 
@@ -384,7 +387,6 @@ class RunnerAPIMixin:
             tool_completed as _tool_completed,
             tool_started as _tool_started,
             step_started as _step_started,
-            status_update,
         )
 
         run_handle = await self.run_handle(
@@ -400,16 +402,16 @@ class RunnerAPIMixin:
             try:
                 async for event in run_handle.events:
                     # Map known event types to stream events
-                    if event.event_type == "llm_completed" and event.data:
+                    if event.type == "llm_completed" and event.data:
                         response_text = event.data.get("text", "")
                         if response_text:
                             await stream.emit(text_delta(str(response_text)))
-                    elif event.event_type == "tool_batch_started" and event.data:
+                    elif event.type == "tool_batch_started" and event.data:
                         tool_names = event.data.get("tool_names", [])
                         if isinstance(tool_names, list):
                             for tn in tool_names:
                                 await stream.emit(_tool_started(str(tn)))
-                    elif event.event_type == "tool_completed" and event.data:
+                    elif event.type == "tool_completed" and event.data:
                         await stream.emit(
                             _tool_completed(
                                 tool_name=str(event.data.get("tool_name", "")),
@@ -419,7 +421,7 @@ class RunnerAPIMixin:
                                 error=event.data.get("error"),
                             )
                         )
-                    elif event.event_type == "step_started":
+                    elif event.type == "step_started":
                         await stream.emit(
                             _step_started(
                                 step=int(event.data.get("step", 0))
@@ -430,11 +432,11 @@ class RunnerAPIMixin:
                                 else "running",
                             )
                         )
-                    elif event.event_type in ("run_failed", "run_interrupted"):
+                    elif event.type in ("run_failed", "run_interrupted"):
                         error_msg = (
-                            event.data.get("error", str(event.event_type))
+                            event.data.get("error", str(event.type))
                             if event.data
-                            else str(event.event_type)
+                            else str(event.type)
                         )
                         await stream.emit(stream_error(str(error_msg)))
 

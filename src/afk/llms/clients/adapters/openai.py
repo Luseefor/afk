@@ -15,7 +15,13 @@ from typing import Any
 from pydantic import BaseModel
 
 from ..base.responses import ResponsesClientBase
-from ..shared import collect_headers, json_text, normalize_role, to_input_text_part, tool_result_label
+from ..shared import (
+    collect_headers,
+    json_text,
+    normalize_role,
+    to_input_text_part,
+    tool_result_label,
+)
 from ...errors import LLMConfigurationError
 from ...types import Message
 

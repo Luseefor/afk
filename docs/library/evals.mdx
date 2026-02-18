@@ -1,70 +1,43 @@
 ---
 title: Evals
-description: Enterprise eval case and suite execution with adaptive scheduling, assertions, and budgets.
+description: Suite execution model, assertions, budgets, and release gating.
 ---
 
-The `afk.evals` package provides a contract-driven eval system for deterministic case execution, suite orchestration, budget enforcement, scoring, and report export.
+## Eval lifecycle
 
-## TL;DR
-
-- Use `EvalCase` for one runnable scenario.
-- Use `run_case(...)` / `arun_case(...)` for single-case runs.
-- Use `run_suite(...)` / `arun_suite(...)` for multi-case execution with `adaptive`, `sequential`, or `parallel` scheduling.
-- Add assertions/scorers and optional `EvalBudget` to enforce enterprise quality gates.
-- Emit machine-readable suite reports with `write_suite_report_json(...)`.
-
-## Quick Start
-
-```python
-from afk.agents import Agent
-from afk.core import Runner
-from afk.evals import (
-    EvalCase,
-    EvalSuiteConfig,
-    FinalTextContainsAssertion,
-    EvalBudget,
-    run_suite,
-)
-
-cases = [
-    EvalCase(
-        name="smoke-1",
-        agent=Agent(model="gpt-4.1-mini", instructions="Say hello"),
-        user_message="hello",
-    )
-]
-
-suite = run_suite(
-    runner_factory=Runner,
-    cases=cases,
-    config=EvalSuiteConfig(
-        execution_mode="adaptive",
-        assertions=(FinalTextContainsAssertion("hello"),),
-        budget=EvalBudget(max_duration_s=5.0),
-        fail_fast=True,
-    ),
-)
-
-print(suite.total, suite.passed, suite.failed)
+```mermaid
+flowchart TD
+    Cases --> Scheduler
+    Scheduler --> Execute
+    Execute --> Assertions
+    Execute --> Budgets
+    Assertions --> Report
+    Budgets --> Report
 ```
 
-## Execution Modes
+## Better example
 
-- `adaptive`: resolves to `sequential` for small suites and `parallel` for larger workloads.
-- `sequential`: one case at a time, deterministic and easiest to debug.
-- `parallel`: bounded concurrency with deterministic output ordering.
+```python
+from afk.evals import run_suite
 
-## Dataset Loader
+suite = run_suite(
+    cases=[...],
+    config={"execution_mode": "adaptive", "max_concurrency": 8, "fail_fast": False},
+)
+print(suite.summary)
+```
 
-Load case definitions from JSON using `load_eval_cases_json(...)`, then resolve `agent` names with your resolver.
+## Release-gate usage
 
-## Reporting
+- block deploy when fail rate exceeds threshold
+- block deploy on budget regressions
+- store suite report as CI artifact
 
-- `suite_report_payload(...)` returns a schema-versioned report dictionary.
-- `write_suite_report_json(...)` writes a JSON report envelope (`eval_suite.v1`).
+## For Coding Agents
 
-## Continue Reading
+Generate evals with:
 
-1. [Observability](/library/observability)
-2. [Run Events](/library/run-event-contract)
-3. [API Reference](/library/api-reference)
+1. happy-path case
+2. failure-path case
+3. timeout/interruption case
+4. cost or latency budget case

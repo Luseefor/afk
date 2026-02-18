@@ -48,7 +48,9 @@ class LLMSettings:
             backoff_jitter_s=float(os.getenv("AFK_LLM_BACKOFF_JITTER_S", "0.15")),
             json_max_retries=int(os.getenv("AFK_LLM_JSON_MAX_RETRIES", "2")),
             max_input_chars=int(os.getenv("AFK_LLM_MAX_INPUT_CHARS", "200000")),
-            stream_idle_timeout_s=float(os.getenv("AFK_LLM_STREAM_IDLE_TIMEOUT_S", "45")),
+            stream_idle_timeout_s=float(
+                os.getenv("AFK_LLM_STREAM_IDLE_TIMEOUT_S", "45")
+            ),
         )
 
     def to_legacy_config(self) -> LLMConfig:

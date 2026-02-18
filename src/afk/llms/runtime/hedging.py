@@ -42,4 +42,3 @@ async def run_with_hedge(
         task.cancel()
     await asyncio.gather(*pending, return_exceptions=True)
     return await winner
-

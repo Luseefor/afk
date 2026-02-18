@@ -39,4 +39,3 @@ async def iter_with_idle_timeout(
         except StopAsyncIteration:
             return
         yield item
-

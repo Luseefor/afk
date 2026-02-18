@@ -131,7 +131,10 @@ def test_chat_stream_falls_back_to_next_provider():
         return [event async for event in stream]
 
     events = run_async(scenario())
-    assert any(isinstance(e, StreamTextDeltaEvent) and e.delta == "from:stream_ok" for e in events)
+    assert any(
+        isinstance(e, StreamTextDeltaEvent) and e.delta == "from:stream_ok"
+        for e in events
+    )
 
 
 def test_chat_stream_handle_interrupt_uses_single_underlying_handle():
@@ -172,7 +175,9 @@ def test_stream_handle_rejects_double_completion_events():
             ]
         )
 
-    provider._transport.chat_stream_handle = _bad_stream_handle.__get__(provider._transport, type(provider._transport))
+    provider._transport.chat_stream_handle = _bad_stream_handle.__get__(
+        provider._transport, type(provider._transport)
+    )
     register_llm_provider(provider, overwrite=True)
 
     llm = create_llm_client(provider="stream_double", settings=LLMSettings())

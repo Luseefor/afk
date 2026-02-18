@@ -34,4 +34,3 @@ def collect_headers(
             headers.setdefault("X-Request-Id", request_id)
 
     return headers
-

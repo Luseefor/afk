@@ -33,7 +33,9 @@ async def arun_suite(
     """Run eval cases with deterministic ordering and configurable execution mode."""
 
     cfg = config or EvalSuiteConfig()
-    mode = _resolve_execution_mode(cfg.execution_mode, case_count=len(cases), max_concurrency=cfg.max_concurrency)
+    mode = _resolve_execution_mode(
+        cfg.execution_mode, case_count=len(cases), max_concurrency=cfg.max_concurrency
+    )
 
     if mode == "sequential":
         results = await _run_sequential(
@@ -66,7 +68,9 @@ def run_suite(
 ) -> EvalSuiteResult:
     """Sync wrapper for suite execution."""
 
-    return asyncio.run(arun_suite(runner_factory=runner_factory, cases=cases, config=config))
+    return asyncio.run(
+        arun_suite(runner_factory=runner_factory, cases=cases, config=config)
+    )
 
 
 async def _run_sequential(

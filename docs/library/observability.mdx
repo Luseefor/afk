@@ -1,80 +1,34 @@
 ---
 title: Observability
-description: Provider-driven telemetry backends, runtime collectors, metrics projectors, and exporters.
+description: Telemetry capture, projection, and export for operations and debugging.
 ---
 
-The observability package is now contract-first and backend-driven. You can pass a sink instance or backend id to `Runner(telemetry=...)`, then project run metrics with dedicated projectors.
-
-## TL;DR
-
-- Telemetry contracts live in `afk.observability.contracts`.
-- Register or resolve backends via `afk.observability.backends`.
-- Built-in backends: `null`, `inmemory`, `otel`.
-- Use `RuntimeTelemetryCollector` to capture telemetry in-process.
-- Project metrics with:
-  - `project_run_metrics_from_collector(...)`
-  - `project_run_metrics_from_result(...)`
-- Export metrics with console/JSON/JSONL exporters.
-
-## Backend Model
+## Telemetry path
 
 ```mermaid
-flowchart TD
-    R["Runner"] -->|"telemetry='otel' or sink instance"| S["TelemetrySink"]
-    S --> C["RuntimeTelemetryCollector (optional)"]
-    C --> P["Run Metrics Projector"]
-    P --> E1["Console Exporter"]
-    P --> E2["JSON Exporter"]
-    P --> E3["JSONL Exporter"]
+flowchart LR
+    Runtime[Runtime events/spans] --> Sink[Backend sink]
+    Sink --> Collector[Collector]
+    Collector --> Projector[Projector]
+    Projector --> Exporters[Console/JSON/JSONL]
 ```
 
-## Configure Runner Telemetry
+## Usage example
 
 ```python
-from afk.core import Runner
-
-# Built-in backend by id
-runner = Runner(telemetry="otel", telemetry_config={
-    "service_name": "my-agent-service",
-    "tracer_name": "my.service.runner",
-    "meter_name": "my.service.runner",
-})
+runner = Runner(telemetry="otel", telemetry_config={"service_name": "afk-prod"})
 ```
 
-```python
-from afk.core import Runner
-from afk.observability.collectors import RuntimeTelemetryCollector
+## Operator guidance
 
-collector = RuntimeTelemetryCollector()
-runner = Runner(telemetry=collector)
-```
+- choose backend by environment (`inmemory` for local, `otel` for prod)
+- keep exporter schemas stable for downstream dashboards
+- alert on dropped/failed exporter writes
 
-## Project and Export Metrics
+## For Coding Agents
 
-```python
-from afk.observability.projectors import project_run_metrics_from_collector
-from afk.observability.exporters import JSONRunMetricsExporter
+When adding telemetry:
 
-metrics = project_run_metrics_from_collector(collector)
-JSONRunMetricsExporter(path="run-metrics.json").export(metrics)
-```
-
-## Custom Backend Registration
-
-```python
-from afk.observability.backends import register_telemetry_backend
-
-class MyBackend:
-    backend_id = "mybackend"
-
-    def create_sink(self, *, config=None):
-        ...
-
-register_telemetry_backend(MyBackend())
-```
-
-## Continue Reading
-
-1. [Architecture](/library/architecture)
-2. [Evals](/library/evals)
-3. [API Reference](/library/api-reference)
+1. use constants, not ad-hoc metric strings
+2. do not let telemetry exceptions fail runtime execution
+3. include run_id/thread_id correlation fields

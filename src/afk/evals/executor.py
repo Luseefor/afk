@@ -47,18 +47,21 @@ async def arun_case(
     budget_violations = evaluate_budget(metrics, budget_to_apply)
     assertion_rows: list[EvalAssertionResult] = []
     for assertion in assertions:
-        outcome = assertion(case, EvalCaseResult(
-            case=case.name,
-            state=result.state,
-            final_text=result.final_text,
-            run_id=result.run_id,
-            thread_id=result.thread_id,
-            event_types=event_types,
-            metrics=metrics,
-            assertions=[],
-            budget_violations=[],
-            passed=result.state == "completed",
-        ))
+        outcome = assertion(
+            case,
+            EvalCaseResult(
+                case=case.name,
+                state=result.state,
+                final_text=result.final_text,
+                run_id=result.run_id,
+                thread_id=result.thread_id,
+                event_types=event_types,
+                metrics=metrics,
+                assertions=[],
+                budget_violations=[],
+                passed=result.state == "completed",
+            ),
+        )
         if inspect.isawaitable(outcome):
             outcome = await outcome
         assertion_rows.append(outcome)

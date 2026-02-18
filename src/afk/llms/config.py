@@ -14,6 +14,7 @@ from dataclasses import dataclass
 class LLMConfig:
     # Models
     """Legacy adapter configuration model retained for transport compatibility."""
+
     default_model: str
     embedding_model: str | None
 

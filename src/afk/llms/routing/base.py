@@ -15,6 +15,7 @@ from ..types import LLMRequest
 
 class LLMRouter(Protocol):
     """Protocol implemented by provider-routing strategies."""
+
     router_id: str
 
     def route(

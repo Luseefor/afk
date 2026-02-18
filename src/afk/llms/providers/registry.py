@@ -46,4 +46,3 @@ def list_llm_providers() -> list[str]:
     """List registered provider ids in deterministic order."""
     with _LOCK:
         return sorted(_REGISTRY.keys())
-
